@@ -45,7 +45,6 @@ docs = [
     'Sphinx<7.3',
     'furo',
     'sphinx-jinja',
-    'autodoc_pydantic[erdantic]',
     'sphinx-jsonschema',
     'sphinx-copybutton',
     "sphinx_mdinclude",
