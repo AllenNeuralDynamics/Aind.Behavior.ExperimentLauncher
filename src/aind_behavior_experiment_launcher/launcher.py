@@ -21,9 +21,11 @@ from aind_behavior_services import (
 from aind_behavior_services.db_utils import SubjectDataBase, SubjectEntry
 from aind_behavior_services.utils import model_from_json_file, utcnow
 
-from aind_behavior_experiment_launcher.launcher import logging_helper, ui_helper
 from aind_behavior_experiment_launcher.records.subject_info import SubjectInfo
 from aind_behavior_experiment_launcher.services import Services
+
+from . import ui_helper
+from .logging import logging_helper
 
 TRig = TypeVar("TRig", bound=AindBehaviorRigModel)  # pylint: disable=invalid-name
 TSession = TypeVar("TSession", bound=AindBehaviorSessionModel)  # pylint: disable=invalid-name
