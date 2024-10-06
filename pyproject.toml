@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aind-behavior-experiment-launcher"
+description = "A library for a minimal framework that can be used to build experimental interfaces."
+
+authors = [
+    { name = "Bruno Cruz", email = "bruno.cruz@alleninstitute.org" },
+]
+license = {text = "MIT"}
+requires-python = ">=3.11"
+dynamic = ["version", "readme"]
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+]
+
+dependencies = [
+    'pydantic>=2.7, <3.0',
+    'gitpython>=3.1, <4.0',
+    'semver',
+    "aind_behavior_services@git+https://github.com/AllenNeuralDynamics/Aind.Behavior.Services@release/0.8.0",
+]
+
+[project.urls]
+Documentation = "https://allenneuraldynamics.github.io/Aind.Behavior.ExperimentLauncher/"
+Repository = "https://github.com/AllenNeuralDynamics/Aind.Behavior.ExperimentLauncher/"
+Issues = "https://github.com/AllenNeuralDynamics/Aind.Behavior.ExperimentLauncher/issues"
+Changelog = "https://github.com/AllenNeuralDynamics/Aind.Behavior.ExperimentLauncher/releases"
+
+[project.optional-dependencies]
+aind-services = [
+    'aind-watchdog-service@git+https://github.com/AllenNeuralDynamics/aind-watchdog-service@0.1.0-rc1',
+    'aind-data-schema<1.1',
+]
+
+linters = [
+    'ruff',
+    'codespell'
+]
+docs = [
+    'Sphinx<7.3',
+    'furo',
+    'sphinx-jinja',
+    'autodoc_pydantic[erdantic]',
+    'sphinx-jsonschema',
+    'sphinx-copybutton',
+    "sphinx_mdinclude",
+
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+aind_behavior_task_launcher = ["py.typed"]
+
+[tool.setuptools.dynamic]
+version = {attr = "aind_behavior_experiment_launcher.__version__"}
+readme = {file = ["README.md"]}
+
+[tool.ruff]
+line-length = 120
+target-version = 'py311'
+
+[tool.ruff.lint]
+extend-select = ['Q', 'RUF100', 'C90', 'I']
+extend-ignore = []
+mccabe = { max-complexity = 14 }
+pydocstyle = { convention = 'google' }
+
+[tool.codespell]
+skip = '.git,*.pdf,*.svg,./docs/_build'
+ignore-words-list = 'nd'
