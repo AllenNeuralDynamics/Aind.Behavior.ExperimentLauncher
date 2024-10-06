@@ -219,7 +219,9 @@ class AindDataSchemaSessionDataMapper(data_mapper_service.DataMapperService):
                             name="Bonsai",
                             version=f"{repository_remote_url}/blob/{repository_sha}/bonsai/Bonsai.config",
                             url=f"{repository_remote_url}/blob/{repository_sha}/bonsai",
-                            parameters=data_mapper_service.snapshot_bonsai_environment(),
+                            parameters=data_mapper_service.snapshot_bonsai_environment(
+                                config_file=kwargs.get("bonsai_config_path", None)
+                            ),
                         ),
                         aind_data_schema.core.session.Software(
                             name="Python",
