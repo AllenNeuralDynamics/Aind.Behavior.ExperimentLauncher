@@ -3,12 +3,15 @@ import importlib.util
 import logging
 from pathlib import Path
 from types import ModuleType
-
+import os
 EXAMPLES_DIR = Path(__file__).parents[1] / "examples"
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 logging.disable(logging.CRITICAL)
+
+os.environ["WATCHDOG_EXE"] = "watchdog.exe"
+os.environ["WATCHDOG_CONFIG"] = "watchdog_config.json"
 
 
 def build_example(script_path: str) -> ModuleType:
