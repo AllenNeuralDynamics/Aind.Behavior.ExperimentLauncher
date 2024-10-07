@@ -10,7 +10,6 @@
 import os
 import sys
 
-import erdantic as erd
 from pydantic import BaseModel
 
 sys.path.insert(0, os.path.abspath("../src"))
@@ -75,14 +74,3 @@ def linkcode_resolve(domain, info):
         return None
     filename = info["module"].replace(".", "/")
     return f"{SOURCE_ROOT}/{filename}.py"
-
-
-# -- Class diagram generation
-
-
-def export_model_diagram(model: BaseModel, root: str = "_static") -> None:
-    diagram = erd.create(model)
-    diagram.draw(f"{root}/{model.__name__}.svg")
-
-
-_diagram_root = "_static"
