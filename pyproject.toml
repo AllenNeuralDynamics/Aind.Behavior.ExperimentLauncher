@@ -42,6 +42,7 @@ linters = [
     'codespell'
 ]
 docs = [
+    'aind-behavior-experiment-launcher[aind-services]',
     'Sphinx<7.3',
     'furo',
     'sphinx-jinja',
@@ -49,6 +50,7 @@ docs = [
     'sphinx-copybutton',
     "sphinx_mdinclude",
 	"autodoc_pydantic",
+
 ]
 
 [tool.setuptools.packages.find]
