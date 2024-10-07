@@ -48,7 +48,7 @@ docs = [
     'sphinx-jsonschema',
     'sphinx-copybutton',
     "sphinx_mdinclude",
-
+	"autodoc_pydantic",
 ]
 
 [tool.setuptools.packages.find]
