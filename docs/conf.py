@@ -10,8 +10,6 @@
 import os
 import sys
 
-from pydantic import BaseModel
-
 sys.path.insert(0, os.path.abspath("../src"))
 import aind_behavior_experiment_launcher
 
