@@ -1,9 +1,10 @@
 import glob
 import importlib.util
 import logging
+import os
 from pathlib import Path
 from types import ModuleType
-import os
+
 EXAMPLES_DIR = Path(__file__).parents[1] / "examples"
 
 logger = logging.getLogger(__name__)
