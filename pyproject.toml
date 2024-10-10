@@ -22,7 +22,7 @@ dependencies = [
     'pydantic>=2.7, <3.0',
     'gitpython>=3.1, <4.0',
     'semver',
-    "aind_behavior_services@git+https://github.com/AllenNeuralDynamics/Aind.Behavior.Services@release/0.8.0",
+    "aind_behavior_services@git+https://github.com/AllenNeuralDynamics/Aind.Behavior.Services",
 ]
 
 [project.urls]
