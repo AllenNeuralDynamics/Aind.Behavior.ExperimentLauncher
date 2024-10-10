@@ -289,8 +289,8 @@ class Launcher(Generic[TRig, TSession, TTaskLogic]):
                 self.logger.error("Data mapper service has failed: %s", e)
 
             try:
-                if self.services.data_transfer_service is not None:
-                    self.services.data_transfer_service.transfer(
+                if self.services.data_transfer is not None:
+                    self.services.data_transfer.transfer(
                         session_schema=self.session_schema,
                         ads_session=mapped,
                         session_directory=self.session_directory,
@@ -328,10 +328,8 @@ class Launcher(Generic[TRig, TSession, TTaskLogic]):
             "Repository: %s\n"
             "Computer Name: %s\n"
             "Data Directory: %s\n"
-            "Remote Data Directory: %s\n"
             "Config Library Directory: %s\n"
             "Temporary Directory: %s\n"
-            "Log Directory: %s\n"
             "-------------------------------",
             self._cwd,
             self.repository.working_dir,
@@ -363,10 +361,10 @@ class Launcher(Generic[TRig, TSession, TTaskLogic]):
                 logger.info("Bonsai app validated.")
 
         # data_transfer_service is optional
-        if services.data_transfer_service is None:
+        if services.data_transfer is None:
             logger.warning("Data transfer service not set.")
         else:
-            if not services.data_transfer_service.validate():
+            if not services.data_transfer.validate():
                 raise ValueError("Data transfer service failed to validate.")
             else:
                 logger.info("Data transfer service validated.")
