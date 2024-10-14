@@ -271,6 +271,7 @@ class Launcher(Generic[TRig, TSession, TTaskLogic]):
         except Exception as e:
             self.logger.error("Failed to log subject info. %s", e)
 
+        mapped = None
         if self.services.data_mapper is not None:
             try:
                 mapped = self.services.data_mapper.map(
@@ -288,13 +289,13 @@ class Launcher(Generic[TRig, TSession, TTaskLogic]):
             except Exception as e:
                 self.logger.error("Data mapper service has failed: %s", e)
 
+        if self.services.data_transfer is not None:
             try:
-                if self.services.data_transfer is not None:
-                    self.services.data_transfer.transfer(
-                        session_schema=self.session_schema,
-                        ads_session=mapped,
-                        session_directory=self.session_directory,
-                    )
+                self.services.data_transfer.transfer(
+                    session_schema=self.session_schema,
+                    ads_session=mapped,
+                    session_directory=self.session_directory,
+                )
             except Exception as e:
                 self.logger.error("Data transfer service has failed: %s", e)
 
