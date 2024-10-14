@@ -34,3 +34,13 @@ Feedback and contributions are welcome!
 
 This repository follows the project structure laid out in the [Aind.Behavior.Services repository](https://github.com/AllenNeuralDynamics/Aind.Behavior.Services).
 
+
+### Getting started
+
+To get started, install the package by running:
+
+```pip install .```
+
+The entry point for the launcher is the `aind_behavior_experiment_launcher.launcher.Launcher` class. This class provides a framework to interface with the AIND Services and launch behavior tasks. While the class is designed to run as is, it is also designed to be extended and customized by overriding the methods provided in the class.
+
+The remaining modules provide useful interfaces and wrappers that can be called by the `Launcher` class. Similarly to the `Launcher` class, these modules are designed to be extended and customized by inheriting from the base classes provided in the modules and overriding the respective interface methods.
