@@ -1,4 +1,4 @@
-aind\_behavior\_experiment\_launcher.data\_transfer
+﻿aind\_behavior\_experiment\_launcher.data\_transfer
 ===================================================
 
 .. automodule:: aind_behavior_experiment_launcher.data_transfer
@@ -29,5 +29,6 @@ aind\_behavior\_experiment\_launcher.data\_transfer
    :recursive:
 
    aind_behavior_experiment_launcher.data_transfer.data_transfer_service
+   aind_behavior_experiment_launcher.data_transfer.robocopy_service
    aind_behavior_experiment_launcher.data_transfer.watchdog_service
 
