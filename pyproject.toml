@@ -33,7 +33,7 @@ Changelog = "https://github.com/AllenNeuralDynamics/Aind.Behavior.ExperimentLaun
 
 [project.optional-dependencies]
 aind-services = [
-    'aind-watchdog-service@git+https://github.com/AllenNeuralDynamics/aind-watchdog-service@0.1.0-rc1',
+    'aind-watchdog-service>=0.1.0, <0.2.0',
     'aind-data-schema<1.1',
     'pydantic<2.9'
 ]
