@@ -589,7 +589,6 @@ class Launcher(Generic[TRig, TSession, TTaskLogic]):
         parser = argparse.ArgumentParser()
 
         parser.add_argument("--data-dir", help="Specify the data directory")
-        parser.add_argument("--remote-data-dir", help="Specify the remote data directory")
         parser.add_argument("--repository-dir", help="Specify the repository directory")
         parser.add_argument("--config-library-dir", help="Specify the configuration library directory")
         parser.add_argument(
