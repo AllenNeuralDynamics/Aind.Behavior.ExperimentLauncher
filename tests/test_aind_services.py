@@ -16,53 +16,48 @@ from aind_behavior_experiment_launcher.data_transfer import watchdog_service
 
 class AindServicesTests(unittest.TestCase):
     def test_session_mapper(self):
-        aind_data_schema_data_mapper.AindDataSchemaSessionDataMapper._map(
+        mapper = aind_data_schema_data_mapper.AindDataSchemaSessionDataMapper(
             session_model=MockSession(),
             rig_model=MockRig(),
             task_logic_model=MockTaskLogic(),
             session_end_time=utcnow(),
             repository=Path("./"),
             script_path=Path("./src/unit_test.bonsai"),
-            bonsai_config_path=Path("./tests/assets/bonsai.config").resolve(),
         )
+        self.assertFalse(mapper.is_mapped())
+        mapper.map()
+        self.assertTrue(mapper.is_mapped())
 
     def test_watchdog_manifest(self):
-        _watchdog = watchdog_service.WatchdogDataTransferService(
-            destination="mock_path",
-            project_name="Cognitive flexibility in patch foraging",
-            schedule_time=datetime.time(hour=20),
-            validate=False,
-        )
-
-        _aind_behavior_session = MockSession()
-
-        _session = aind_data_schema_data_mapper.AindDataSchemaSessionDataMapper._map(
-            session_model=_aind_behavior_session,
+        mapper = aind_data_schema_data_mapper.AindDataSchemaSessionDataMapper(
+            session_model=MockSession(),
             rig_model=MockRig(),
             task_logic_model=MockTaskLogic(),
             session_end_time=utcnow(),
             repository=Path("./"),
             script_path=Path("./src/unit_test.bonsai"),
-            bonsai_config_path=Path("./tests/assets/bonsai.config").resolve(),
+        )
+        mapper.map()
+        mapper.session_directory = Path("mock_path")
+
+        _watchdog = watchdog_service.WatchdogDataTransferService(
+            destination="mock_path",
+            aind_data_mapper=mapper,
+            project_name="Cognitive flexibility in patch foraging",
+            schedule_time=datetime.time(hour=20),
+            validate=False,
         )
 
-        _config = _watchdog.create_manifest_config(
-            ads_session=_session,
-            source=_aind_behavior_session.root_path,
-            ads_schemas=["schema1", "schema2"],
-            project_name=_watchdog.project_name,
-            session_name=_aind_behavior_session.session_name,
-            validate_project_name=False,
-        )
+        config = _watchdog.manifest_config_builder()
 
         self.assertEqual(
-            _config,
-            watchdog_service.ManifestConfig.model_validate_json(_config.model_dump_json()),
+            config,
+            watchdog_service.ManifestConfig.model_validate_json(config.model_dump_json()),
             "Manifest config round trip failed",
         )
 
-        round_via_yaml = watchdog_service.ManifestConfig.model_validate(yaml.safe_load(_watchdog._yaml_dump(_config)))
-        self.assertEqual(_config, round_via_yaml, "Manifest config round trip failed via yaml")
+        round_via_yaml = watchdog_service.ManifestConfig.model_validate(yaml.safe_load(_watchdog._yaml_dump(config)))
+        self.assertEqual(config, round_via_yaml, "Manifest config round trip failed via yaml")
 
 
 class MockRig(AindBehaviorRigModel):
