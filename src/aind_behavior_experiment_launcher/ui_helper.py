@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, List, Optional, TypeVar
 
 from aind_behavior_services.db_utils import SubjectDataBase
 from aind_behavior_services.rig import AindBehaviorRigModel
@@ -68,6 +68,19 @@ class UIHelper:
             except ValueError as e:
                 logger.error("Invalid choice. Try again. %s", e)
         return subject
+
+    @staticmethod
+    def prompt_experimenter(strict: bool = True) -> Optional[List[str]]:
+        experimenter: Optional[List[str]] = None
+        while experimenter is None:
+            _user_input = input("Experimenter name: ")
+            experimenter = _user_input.replace(",", " ").split()
+            if strict & (len(experimenter) == 0):
+                logger.error("Experimenter name is not valid.")
+                experimenter = None
+            else:
+                return experimenter
+        return experimenter  # This line should be unreachable
 
     @staticmethod
     def prompt_get_notes() -> str:

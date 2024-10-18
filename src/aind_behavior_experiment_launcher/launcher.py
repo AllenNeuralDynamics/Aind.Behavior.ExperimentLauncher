@@ -425,7 +425,7 @@ class Launcher(Generic[TRig, TSession, TTaskLogic]):
             Path(os.path.join(self.config_library_dir, directory)) if directory is not None else self._subject_dir
         )
         available_batches = self._get_available_batches(_local_config_directory)
-
+        experimenter = self._ui_helper.prompt_experimenter(strict=True)
         subject_list = self._get_subject_list(available_batches)
         subject = self._ui_helper.choose_subject(subject_list)
         self._subject_db_data = subject_list.get_subject(subject)
@@ -438,6 +438,7 @@ class Launcher(Generic[TRig, TSession, TTaskLogic]):
             else str(self.data_dir.resolve() / subject),
             subject=subject,
             notes=notes,
+            experimenter=experimenter if experimenter is not None else [],
             commit_hash=self.repository.head.commit.hexsha,
             allow_dirty_repo=self._debug_mode or self.allow_dirty,
             skip_hardware_validation=self.skip_hardware_validation,
