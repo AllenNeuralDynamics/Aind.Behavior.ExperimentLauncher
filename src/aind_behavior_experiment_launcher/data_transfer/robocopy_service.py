@@ -13,42 +13,34 @@ DEFAULT_EXTRA_ARGS = "/E /DCOPY:DAT /R:100 /W:3 /tee"
 
 
 class RobocopyService(DataTransferService):
-    @overload
     def __init__(
         self,
-        source: Dict[PathLike, PathLike],
-        destination: Literal[None] = None,
-        log: Optional[PathLike] = None,
-        extra_args: Optional[str] = None,
-    ):
-        pass
-
-    @overload
-    def __init__(
-        self,
-        source: PathLike,
-        destination: PathLike,
-        log: Optional[PathLike] = None,
-        extra_args: Optional[str] = None,
-    ):
-        pass
-
-    def __init__(
-        self,
-        source: PathLike | Dict[PathLike, PathLike],
         destination: Optional[PathLike] = None,
         log: Optional[PathLike] = None,
         extra_args: Optional[str] = None,
     ):
-        self._src_dst_mapping = self._solve_src_dst_mapping(source, destination)
+        self.destination = destination
         self.log = log
         self.extra_args = extra_args if extra_args else DEFAULT_EXTRA_ARGS
 
     def transfer(
-        self, delete_src: bool = False, overwrite: bool = False, force_dir: bool = True, *args, **kwargs
+        self,
+        source: PathLike,
+        destination: Optional[PathLike] = None,
+        delete_src: bool = False,
+        overwrite: bool = False,
+        force_dir: bool = True,
+        *args, **kwargs
     ) -> None:
-        # Loop through each source-destination pair and call robocopy
-        for src, dst in self._src_dst_mapping.items():
+        # Loop through each source-destination pair and call robocopy'
+        destination = destination if destination else self.destination
+        if not destination:
+            raise ValueError("Destination should be provided in constructor or transfer() method.")
+        src_dist = self._solve_src_dst_mapping(source, destination)
+        if src_dist is None:
+            raise ValueError("Source and destination should be provided.")
+
+        for src, dst in src_dist.items():
             try:
                 command = ["robocopy", f'"{str(Path(src))}"', f'"{str(Path(dst))}"', self.extra_args]
                 if self.log:
@@ -68,8 +60,10 @@ class RobocopyService(DataTransferService):
 
     @staticmethod
     def _solve_src_dst_mapping(
-        source: PathLike | Dict[PathLike, PathLike], destination: Optional[PathLike]
-    ) -> Dict[PathLike, PathLike]:
+        source: Optional[PathLike | Dict[PathLike, PathLike]], destination: Optional[PathLike]
+    ) -> Optional[Dict[PathLike, PathLike]]:
+        if source is None:
+            return None
         if isinstance(source, dict):
             if destination:
                 raise ValueError("Destination should not be provided when source is a dictionary.")
