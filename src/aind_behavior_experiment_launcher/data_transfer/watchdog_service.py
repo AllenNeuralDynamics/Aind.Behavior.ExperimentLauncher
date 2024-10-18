@@ -20,7 +20,6 @@ from typing import Dict, List, Optional
 import pydantic
 import requests
 import yaml
-from aind_behavior_services.utils import format_datetime
 from aind_data_schema.core.session import Session as AdsSession
 from aind_data_schema_models.platforms import Platform
 from aind_watchdog_service.models.manifest_config import BucketType, ManifestConfig
@@ -28,7 +27,9 @@ from aind_watchdog_service.models.watch_config import WatchConfig
 from pydantic import BaseModel
 from requests.exceptions import HTTPError
 
-from .data_transfer_service import DataTransferService, TSession
+from aind_behavior_experiment_launcher.data_mappers.aind_data_schema import AindDataSchemaSessionDataMapper
+
+from .data_transfer_service import DataTransferService
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,7 @@ class WatchdogDataTransferService(DataTransferService):
     def __init__(
         self,
         destination: PathLike,
+        aind_data_mapper: AindDataSchemaSessionDataMapper,
         schedule_time: Optional[datetime.time] = datetime.time(hour=20),
         project_name: Optional[str] = None,
         platform: Platform = getattr(Platform, "BEHAVIOR"),
@@ -61,6 +63,7 @@ class WatchdogDataTransferService(DataTransferService):
         self.mount = mount
         self.force_cloud_sync = force_cloud_sync
         self.transfer_endpoint = transfer_endpoint
+        self.aind_data_mapper = aind_data_mapper
 
         if self.DEFAULT_EXE is None or self.DEFAULT_CONFIG is None:
             raise ValueError("WATCHDOG_EXE and WATCHDOG_CONFIG environment variables must be defined.")
@@ -68,11 +71,46 @@ class WatchdogDataTransferService(DataTransferService):
         self.executable_path = Path(self.DEFAULT_EXE)
         self.config_path = Path(self.DEFAULT_CONFIG)
         self._config_model: WatchConfig = None
+        self.validate_project_name = validate
         if validate:
             self.validate(create_config=True)
 
-    def transfer(self, *args, **kwargs) -> None:
-        self.create_manifest_from_ads_session(*args, **kwargs)
+    def transfer(self) -> None:
+        try:
+            if not self.is_running():
+                logger.warning("Watchdog service is not running. Attempting to start it.")
+                try:
+                    self.force_restart(kill_if_running=False)
+                except subprocess.CalledProcessError as e:
+                    logger.error("Failed to start watchdog service. %s", e)
+                else:
+                    if not self.is_running():
+                        logger.error("Failed to start watchdog service.")
+                    else:
+                        logger.info("Watchdog service restarted successfully.")
+
+            logger.info("Creating watchdog manifest config.")
+
+            config = self.manifest_config_builder()
+
+            _manifest_path = self.dump_manifest_config(config, path=Path(self._config_model.flag_dir) / config.name)
+            logger.info("Watchdog manifest config created successfully at %s.", _manifest_path)
+
+        except (pydantic.ValidationError, ValueError, IOError) as e:
+            logger.error("Failed to create watchdog manifest config. %s", e)
+
+    def manifest_config_builder(self) -> ManifestConfig:
+        if not self.aind_data_mapper.is_mapped():
+            raise ValueError("Data mapper has not been mapped yet.")
+        ads_session = self.aind_data_mapper.mapped
+        session_directory = self.aind_data_mapper.session_directory
+        if session_directory is None:
+            raise ValueError("Session directory not found.")
+        return self.create_manifest_config_from_ads_session(
+            source=session_directory,
+            ads_session=ads_session,
+            session_name=self.aind_data_mapper.session_model.session_name,
+        )
 
     def validate(self, create_config: bool = True) -> bool:
         logger.info("Attempting to validate Watchdog service.")
@@ -132,30 +170,15 @@ class WatchdogDataTransferService(DataTransferService):
         project_names = self._get_project_names()
         return self.project_name in project_names
 
-    def create_manifest_config(
+    def create_manifest_config_from_ads_session(
         self,
         source: os.PathLike,
         ads_session: AdsSession,
         ads_schemas: Optional[List[os.PathLike]] = None,
         session_name: Optional[str] = None,
-        **kwargs,
     ) -> ManifestConfig:
         """Create a ManifestConfig object"""
-        project_name = kwargs.pop("project_name", self.project_name)
-        schedule_time = kwargs.pop("schedule_time", self.schedule_time)
-        platform = kwargs.pop("platform", self.platform)
-        capsule_id = kwargs.pop("capsule_id", self.capsule_id)
-        script = kwargs.pop("script", self.script)
-        s3_bucket = kwargs.pop("s3_bucket", self.s3_bucket)
-        mount = kwargs.pop("mount", self.mount)
-        force_cloud_sync = kwargs.pop("force_cloud_sync", self.force_cloud_sync)
-        transfer_endpoint = kwargs.pop("transfer_endpoint", self.transfer_endpoint)
-        validate_project_name = kwargs.pop("validate_project_name", True)
-        processor_full_name = (
-            kwargs.pop("processor_full_name", None)
-            or ",".join(ads_session.experimenter_full_name)
-            or os.environ.get("USERNAME", "unknown")
-        )
+        processor_full_name = ",".join(ads_session.experimenter_full_name) or os.environ.get("USERNAME", "unknown")
 
         destination = Path(self.destination).resolve()
         source = Path(source).resolve()
@@ -163,10 +186,10 @@ class WatchdogDataTransferService(DataTransferService):
         if session_name is None:
             session_name = (ads_session.stimulus_epochs[0]).stimulus_name
 
-        if validate_project_name:
+        if self.validate_project_name:
             project_names = self._get_project_names()
-            if project_name not in project_names:
-                raise ValueError(f"Project name {project_name} not found in {project_names}")
+            if self.project_name not in project_names:
+                raise ValueError(f"Project name {self.project_name} not found in {project_names}")
 
         ads_schemas = [source / "session.json"] if ads_schemas is None else ads_schemas
 
@@ -180,16 +203,16 @@ class WatchdogDataTransferService(DataTransferService):
             acquisition_datetime=ads_session.session_start_time,
             schemas=[str(value) for value in ads_schemas],
             destination=str(destination.resolve()),
-            mount=mount,
+            mount=self.mount,
             processor_full_name=processor_full_name,
-            project_name=project_name,
-            schedule_time=schedule_time,
-            platform=getattr(platform, "abbreviation"),
-            capsule_id=capsule_id,
-            s3_bucket=s3_bucket,
-            script=script if script else {},
-            force_cloud_sync=force_cloud_sync,
-            transfer_endpoint=transfer_endpoint,
+            project_name=self.project_name,
+            schedule_time=self.schedule_time,
+            platform=getattr(self.platform, "abbreviation"),
+            capsule_id=self.capsule_id,
+            s3_bucket=self.s3_bucket,
+            script=self.script if self.script else {},
+            force_cloud_sync=self.force_cloud_sync,
+            transfer_endpoint=self.transfer_endpoint,
         )
 
     @staticmethod
@@ -252,44 +275,3 @@ class WatchdogDataTransferService(DataTransferService):
     def _read_yaml(path: PathLike) -> dict:
         with open(path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f)
-
-    def create_manifest_from_ads_session(
-        self,
-        session_schema: TSession,
-        ads_session: AdsSession,
-        session_directory: PathLike,
-    ):
-        try:
-            if not self.is_running():
-                logger.warning("Watchdog service is not running. Attempting to start it.")
-
-                try:
-                    self.force_restart(kill_if_running=False)
-                except subprocess.CalledProcessError as e:
-                    logger.error("Failed to start watchdog service. %s", e)
-                else:
-                    if not self.is_running():
-                        logger.error("Failed to start watchdog service.")
-                    else:
-                        logger.info("Watchdog service restarted successfully.")
-
-            logger.info("Creating watchdog manifest config.")
-            if self.destination is None:
-                raise ValueError("Remote path must be provided.")
-
-            watchdog_manifest_config = self.create_manifest_config(
-                ads_session=ads_session,
-                source=Path(session_directory),
-                destination=Path(self.destination),
-                processor_full_name=",".join([name for name in ads_session.experimenter_full_name]),
-                session_name=session_schema.session_name,
-            )
-
-            _manifest_name = f"manifest_{session_schema.session_name if session_schema.session_name else format_datetime(session_schema.date)}.yaml"
-            _manifest_path = self.dump_manifest_config(
-                watchdog_manifest_config, path=Path(self._config_model.flag_dir) / _manifest_name
-            )
-            logger.info("Watchdog manifest config created successfully at %s.", _manifest_path)
-
-        except (pydantic.ValidationError, ValueError, IOError) as e:
-            logger.error("Failed to create watchdog manifest config. %s", e)

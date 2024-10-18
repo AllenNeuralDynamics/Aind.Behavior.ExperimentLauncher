@@ -15,5 +15,5 @@ TSession = TypeVar("TSession", bound=AindBehaviorSessionModel)
 
 class DataTransferService(IService, abc.ABC):
     @abc.abstractmethod
-    def transfer(self, *args, **kwargs) -> None:
+    def transfer(self) -> None:
         pass

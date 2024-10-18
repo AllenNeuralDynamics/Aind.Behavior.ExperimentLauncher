@@ -15,30 +15,28 @@ DEFAULT_EXTRA_ARGS = "/E /DCOPY:DAT /R:100 /W:3 /tee"
 class RobocopyService(DataTransferService):
     def __init__(
         self,
-        destination: Optional[PathLike] = None,
+        source: PathLike,
+        destination: PathLike,
         log: Optional[PathLike] = None,
         extra_args: Optional[str] = None,
+        delete_src: bool = False,
+        overwrite: bool = False,
+        force_dir: bool = True,
     ):
+        self.source = source
         self.destination = destination
+        self.delete_src = delete_src
+        self.overwrite = overwrite
+        self.force_dir = force_dir
         self.log = log
         self.extra_args = extra_args if extra_args else DEFAULT_EXTRA_ARGS
 
     def transfer(
         self,
-        source: PathLike,
-        destination: Optional[PathLike] = None,
-        delete_src: bool = False,
-        overwrite: bool = False,
-        force_dir: bool = True,
-        *args,
-        **kwargs,
     ) -> None:
         # Loop through each source-destination pair and call robocopy'
         logger.info("Starting robocopy transfer service.")
-        destination = destination if destination else self.destination
-        if not destination:
-            raise ValueError("Destination should be provided in constructor or transfer() method.")
-        src_dist = self._solve_src_dst_mapping(source, destination)
+        src_dist = self._solve_src_dst_mapping(self.source, self.destination)
         if src_dist is None:
             raise ValueError("Source and destination should be provided.")
 
@@ -47,11 +45,11 @@ class RobocopyService(DataTransferService):
                 command = ["robocopy", f'"{str(Path(src))}"', f'"{str(Path(dst))}"', self.extra_args]
                 if self.log:
                     command.append(f'/LOG:"{Path(dst) / self.log}"')
-                if delete_src:
+                if self.delete_src:
                     command.append("/MOV")
-                if overwrite:
+                if self.overwrite:
                     command.append("/IS")
-                if force_dir:
+                if self.force_dir:
                     command.append("/CREATE")
                 cmd = " ".join(command)
                 process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
