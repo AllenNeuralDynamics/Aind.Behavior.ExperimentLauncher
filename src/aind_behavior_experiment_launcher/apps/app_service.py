@@ -15,8 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 class App(IService, abc.ABC):
-    # For now just a simple future-proofing for an app interface
-    pass
+    @abc.abstractmethod
+    def run(self) -> subprocess.CompletedProcess:
+        pass
 
 
 class BonsaiApp(App):
