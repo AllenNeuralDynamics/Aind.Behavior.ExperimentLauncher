@@ -34,6 +34,7 @@ class RobocopyService(DataTransferService):
         **kwargs,
     ) -> None:
         # Loop through each source-destination pair and call robocopy'
+        logger.info("Starting robocopy transfer service.")
         destination = destination if destination else self.destination
         if not destination:
             raise ValueError("Destination should be provided in constructor or transfer() method.")
@@ -53,9 +54,21 @@ class RobocopyService(DataTransferService):
                 if force_dir:
                     command.append("/CREATE")
                 cmd = " ".join(command)
-                result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-                result.check_returncode()
-                logger.info("Successfully copied from %s to %s:\n%s", src, dst, result.stdout)
+                process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                if process.stdout is None:
+                    raise ValueError("stdout is None")
+                for line in process.stdout:
+                    logger.info(line)
+                result = process.wait()
+                if result != 0:
+                    raise subprocess.CalledProcessError(
+                        result,
+                        cmd,
+                        output=process.stdout.read(),
+                        stderr=process.stderr.read() if process.stderr else None,
+                    )
+                else:
+                    logger.info("Successfully copied from %s to %s:\n", src, dst)
             except subprocess.CalledProcessError as e:
                 logger.error("Error copying from %s to %s:\n%s", src, dst, e.stdout)
 
