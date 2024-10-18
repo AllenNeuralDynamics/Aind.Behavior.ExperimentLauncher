@@ -3,7 +3,7 @@ import shutil
 import subprocess
 from os import PathLike
 from pathlib import Path
-from typing import Dict, Literal, Optional, overload
+from typing import Dict, Optional
 
 from .data_transfer_service import DataTransferService
 
@@ -30,7 +30,8 @@ class RobocopyService(DataTransferService):
         delete_src: bool = False,
         overwrite: bool = False,
         force_dir: bool = True,
-        *args, **kwargs
+        *args,
+        **kwargs,
     ) -> None:
         # Loop through each source-destination pair and call robocopy'
         destination = destination if destination else self.destination
