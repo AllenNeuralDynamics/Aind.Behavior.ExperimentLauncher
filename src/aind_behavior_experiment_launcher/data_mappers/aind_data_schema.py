@@ -14,7 +14,7 @@ import datetime
 import logging
 import os
 from pathlib import Path
-from typing import Dict, Optional, Type, TypeVar, Union
+from typing import Dict, Optional, Self, Type, TypeVar, Union
 
 import aind_behavior_services.rig as AbsRig
 import aind_data_schema.components.devices
@@ -39,19 +39,52 @@ logger = logging.getLogger(__name__)
 
 
 class AindDataSchemaSessionDataMapper(data_mapper_service.DataMapperService):
+    def __init__(
+        self,
+        session_model: AindBehaviorSessionModel,
+        rig_model: AindBehaviorRigModel,
+        task_logic_model: AindBehaviorTaskLogicModel,
+        repository: Union[os.PathLike, git.Repo],
+        script_path: os.PathLike,
+        session_end_time: Optional[datetime.datetime] = None,
+        output_parameters: Optional[Dict] = None,
+        subject_info: Optional[SubjectInfo] = None,
+        session_directory: Optional[os.PathLike] = None,
+    ):
+        self.session_model = session_model
+        self.rig_model = rig_model
+        self.task_logic_model = task_logic_model
+        self.session_directory = session_directory
+        self.repository = repository
+        self.script_path = script_path
+        self.session_end_time = session_end_time
+        self.output_parameters = output_parameters
+        self.subject_info = subject_info
+        self.mapped: Optional[aind_data_schema.core.session.Session] = None
+
     def validate(self, *args, **kwargs) -> bool:
         return True
 
-    @classmethod
-    def map(
-        cls, *args, session_directory: Optional[os.PathLike] = None, **kwargs
-    ) -> Optional[aind_data_schema.core.session.Session]:
+    def is_mapped(self) -> bool:
+        return self.mapped is not None
+
+    def map(self) -> Optional[aind_data_schema.core.session.Session]:
         logger.info("Mapping to aind-data-schema Session")
         try:
-            ads_session = cls.map_from_session_root(*args, **kwargs)
-            if session_directory is not None:
-                logger.info("Writing session.json to %s", session_directory)
-                ads_session.write_standard_file(session_directory)
+            ads_session = self._map(
+                session_model=self.session_model,
+                rig_model=self.rig_model,
+                task_logic_model=self.task_logic_model,
+                repository=self.repository,
+                script_path=self.script_path,
+                session_end_time=self.session_end_time,
+                output_parameters=self.output_parameters,
+                subject_info=self.subject_info,
+            )
+            self.mapped = ads_session
+            if self.session_directory is not None:
+                logger.info("Writing session.json to %s", self.session_directory)
+                ads_session.write_standard_file(self.session_directory)
             logger.info("Mapping successful.")
         except (pydantic.ValidationError, ValueError, IOError) as e:
             logger.error("Failed to map to aind-data-schema Session. %s", e)
@@ -71,18 +104,17 @@ class AindDataSchemaSessionDataMapper(data_mapper_service.DataMapperService):
         session_end_time: Optional[datetime.datetime] = None,
         output_parameters: Optional[Dict] = None,
         subject_info: Optional[SubjectInfo] = None,
-        **kwargs,
-    ) -> aind_data_schema.core.session.Session:
-        return cls._map(
+    ) -> Self:
+        return cls(
             session_model=model_from_json_file(Path(schema_root) / "session_input.json", session_model),
             rig_model=model_from_json_file(Path(schema_root) / "rig_input.json", rig_model),
             task_logic_model=model_from_json_file(Path(schema_root) / "tasklogic_input.json", task_logic_model),
+            session_directory=schema_root,
             repository=repository,
             script_path=script_path,
             session_end_time=session_end_time if session_end_time else utcnow(),
             output_parameters=output_parameters,
             subject_info=subject_info,
-            **kwargs,
         )
 
     @classmethod
@@ -97,14 +129,16 @@ class AindDataSchemaSessionDataMapper(data_mapper_service.DataMapperService):
         repository: Union[os.PathLike, git.Repo],
         script_path: os.PathLike,
         session_end_time: Optional[datetime.datetime],
+        session_directory: Optional[os.PathLike] = None,
         output_parameters: Optional[Dict] = None,
         subject_info: Optional[SubjectInfo] = None,
         **kwargs,
-    ) -> aind_data_schema.core.session.Session:
-        return cls._map(
+    ) -> Self:
+        return cls(
             session_model=model_from_json_file(session_json, session_model),
             rig_model=model_from_json_file(rig_json, rig_model),
             task_logic_model=model_from_json_file(task_logic_json, task_logic_model),
+            session_directory=session_directory,
             repository=repository,
             script_path=script_path,
             session_end_time=session_end_time if session_end_time else utcnow(),
@@ -124,9 +158,7 @@ class AindDataSchemaSessionDataMapper(data_mapper_service.DataMapperService):
         session_end_time: Optional[datetime.datetime] = None,
         output_parameters: Optional[Dict] = None,
         subject_info: Optional[SubjectInfo] = None,
-        **kwargs,
     ) -> aind_data_schema.core.session.Session:
-        # Normalize repository
         if isinstance(repository, os.PathLike | str):
             repository = git.Repo(Path(repository))
         repository_remote_url = repository.remote().url
@@ -219,9 +251,9 @@ class AindDataSchemaSessionDataMapper(data_mapper_service.DataMapperService):
                             name="Bonsai",
                             version=f"{repository_remote_url}/blob/{repository_sha}/bonsai/Bonsai.config",
                             url=f"{repository_remote_url}/blob/{repository_sha}/bonsai",
-                            parameters=data_mapper_service.snapshot_bonsai_environment(
-                                config_file=kwargs.get("bonsai_config_path", Path("./bonsai/bonsai.config"))
-                            ),
+                            parameters={
+                                "data_mapper_service.snapshot_bonsai_environment": r'(config_file=Path("./bonsai/bonsai.config")'
+                            },
                         ),
                         aind_data_schema.core.session.Software(
                             name="Python",

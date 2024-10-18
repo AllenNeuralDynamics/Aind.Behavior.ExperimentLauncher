@@ -6,7 +6,7 @@ import os
 import xml.etree.ElementTree as ET
 from importlib import metadata
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, get_args
+from typing import Any, Dict, Generic, Iterable, List, Optional, Tuple, Type, TypeVar, Union, get_args
 
 import pydantic
 from aind_behavior_services import (
@@ -26,11 +26,12 @@ T = TypeVar("T")
 logger = logging.getLogger(__name__)
 
 TSchema = TypeVar("TSchema", bound=pydantic.BaseModel)
+TMapTo = TypeVar("TMapTo", bound=Any)
 
 
-class DataMapperService(IService, abc.ABC):
+class DataMapperService(IService, abc.ABC, Generic[TMapTo]):
     @abc.abstractmethod
-    def map(self, *args, **kwargs) -> Any:
+    def map(self) -> TMapTo:
         pass
 
 
