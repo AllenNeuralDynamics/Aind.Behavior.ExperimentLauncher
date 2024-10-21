@@ -19,6 +19,14 @@ class App(IService, abc.ABC):
     def run(self) -> subprocess.CompletedProcess:
         pass
 
+    @abc.abstractmethod
+    def output_from_result(self, allow_stderr: Optional[bool]) -> Self:
+        pass
+
+    @abc.abstractmethod
+    def prompt_input(self, *args, **kwargs) -> Self:
+        pass
+
 
 class BonsaiApp(App):
     executable: os.PathLike
@@ -152,3 +160,9 @@ class BonsaiApp(App):
             logger.info("%s full stdout dump: \n%s", process_name, proc.stdout)
         if len(proc.stderr) > 0:
             logger.error("%s full stderr dump: \n%s", process_name, proc.stderr)
+
+    def prompt_input(self, *args, **kwargs):
+        layout_dir = kwargs.pop("layout_directory", None)
+        if self.layout is None:
+            self.layout = self.prompt_visualizer_layout_input(layout_dir if layout_dir else self.layout_directory)
+        return self
