@@ -170,10 +170,12 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
             return
 
     def _ui_prompt(self) -> Self:
-        self._ui_helper.print_header(
-            task_logic_schema_model=self.task_logic_schema_model,
-            rig_schema_model=self.rig_schema_model,
-            session_schema_model=self.session_schema_model,
+        self.logger.info(
+            self._ui_helper.make_header(
+                task_logic_schema_model=self.task_logic_schema_model,
+                rig_schema_model=self.rig_schema_model,
+                session_schema_model=self.session_schema_model,
+            )
         )
         if self._debug_mode:
             self._print_diagnosis()

@@ -87,12 +87,12 @@ class UIHelper:
         notes = str(input("Enter notes:"))
         return notes
 
-    def print_header(
+    def make_header(
         self,
         task_logic_schema_model: type[AindBehaviorTaskLogicModel],
         rig_schema_model: type[AindBehaviorRigModel],
         session_schema_model: type[AindBehaviorSessionModel],
-    ) -> None:
+    ) -> str:
         _HEADER = r"""
 
         ██████╗██╗      █████╗ ██████╗ ███████╗
@@ -115,4 +115,4 @@ class UIHelper:
             "-------------------------------"
         )
 
-        logger.info(_str)
+        return _str
