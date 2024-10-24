@@ -60,7 +60,8 @@ class ServicesFactoryManager:
         return self._services[name].build(self.launcher)
 
     def try_get_service(self, name: str) -> Optional[IService]:
-        return self._services[name].build(self.launcher)
+        srv = self._services.get(name, None)
+        return srv.build(self.launcher) if srv is not None else None
 
     def attach_service_factory(
         self, name: str, service_factory: ServiceFactory | Callable[[BaseLauncher], TService] | TService
