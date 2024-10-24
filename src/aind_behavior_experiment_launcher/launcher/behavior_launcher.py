@@ -36,6 +36,12 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
         self._subject_info: Optional[SubjectInfo] = None
         self._subject_db_data: Optional[SubjectEntry] = None
 
+    def _post_init(self, validate: bool = True) -> None:
+        super()._post_init(validate=validate)
+        if validate:
+            if self.services_factory_manager.resource_monitor is not None:
+                self.services_factory_manager.resource_monitor.evaluate_constraints()
+
     @property
     def subject_info(self) -> SubjectInfo:
         if self._subject_info is None:

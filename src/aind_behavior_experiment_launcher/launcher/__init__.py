@@ -113,9 +113,9 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
 
         self._run_hook_return: Any = None
 
-        self._post_init_(validate=validate_init)
+        self._post_init(validate=validate_init)
 
-    def _post_init_(self, validate: bool = True) -> None:
+    def _post_init(self, validate: bool = True) -> None:
         """Overridable method that runs at the end of the self.__init__ method"""
         cli_args = self._cli_args
         if self._debug_mode:
