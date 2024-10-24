@@ -41,7 +41,7 @@ class WatchdogDataTransferService(DataTransferService):
     def __init__(
         self,
         destination: PathLike,
-        aind_data_mapper: AindDataSchemaSessionDataMapper,
+        aind_data_mapper: Optional[AindDataSchemaSessionDataMapper] = None,
         schedule_time: Optional[datetime.time] = datetime.time(hour=20),
         project_name: Optional[str] = None,
         platform: Platform = getattr(Platform, "BEHAVIOR"),
@@ -63,7 +63,7 @@ class WatchdogDataTransferService(DataTransferService):
         self.mount = mount
         self.force_cloud_sync = force_cloud_sync
         self.transfer_endpoint = transfer_endpoint
-        self.aind_data_mapper = aind_data_mapper
+        self._aind_data_mapper = aind_data_mapper
 
         if self.DEFAULT_EXE is None or self.DEFAULT_CONFIG is None:
             raise ValueError("WATCHDOG_EXE and WATCHDOG_CONFIG environment variables must be defined.")
@@ -74,6 +74,16 @@ class WatchdogDataTransferService(DataTransferService):
         self.validate_project_name = validate
         if validate:
             self.validate(create_config=True)
+
+    @property
+    def aind_data_mapper(self) -> AindDataSchemaSessionDataMapper:
+        if self._aind_data_mapper is None:
+            raise ValueError("Data mapper is not set.")
+        return self._aind_data_mapper
+
+    @aind_data_mapper.setter
+    def aind_data_mapper(self, value: AindDataSchemaSessionDataMapper) -> None:
+        self._aind_data_mapper = value
 
     def transfer(self) -> None:
         try:
@@ -91,7 +101,7 @@ class WatchdogDataTransferService(DataTransferService):
 
             logger.info("Creating watchdog manifest config.")
 
-            config = self.manifest_config_builder()
+            config = self.manifest_config_factory()
 
             _manifest_path = self.dump_manifest_config(config, path=Path(self._config_model.flag_dir) / config.name)
             logger.info("Watchdog manifest config created successfully at %s.", _manifest_path)
@@ -99,7 +109,7 @@ class WatchdogDataTransferService(DataTransferService):
         except (pydantic.ValidationError, ValueError, IOError) as e:
             logger.error("Failed to create watchdog manifest config. %s", e)
 
-    def manifest_config_builder(self) -> ManifestConfig:
+    def manifest_config_factory(self) -> ManifestConfig:
         if not self.aind_data_mapper.is_mapped():
             raise ValueError("Data mapper has not been mapped yet.")
         ads_session = self.aind_data_mapper.mapped
@@ -238,9 +248,9 @@ class WatchdogDataTransferService(DataTransferService):
             while self.is_running():
                 subprocess.run(["taskkill", "/IM", self.executable_path.name, "/F"], shell=True, check=True)
 
-        cmd_builder = "{exe} -c {config}".format(exe=self.executable_path, config=self.config_path)
+        cmd_factory = "{exe} -c {config}".format(exe=self.executable_path, config=self.config_path)
 
-        return subprocess.Popen(cmd_builder, start_new_session=True, shell=True)
+        return subprocess.Popen(cmd_factory, start_new_session=True, shell=True)
 
     def dump_manifest_config(
         self, manifest_config: ManifestConfig, path: Optional[os.PathLike] = None, make_dir: bool = True
