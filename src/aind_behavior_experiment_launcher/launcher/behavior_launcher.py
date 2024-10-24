@@ -30,10 +30,6 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        if self.services_factory_manager is None:  # pylint: disable=access-member-before-definition
-            self.services_factory_manager = BehaviorServicesFactoryManager(launcher=self)
-        else:
-            self.services_factory_manager.register_launcher(self)
         self._subject_info: Optional[SubjectInfo] = None
         self._subject_db_data: Optional[SubjectEntry] = None
 

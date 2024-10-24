@@ -59,8 +59,8 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
             else logging_helper.default_logger_factory(logging.getLogger(__name__), self.temp_dir / "launcher.log")
         )
         self._ui_helper = ui_helper.UIHelper()
-        self._services_factory_manager = services
         self._cli_args = self._cli_wrapper()
+        self._bind_launcher_services(services)
 
         repository_dir = (
             Path(self._cli_args.repository_dir) if self._cli_args.repository_dir is not None else repository_dir
@@ -343,3 +343,11 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
     def _copy_tmp_directory(self, dst: os.PathLike) -> None:
         dst = Path(dst) / ".launcher"
         shutil.copytree(self.temp_dir, dst, dirs_exist_ok=True)
+
+    def _bind_launcher_services(
+        self, services_factory_manager: Optional[ServicesFactoryManager]
+    ) -> Optional[ServicesFactoryManager]:
+        self._services_factory_manager = services_factory_manager
+        if self._services_factory_manager is not None:
+            self._services_factory_manager.register_launcher(self)
+        return self._services_factory_manager
