@@ -22,7 +22,7 @@ from aind_behavior_experiment_launcher.launcher import BaseLauncher, TRig, TSess
 from aind_behavior_experiment_launcher.records.subject_info import SubjectInfo
 from aind_behavior_experiment_launcher.resource_monitor.resource_monitor_service import ResourceMonitor
 from aind_behavior_experiment_launcher.services import ServiceFactory, ServicesFactoryManager
-
+from aind_behavior_experiment_launcher.logging import logging_helper
 
 class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
     services_factory_manager: BehaviorServicesFactoryManager
@@ -237,6 +237,12 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
                 self.logger.info("Mapping successful.")
             except Exception as e:
                 self.logger.error("Data mapper service has failed: %s", e)
+
+        logging_helper.close_file_handlers(self.logger)
+        try:
+            self._copy_tmp_directory(self.session_directory / "Behavior" / "Logs")
+        except ValueError:
+            self.logger.error("Failed to copy temporary directory to session directory since it was not set.")
 
         if self.services_factory_manager.data_transfer is not None:
             try:

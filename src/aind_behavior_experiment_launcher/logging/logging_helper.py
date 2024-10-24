@@ -28,11 +28,11 @@ def default_logger_factory(logger: TLogger, output_path: Optional[os.PathLike]) 
 
 
 def shutdown_logger(logger: TLogger) -> None:
-    dispose_logger(logger)
+    close_file_handlers(logger)
     logging.shutdown()
 
 
-def dispose_logger(logger: TLogger) -> TLogger:
+def close_file_handlers(logger: TLogger) -> TLogger:
     for handler in logger.handlers:
         if isinstance(handler, logging.FileHandler):
             handler.close()

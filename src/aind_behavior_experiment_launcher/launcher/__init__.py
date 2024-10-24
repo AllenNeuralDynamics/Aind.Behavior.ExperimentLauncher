@@ -279,11 +279,6 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
 
     def dispose(self) -> None:
         self.logger.info("Disposing...")
-        logging_helper.dispose_logger(self.logger)
-        try:
-            self._copy_tmp_directory(self.session_directory / "Behavior" / "Logs")
-        except ValueError:
-            self.logger.error("Failed to copy temporary directory to session directory since it was not set.")
         self._exit(0)
 
     @classmethod
