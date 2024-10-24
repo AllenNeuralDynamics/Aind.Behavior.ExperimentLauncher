@@ -5,14 +5,9 @@ import os
 import subprocess
 from functools import partial
 from pathlib import Path
-from typing import Callable, Generic, List, Optional, Self, TypeVar, Union
+from typing import Any, Callable, Dict, Generic, List, Optional, Self, Union
 
 import pydantic
-from aind_behavior_services import (
-    AindBehaviorRigModel,
-    AindBehaviorSessionModel,
-    AindBehaviorTaskLogicModel,
-)
 from aind_behavior_services.db_utils import SubjectDataBase, SubjectEntry
 from aind_behavior_services.utils import model_from_json_file, utcnow
 from typing_extensions import override
@@ -23,15 +18,11 @@ from aind_behavior_experiment_launcher.data_mappers.data_mapper_service import D
 from aind_behavior_experiment_launcher.data_transfer.data_transfer_service import DataTransferService
 from aind_behavior_experiment_launcher.data_transfer.robocopy_service import RobocopyService
 from aind_behavior_experiment_launcher.data_transfer.watchdog_service import WatchdogDataTransferService
-from aind_behavior_experiment_launcher.launcher import BaseLauncher
+from aind_behavior_experiment_launcher.launcher import BaseLauncher, TRig, TSession, TTaskLogic
 from aind_behavior_experiment_launcher.logging import logging_helper
 from aind_behavior_experiment_launcher.records.subject_info import SubjectInfo
 from aind_behavior_experiment_launcher.resource_monitor.resource_monitor_service import ResourceMonitor
 from aind_behavior_experiment_launcher.services import ServiceFactory, ServicesFactoryManager
-
-TRig = TypeVar("TRig", bound=AindBehaviorRigModel)  # pylint: disable=invalid-name
-TSession = TypeVar("TSession", bound=AindBehaviorSessionModel)  # pylint: disable=invalid-name
-TTaskLogic = TypeVar("TTaskLogic", bound=AindBehaviorTaskLogicModel)  # pylint: disable=invalid-name
 
 
 class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
@@ -279,30 +270,38 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
 
 
 class BehaviorServicesFactoryManager(ServicesFactoryManager):
-    _bonsai_app: Optional[ServiceFactory[BonsaiApp]]
-    _data_transfer: Optional[ServiceFactory[DataTransferService]]
-    _resource_monitor: Optional[ServiceFactory[ResourceMonitor]]
-    _data_mapper: Optional[ServiceFactory[DataMapperService]]
+    def __init__(self, launcher: Optional[BehaviorLauncher] = None, **kwargs) -> None:
+        super().__init__(launcher, **kwargs)
+        self._add_to_services("bonsai_app", kwargs)
+        self._add_to_services("data_transfer", kwargs)
+        self._add_to_services("resource_monitor", kwargs)
+        self._add_to_services("data_mapper", kwargs)
 
-    def __init__(self, launcher: Optional[BehaviorLauncher] = None, *args, **kwargs) -> None:
-        super().__init__(launcher, *args, **kwargs)
-        self._bonsai_app = kwargs.pop("bonsai_app", None)
-        self._data_transfer = kwargs.pop("data_mapper", None)
-        self._resource_monitor = kwargs.pop("resource_manager", None)
+    def _add_to_services(self, name: str, input_kwargs: Dict[str, Any]) -> Optional[ServiceFactory]:
+        srv = input_kwargs.pop(name, None)
+        if srv is not None:
+            self.add_service(name, srv)
+        return srv
 
     @property
     def bonsai_app(self) -> BonsaiApp:
-        if self._bonsai_app is None:
-            raise ValueError("App is not set.")
-        return self._bonsai_app.build(self.launcher)
+        srv = self.try_get_service("bonsai_app")
+        if srv is None:
+            raise ValueError("BonsaiApp is not set.")
+        if not isinstance(srv, BonsaiApp):
+            raise ValueError("BonsaiApp is not of the correct type.")
+        return srv
 
     @bonsai_app.setter
     def bonsai_app(self, value: ServiceFactory[BonsaiApp]) -> None:
-        self.add_service("app", value)
+        self.add_service("bonsai_app", value)
 
     @property
     def data_mapper(self) -> Optional[DataMapperService]:
-        return self._data_mapper.build(self.launcher) if self._data_mapper is not None else None
+        srv = self.try_get_service("data_mapper")
+        if not isinstance(srv, DataMapperService):
+            raise ValueError("DataMapperService is not of the correct type.")
+        return srv
 
     @data_mapper.setter
     def data_mapper(self, value: ServiceFactory[DataMapperService]) -> None:
@@ -310,7 +309,10 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
 
     @property
     def resource_monitor(self) -> Optional[ResourceMonitor]:
-        return self._resource_monitor.build(self.launcher) if self._resource_monitor is not None else None
+        srv = self.try_get_service("resource_monitor")
+        if not isinstance(srv, ResourceMonitor):
+            raise ValueError("ResourceMonitor is not of the correct type.")
+        return srv
 
     @resource_monitor.setter
     def resource_monitor(self, value: ServiceFactory[ResourceMonitor]) -> None:
@@ -318,7 +320,10 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
 
     @property
     def data_transfer(self) -> Optional[DataTransferService]:
-        return self._data_transfer.build(self.launcher) if self._data_transfer is not None else None
+        srv = self.try_get_service("data_transfer")
+        if not isinstance(srv, DataTransferService):
+            raise ValueError("DataTransferService is not of the correct type.")
+        return srv
 
     @data_transfer.setter
     def data_transfer(self, value: ServiceFactory[DataTransferService]) -> None:

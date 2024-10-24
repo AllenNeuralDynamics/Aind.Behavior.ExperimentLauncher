@@ -51,7 +51,6 @@ class ServicesFactoryManager:
     def __init__(
         self,
         launcher: Optional[BaseLauncher] = None,
-        *args,
         **kwargs,
     ) -> None:
         self._launcher_reference = launcher
