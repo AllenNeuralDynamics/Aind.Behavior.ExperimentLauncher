@@ -5,9 +5,14 @@ import os
 import subprocess
 from functools import partial
 from pathlib import Path
-from typing import Callable, Generic, List, Optional, Self, Union
+from typing import Callable, Generic, List, Optional, Self, TypeVar, Union
 
 import pydantic
+from aind_behavior_services import (
+    AindBehaviorRigModel,
+    AindBehaviorSessionModel,
+    AindBehaviorTaskLogicModel,
+)
 from aind_behavior_services.db_utils import SubjectDataBase, SubjectEntry
 from aind_behavior_services.utils import model_from_json_file, utcnow
 from typing_extensions import override
@@ -18,11 +23,16 @@ from aind_behavior_experiment_launcher.data_mappers.data_mapper_service import D
 from aind_behavior_experiment_launcher.data_transfer.data_transfer_service import DataTransferService
 from aind_behavior_experiment_launcher.data_transfer.robocopy_service import RobocopyService
 from aind_behavior_experiment_launcher.data_transfer.watchdog_service import WatchdogDataTransferService
-from aind_behavior_experiment_launcher.launcher import BaseLauncher, TRig, TSession, TTaskLogic
+from aind_behavior_experiment_launcher.launcher import BaseLauncher
+from aind_behavior_experiment_launcher.logging import logging_helper
 from aind_behavior_experiment_launcher.records.subject_info import SubjectInfo
 from aind_behavior_experiment_launcher.resource_monitor.resource_monitor_service import ResourceMonitor
 from aind_behavior_experiment_launcher.services import ServiceFactory, ServicesFactoryManager
-from aind_behavior_experiment_launcher.logging import logging_helper
+
+TRig = TypeVar("TRig", bound=AindBehaviorRigModel)  # pylint: disable=invalid-name
+TSession = TypeVar("TSession", bound=AindBehaviorSessionModel)  # pylint: disable=invalid-name
+TTaskLogic = TypeVar("TTaskLogic", bound=AindBehaviorTaskLogicModel)  # pylint: disable=invalid-name
+
 
 class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
     services_factory_manager: BehaviorServicesFactoryManager

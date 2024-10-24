@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, Generic, Iterable, List, Optional, Self, Type, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generic, Iterable, List, Optional, Self, Type, TypeVar, overload
 
-from aind_behavior_experiment_launcher.launcher import BaseLauncher
+if TYPE_CHECKING:
+    from aind_behavior_experiment_launcher.launcher import BaseLauncher
 
 from ._base import IService
 
 logger = logging.getLogger(__name__)
 
 TService = TypeVar("TService", bound=IService)
-TLauncher = TypeVar("TLauncher", bound=BaseLauncher)
 
 
 class ServiceFactory(Generic[TService]):
