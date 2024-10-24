@@ -55,6 +55,7 @@ class ServicesFactoryManager:
         **kwargs,
     ) -> None:
         self._launcher_reference = launcher
+        self._services = {}
 
     def __getitem__(self, name: str) -> IService:
         return self._services[name].build(self.launcher)
