@@ -3,39 +3,41 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable, Dict, Generic, Iterable, List, Optional, Self, Type, TypeVar, overload
 
+from aind_behavior_experiment_launcher.launcher import BaseLauncher
+
 from ._base import IService
-from .launcher import Launcher
 
 logger = logging.getLogger(__name__)
 
 TService = TypeVar("TService", bound=IService)
+TLauncher = TypeVar("TLauncher", bound=BaseLauncher)
 
 
-class ServiceBuilder(Generic[TService]):
+class ServiceFactory(Generic[TService]):
     @overload
-    def __init__(self, service_or_builder: TService) -> None: ...
+    def __init__(self, service_or_factory: TService) -> None: ...
 
     @overload
-    def __init__(self, service_or_builder: Callable[[Launcher], TService]) -> None: ...
+    def __init__(self, service_or_factory: Callable[[BaseLauncher], TService]) -> None: ...
 
-    def __init__(self, service_or_builder: Callable[[Launcher], TService] | TService) -> None:
-        self._service_builder: Optional[Callable[[Launcher], TService]] = None
+    def __init__(self, service_or_factory: Callable[[BaseLauncher], TService] | TService) -> None:
+        self._service_factory: Optional[Callable[[BaseLauncher], TService]] = None
         self._service: Optional[TService] = None
-        if callable(service_or_builder):
-            self._service_builder = service_or_builder
+        if callable(service_or_factory):
+            self._service_factory = service_or_factory
             self._service = None
-        elif isinstance(service_or_builder, IService):
-            self._service = service_or_builder
-            self._service_builder = None
+        elif isinstance(service_or_factory, IService):
+            self._service = service_or_factory
+            self._service_factory = None
         else:
-            raise ValueError("service_or_builder must be either a service or a service builder")
+            raise ValueError("service_or_factory must be either a service or a service factory")
 
-    def build(self, launcher: Launcher, *args, **kwargs) -> TService:
+    def build(self, launcher: BaseLauncher, *args, **kwargs) -> TService:
         if self._service is None:
-            if self._service_builder is None:
-                raise ValueError("Service builder is not set")
+            if self._service_factory is None:
+                raise ValueError("Service factory is not set")
             else:
-                self._service = self._service_builder(launcher, *args, **kwargs)
+                self._service = self._service_factory(launcher, *args, **kwargs)
         return self._service
 
     @property
@@ -43,12 +45,12 @@ class ServiceBuilder(Generic[TService]):
         return self._service
 
 
-class ServicesBuilderManager:
-    _services: Dict[str, ServiceBuilder]
+class ServicesFactoryManager:
+    _services: Dict[str, ServiceFactory]
 
     def __init__(
         self,
-        launcher: Optional[Launcher] = None,
+        launcher: Optional[BaseLauncher] = None,
         *args,
         **kwargs,
     ) -> None:
@@ -60,15 +62,20 @@ class ServicesBuilderManager:
     def try_get_service(self, name: str) -> Optional[IService]:
         return self._services[name].build(self.launcher)
 
-    def add_service(self, name: str, service_builder: ServiceBuilder) -> Self:
-        self._services[name] = service_builder
+    def add_service(self, name: str, service_factory: ServiceFactory) -> Self:
+        if name in self._services:
+            raise IndexError(f"Service with name {name} is already registered")
+        self._services[name] = service_factory
         return self
 
     def remove_service(self, name: str) -> Self:
-        self._services.pop(name)
+        if name in self._services:
+            self._services.pop(name)
+        else:
+            raise IndexError(f"Service with name {name} is not registered")
         return self
 
-    def register_launcher(self, launcher: Launcher) -> Self:
+    def register_launcher(self, launcher: BaseLauncher) -> Self:
         if self._launcher_reference is None:
             self._launcher_reference = launcher
         else:
@@ -76,7 +83,7 @@ class ServicesBuilderManager:
         return self
 
     @property
-    def launcher(self) -> Launcher:
+    def launcher(self) -> BaseLauncher:
         if self._launcher_reference is None:
             raise ValueError("Launcher is not registered")
         return self._launcher_reference
