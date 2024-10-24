@@ -62,13 +62,22 @@ class ServicesFactoryManager:
     def try_get_service(self, name: str) -> Optional[IService]:
         return self._services[name].build(self.launcher)
 
-    def add_service(self, name: str, service_factory: ServiceFactory) -> Self:
+    def attach_service_factory(
+        self, name: str, service_factory: ServiceFactory | Callable[[BaseLauncher], TService] | TService
+    ) -> Self:
         if name in self._services:
             raise IndexError(f"Service with name {name} is already registered")
-        self._services[name] = service_factory
+        _service_factory: ServiceFactory
+        if isinstance(service_factory, ServiceFactory):
+            _service_factory = service_factory
+        elif callable(service_factory) | isinstance(service_factory, IService):
+            _service_factory = ServiceFactory(service_factory)
+        else:
+            raise ValueError("service_factory must be either a service or a service factory")
+        self._services[name] = _service_factory
         return self
 
-    def remove_service(self, name: str) -> Self:
+    def detach_service_factory(self, name: str) -> Self:
         if name in self._services:
             self._services.pop(name)
         else:

@@ -280,7 +280,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
     def _add_to_services(self, name: str, input_kwargs: Dict[str, Any]) -> Optional[ServiceFactory]:
         srv = input_kwargs.pop(name, None)
         if srv is not None:
-            self.add_service(name, srv)
+            self.attach_service_factory(name, srv)
         return srv
 
     @property
@@ -294,7 +294,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
 
     @bonsai_app.setter
     def bonsai_app(self, value: ServiceFactory[BonsaiApp]) -> None:
-        self.add_service("bonsai_app", value)
+        self.attach_service_factory("bonsai_app", value)
 
     @property
     def data_mapper(self) -> Optional[DataMapperService]:
@@ -305,7 +305,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
 
     @data_mapper.setter
     def data_mapper(self, value: ServiceFactory[DataMapperService]) -> None:
-        self.add_service("data_mapper", value)
+        self.attach_service_factory("data_mapper", value)
 
     @property
     def resource_monitor(self) -> Optional[ResourceMonitor]:
@@ -316,7 +316,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
 
     @resource_monitor.setter
     def resource_monitor(self, value: ServiceFactory[ResourceMonitor]) -> None:
-        self.add_service("resource_monitor", value)
+        self.attach_service_factory("resource_monitor", value)
 
     @property
     def data_transfer(self) -> Optional[DataTransferService]:
@@ -327,7 +327,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
 
     @data_transfer.setter
     def data_transfer(self, value: ServiceFactory[DataTransferService]) -> None:
-        self.add_service("data_transfer", value)
+        self.attach_service_factory("data_transfer", value)
 
 
 def aind_data_mapper_factory() -> Callable[[BehaviorLauncher], AindDataSchemaSessionDataMapper]:
