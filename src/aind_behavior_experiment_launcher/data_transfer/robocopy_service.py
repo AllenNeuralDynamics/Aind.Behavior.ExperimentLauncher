@@ -41,8 +41,10 @@ class RobocopyService(DataTransferService):
             raise ValueError("Source and destination should be provided.")
 
         for src, dst in src_dist.items():
+            dst = Path(dst)
+            src = Path(src)
             try:
-                command = ["robocopy", f'"{str(Path(src))}"', f'"{str(Path(dst))}"', self.extra_args]
+                command = ["robocopy", f'"{src.as_posix()}"', f'"{dst.as_posix()}"', self.extra_args]
                 if self.log:
                     command.append(f'/LOG:"{Path(dst) / self.log}"')
                 if self.delete_src:
