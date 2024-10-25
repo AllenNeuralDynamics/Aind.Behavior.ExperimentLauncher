@@ -1,0 +1,6 @@
+aind\_behavior\_experiment\_launcher.launcher.behavior\_launcher.aind\_data\_mapper\_factory
+============================================================================================
+
+.. currentmodule:: aind_behavior_experiment_launcher.launcher.behavior_launcher
+
+.. autofunction:: aind_data_mapper_factory
