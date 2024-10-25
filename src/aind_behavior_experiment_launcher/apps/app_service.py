@@ -149,9 +149,9 @@ class BonsaiApp(App):
                 )
                 if picked == "None":
                     picked = ""
+                has_pick = True
             except ValueError as e:
                 logger.error("Invalid choice. Try again. %s", e)
-            has_pick = True
         self.layout = picked
         return self.layout
 
