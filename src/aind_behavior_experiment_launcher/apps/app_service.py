@@ -137,9 +137,9 @@ class BonsaiApp(App):
         available_layouts = glob.glob(os.path.join(str(layout_schemas_path), "*.bonsai.layout"))
         picked: Optional[str | os.PathLike] = None
         has_pick = False
+        available_layouts.insert(0, "None")
         while has_pick is False:
             try:
-                available_layouts.insert(0, "None")
                 picked = UIHelper(print).prompt_pick_file_from_list(
                     available_layouts,
                     prompt="Pick a visualizer layout:",
