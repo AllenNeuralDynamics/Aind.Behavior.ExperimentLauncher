@@ -52,17 +52,18 @@ class RobocopyService(DataTransferService):
                 if self.force_dir:
                     command.append("/CREATE")
                 cmd = " ".join(command)
-                process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                if process.stdout is None:
-                    raise ValueError("stdout is None")
-                for line in process.stdout:
-                    logger.info(line)
+                logger.info("Running Robocopy command: %s", " ".join(command))
+                process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                if process.stdout is not None:
+                    for line in process.stdout:
+                        logger.info(line.strip())
+
                 result = process.wait()
                 if result != 0:
                     raise subprocess.CalledProcessError(
                         result,
                         cmd,
-                        output=process.stdout.read(),
+                        output=process.stdout.read() if process.stdout else "",
                         stderr=process.stderr.read() if process.stderr else None,
                     )
                 else:
