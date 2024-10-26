@@ -44,7 +44,7 @@ class RobocopyService(DataTransferService):
             dst = Path(dst)
             src = Path(src)
             try:
-                command = ["robocopy", f'"{src.as_posix()}"', f'"{dst.as_posix()}"', self.extra_args]
+                command = ["robocopy", f'{src.as_posix()}', f'{dst.as_posix()}', self.extra_args]
                 if self.log:
                     command.append(f'/LOG:"{Path(dst) / self.log}"')
                 if self.delete_src:
@@ -55,21 +55,12 @@ class RobocopyService(DataTransferService):
                     command.append("/CREATE")
                 cmd = " ".join(command)
                 logger.info("Running Robocopy command: %s", " ".join(command))
-                process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-                if process.stdout is not None:
-                    for line in process.stdout:
-                        logger.info(line.strip())
-
+                with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as process:
+                    if process.stdout:
+                        for line in process.stdout:
+                            logger.info(line.strip())
                 result = process.wait()
-                if result != 0:
-                    raise subprocess.CalledProcessError(
-                        result,
-                        cmd,
-                        output=process.stdout.read() if process.stdout else "",
-                        stderr=process.stderr.read() if process.stderr else None,
-                    )
-                else:
-                    logger.info("Successfully copied from %s to %s:\n", src, dst)
+                logger.info("Successfully copied from %s to %s:\n", src, dst)
             except subprocess.CalledProcessError as e:
                 logger.error("Error copying from %s to %s:\n%s", src, dst, e.stdout)
 
