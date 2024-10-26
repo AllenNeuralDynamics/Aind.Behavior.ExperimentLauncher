@@ -247,14 +247,19 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
                 logger.error("Data mapper service has failed: %s", e)
 
         logging_helper.close_file_handlers(logger)
+
         try:
             self._copy_tmp_directory(self.session_directory / "Behavior" / "Logs")
         except ValueError:
-            logger.error("Failed to copy temporary directory to session directory since it was not set.")
+            logger.error("Failed to copy temporary logs directory to session directory.")
 
         if self.services_factory_manager.data_transfer is not None:
             try:
-                self.services_factory_manager.data_transfer.transfer()
+                _is_transfer = self._ui_helper.prompt_yes_no_question("Would you like to transfer data?")
+                if _is_transfer:
+                    self.services_factory_manager.data_transfer.transfer()
+                else:
+                    logger.info("Data transfer skipped by user request.")
             except Exception as e:
                 logger.error("Data transfer service has failed: %s", e)
 
@@ -379,4 +384,8 @@ def robocopy_data_transfer_factory(
 def _robocopy_data_transfer_factory(
     launcher: BehaviorLauncher, destination: os.PathLike, **robocopy_kwargs
 ) -> RobocopyService:
-    return RobocopyService(source=launcher.session_directory, destination=destination, **robocopy_kwargs)
+    if launcher.group_by_subject_log:
+        dst = Path(destination) / launcher.session_schema.subject / launcher.session_schema.session_name
+    else:
+        dst = Path(destination) / launcher.session_schema.session_name
+    return RobocopyService(source=launcher.session_directory, destination=dst, **robocopy_kwargs)
