@@ -23,8 +23,11 @@ from aind_behavior_experiment_launcher.logging import logging_helper
 from aind_behavior_experiment_launcher.records.subject_info import SubjectInfo
 from aind_behavior_experiment_launcher.resource_monitor.resource_monitor_service import ResourceMonitor
 from aind_behavior_experiment_launcher.services import IService, ServiceFactory, ServicesFactoryManager
+import logging
 
 TService = TypeVar("TService", bound=IService)
+
+logger = logging.getLogger(__name__)
 
 
 class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
@@ -102,9 +105,9 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
                 if len(subject_list.subjects) == 0:
                     raise ValueError("No subjects found in the batch file.")
             except (ValueError, FileNotFoundError, IOError, pydantic.ValidationError) as e:
-                self.logger.error("Invalid choice. Try again. %s", e)
+                logger.error("Invalid choice. Try again. %s", e)
                 if len(available_batches) == 1:
-                    self.logger.error("No valid subject batch files found. Exiting.")
+                    logger.error("No valid subject batch files found. Exiting.")
                     self._exit(-1)
             else:
                 return subject_list
@@ -132,9 +135,9 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
                     print(f"Using {path}.")
                     return rig
                 except pydantic.ValidationError as e:
-                    self.logger.error("Failed to validate pydantic model. Try again. %s", e)
+                    logger.error("Failed to validate pydantic model. Try again. %s", e)
                 except ValueError as e:
-                    self.logger.error("Invalid choice. Try again. %s", e)
+                    logger.error("Invalid choice. Try again. %s", e)
 
     @override
     def _prompt_task_logic_input(
@@ -174,15 +177,15 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
                         hint_input = None
 
             except pydantic.ValidationError as e:
-                self.logger.error("Failed to validate pydantic model. Try again. %s", e)
+                logger.error("Failed to validate pydantic model. Try again. %s", e)
             except (ValueError, FileNotFoundError) as e:
-                self.logger.error("Invalid choice. Try again. %s", e)
+                logger.error("Invalid choice. Try again. %s", e)
 
         return task_logic
 
     @override
     def _pre_run_hook(self, *args, **kwargs) -> Self:
-        self.logger.info("Pre-run hook started.")
+        logger.info("Pre-run hook started.")
         self.session_schema.experiment = self.task_logic_schema.name
         self.session_schema.experiment_version = self.task_logic_schema.version
 
@@ -197,7 +200,7 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
 
     @override
     def _run_hook(self, *args, **kwargs) -> Self:
-        self.logger.info("Running hook started.")
+        logger.info("Running hook started.")
         if self._session_schema is None:
             raise ValueError("Session schema instance not set.")
         if self._task_logic_schema is None:
@@ -221,39 +224,39 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
             self.services_factory_manager.bonsai_app.run()
             _ = self.services_factory_manager.bonsai_app.output_from_result(allow_stderr=True)
         except subprocess.CalledProcessError as e:
-            self.logger.error("Bonsai app failed to run. %s", e)
+            logger.error("Bonsai app failed to run. %s", e)
             self._exit(-1)
         return self
 
     @override
     def _post_run_hook(self, *args, **kwargs) -> Self:
-        self.logger.info("Post-run hook started.")
+        logger.info("Post-run hook started.")
 
         self._subject_info = self.subject_info.prompt_field("animal_weight_post", None)
         self._subject_info = self.subject_info.prompt_field("reward_consumed_total", None)
         try:
-            self.logger.info("Subject Info: %s", self.subject_info.model_dump_json(indent=4))
+            logger.info("Subject Info: %s", self.subject_info.model_dump_json(indent=4))
         except Exception as e:
-            self.logger.error("Failed to log subject info. %s", e)
+            logger.error("Failed to log subject info. %s", e)
 
         if self.services_factory_manager.data_mapper is not None:
             try:
                 self.services_factory_manager.data_mapper.map()
-                self.logger.info("Mapping successful.")
+                logger.info("Mapping successful.")
             except Exception as e:
-                self.logger.error("Data mapper service has failed: %s", e)
+                logger.error("Data mapper service has failed: %s", e)
 
-        logging_helper.close_file_handlers(self.logger)
+        logging_helper.close_file_handlers(logger)
         try:
             self._copy_tmp_directory(self.session_directory / "Behavior" / "Logs")
         except ValueError:
-            self.logger.error("Failed to copy temporary directory to session directory since it was not set.")
+            logger.error("Failed to copy temporary directory to session directory since it was not set.")
 
         if self.services_factory_manager.data_transfer is not None:
             try:
                 self.services_factory_manager.data_transfer.transfer()
             except Exception as e:
-                self.logger.error("Data transfer service has failed: %s", e)
+                logger.error("Data transfer service has failed: %s", e)
 
         return self
 

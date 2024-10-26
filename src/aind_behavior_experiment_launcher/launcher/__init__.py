@@ -28,6 +28,9 @@ TTaskLogic = TypeVar("TTaskLogic", bound=AindBehaviorTaskLogicModel)  # pylint: 
 TModel = TypeVar("TModel", bound=pydantic.BaseModel)  # pylint: disable=invalid-name
 
 
+logger = logging.getLogger(__name__)
+
+
 class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
     RIG_DIR = "Rig"
     SUBJECT_DIR = "Subjects"
@@ -45,18 +48,12 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         allow_dirty: bool = False,
         skip_hardware_validation: bool = False,
         debug_mode: bool = False,
-        logger: Optional[logging.Logger] = None,
         group_by_subject_log: bool = False,
         services: Optional[ServicesFactoryManager] = None,
         validate_init: bool = True,
     ) -> None:
         self.temp_dir = self.abspath(temp_dir) / secrets.token_hex(nbytes=16)
         self.temp_dir.mkdir(parents=True, exist_ok=True)
-        self.logger = (
-            logger
-            if logger is not None
-            else logging_helper.default_logger_factory(logging.getLogger(__name__), self.temp_dir / "launcher.log")
-        )
         self._ui_helper = ui_helper.UIHelper()
         self._cli_args = self._cli_wrapper()
         self._bind_launcher_services(services)
@@ -115,8 +112,9 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
     def _post_init(self, validate: bool = True) -> None:
         """Overridable method that runs at the end of the self.__init__ method"""
         cli_args = self._cli_args
-        if self._debug_mode:
-            self.logger.setLevel(logging.DEBUG)
+        #if self._debug_mode:
+            #if self.output_logger is not None:
+            #    self.output_logger.setLevel(logging.DEBUG)
         if cli_args.create_directories is True:
             self._create_directory_structure()
         if validate:
@@ -162,12 +160,12 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
             self._run_hooks()
             self.dispose()
         except KeyboardInterrupt:
-            self.logger.error("User interrupted the process.")
+            logger.error("User interrupted the process.")
             self._exit(-1)
             return
 
     def _ui_prompt(self) -> Self:
-        self.logger.info(
+        logger.info(
             self._ui_helper.make_header(
                 task_logic_schema_model=self.task_logic_schema_model,
                 rig_schema_model=self.rig_schema_model,
@@ -193,11 +191,11 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
 
     def _run_hooks(self) -> Self:
         self._pre_run_hook()
-        self.logger.info("Pre-run hook completed.")
+        logger.info("Pre-run hook completed.")
         self._run_hook()
-        self.logger.info("Run hook completed.")
+        logger.info("Run hook completed.")
         self._post_run_hook()
-        self.logger.info("Post-run hook completed.")
+        logger.info("Post-run hook completed.")
         return self
 
     def _pre_run_hook(self, *args, **kwargs) -> Self:
@@ -210,9 +208,9 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         raise NotImplementedError("Method not implemented.")
 
     def _exit(self, code: int = 0) -> None:
-        self.logger.info("Exiting with code %s", code)
-        if self.logger is not None:
-            logging_helper.shutdown_logger(self.logger)
+        logger.info("Exiting with code %s", code)
+        if logger is not None:
+            logging_helper.shutdown_logger(logger)
         sys.exit(code)
 
     def _print_diagnosis(self) -> None:
@@ -229,7 +227,7 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         Returns:
             None
         """
-        self.logger.debug(
+        logger.debug(
             "-------------------------------\n"
             "Diagnosis:\n"
             "-------------------------------\n"
@@ -262,22 +260,22 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
                 )
 
             if self.repository.is_dirty():
-                self.logger.warning(
+                logger.warning(
                     "Git repository is dirty. Discard changes before continuing unless you know what you are doing!"
                 )
                 if not self.allow_dirty:
-                    self.logger.error(
+                    logger.error(
                         "Dirty repository not allowed. Exiting. Consider running with --allow-dirty flag."
                     )
                     self._exit(-1)
 
         except Exception as e:
-            self.logger.error("Failed to validate dependencies. %s", e)
+            logger.error("Failed to validate dependencies. %s", e)
             self._exit(-1)
             raise e
 
     def dispose(self) -> None:
-        self.logger.info("Disposing...")
+        logger.info("Disposing...")
         self._exit(0)
 
     @classmethod
@@ -286,19 +284,18 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
 
     def _create_directory_structure(self) -> None:
         try:
-            self._create_directory(self.data_dir, self.logger)
-            self._create_directory(self.config_library_dir, self.logger)
-            self._create_directory(self.temp_dir, self.logger)
-            self._create_directory(self._task_logic_dir, self.logger)
-            self._create_directory(self._rig_dir, self.logger)
-            self._create_directory(self._subject_dir, self.logger)
-            self._create_directory(self._visualizer_layouts_dir, self.logger)
+            self._create_directory(self.data_dir, logger)
+            self._create_directory(self.config_library_dir, logger)
+            self._create_directory(self.temp_dir, logger)
+            self._create_directory(self._task_logic_dir, logger)
+            self._create_directory(self._rig_dir, logger)
+            self._create_directory(self._subject_dir, logger)
         except OSError as e:
-            self.logger.error("Failed to create directory structure: %s", e)
+            logger.error("Failed to create directory structure: %s", e)
             self._exit(-1)
 
     @classmethod
-    def _create_directory(cls, directory: os.PathLike, logger: logging.Logger) -> None:
+    def _create_directory(cls, directory: os.PathLike) -> None:
         if not os.path.exists(cls.abspath(directory)):
             logger.info("Creating  %s", directory)
             try:
