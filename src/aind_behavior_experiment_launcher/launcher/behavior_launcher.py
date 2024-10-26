@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import glob
+import logging
 import os
 import subprocess
 from functools import partial
@@ -23,7 +24,6 @@ from aind_behavior_experiment_launcher.logging import logging_helper
 from aind_behavior_experiment_launcher.records.subject_info import SubjectInfo
 from aind_behavior_experiment_launcher.resource_monitor.resource_monitor_service import ResourceMonitor
 from aind_behavior_experiment_launcher.services import IService, ServiceFactory, ServicesFactoryManager
-import logging
 
 TService = TypeVar("TService", bound=IService)
 

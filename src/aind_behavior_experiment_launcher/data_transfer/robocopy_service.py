@@ -44,7 +44,7 @@ class RobocopyService(DataTransferService):
             dst = Path(dst)
             src = Path(src)
             try:
-                command = ["robocopy", f'{src.as_posix()}', f'{dst.as_posix()}', self.extra_args]
+                command = ["robocopy", f"{src.as_posix()}", f"{dst.as_posix()}", self.extra_args]
                 if self.log:
                     command.append(f'/LOG:"{Path(dst) / self.log}"')
                 if self.delete_src:
@@ -59,7 +59,7 @@ class RobocopyService(DataTransferService):
                     if process.stdout:
                         for line in process.stdout:
                             logger.info(line.strip())
-                result = process.wait()
+                _ = process.wait()
                 logger.info("Successfully copied from %s to %s:\n", src, dst)
             except subprocess.CalledProcessError as e:
                 logger.error("Error copying from %s to %s:\n%s", src, dst, e.stdout)

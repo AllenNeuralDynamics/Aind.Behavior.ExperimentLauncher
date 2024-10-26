@@ -51,9 +51,14 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         group_by_subject_log: bool = False,
         services: Optional[ServicesFactoryManager] = None,
         validate_init: bool = True,
+        attached_logger: Optional[logging.Logger] = None,
     ) -> None:
         self.temp_dir = self.abspath(temp_dir) / secrets.token_hex(nbytes=16)
         self.temp_dir.mkdir(parents=True, exist_ok=True)
+
+        attached_logger = attached_logger if attached_logger is not None else logger
+        logging_helper.default_logger_builder(attached_logger, self.temp_dir / "launcher.log")
+
         self._ui_helper = ui_helper.UIHelper()
         self._cli_args = self._cli_wrapper()
         self._bind_launcher_services(services)
@@ -95,7 +100,7 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         self._rig_dir = Path(os.path.join(self.config_library_dir, self.RIG_DIR, self.computer_name))
         self._subject_dir = Path(os.path.join(self.config_library_dir, self.SUBJECT_DIR))
         self._task_logic_dir = Path(os.path.join(self.config_library_dir, self.TASK_LOGIC_DIR))
-    
+
         # Flags
         self.allow_dirty = self._cli_args.allow_dirty if self._cli_args.allow_dirty else allow_dirty
         self.skip_hardware_validation = (
@@ -112,9 +117,6 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
     def _post_init(self, validate: bool = True) -> None:
         """Overridable method that runs at the end of the self.__init__ method"""
         cli_args = self._cli_args
-        #if self._debug_mode:
-            #if self.output_logger is not None:
-            #    self.output_logger.setLevel(logging.DEBUG)
         if cli_args.create_directories is True:
             self._create_directory_structure()
         if validate:
@@ -264,9 +266,7 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
                     "Git repository is dirty. Discard changes before continuing unless you know what you are doing!"
                 )
                 if not self.allow_dirty:
-                    logger.error(
-                        "Dirty repository not allowed. Exiting. Consider running with --allow-dirty flag."
-                    )
+                    logger.error("Dirty repository not allowed. Exiting. Consider running with --allow-dirty flag.")
                     self._exit(-1)
 
         except Exception as e:
@@ -284,12 +284,12 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
 
     def _create_directory_structure(self) -> None:
         try:
-            self._create_directory(self.data_dir, logger)
-            self._create_directory(self.config_library_dir, logger)
-            self._create_directory(self.temp_dir, logger)
-            self._create_directory(self._task_logic_dir, logger)
-            self._create_directory(self._rig_dir, logger)
-            self._create_directory(self._subject_dir, logger)
+            self._create_directory(self.data_dir)
+            self._create_directory(self.config_library_dir)
+            self._create_directory(self.temp_dir)
+            self._create_directory(self._task_logic_dir)
+            self._create_directory(self._rig_dir)
+            self._create_directory(self._subject_dir)
         except OSError as e:
             logger.error("Failed to create directory structure: %s", e)
             self._exit(-1)

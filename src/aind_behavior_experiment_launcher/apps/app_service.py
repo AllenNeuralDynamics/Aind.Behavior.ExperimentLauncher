@@ -139,9 +139,7 @@ class BonsaiApp(App):
         if directory is None:
             directory = self.layout_directory
         else:
-            directory = Path(
-                os.path.join(directory, VISUALIZERS_DIR, os.environ['COMPUTERNAME'])
-            )
+            directory = Path(os.path.join(directory, VISUALIZERS_DIR, os.environ["COMPUTERNAME"]))
 
         layout_schemas_path = directory if directory is not None else self.layout_directory
         available_layouts = glob.glob(os.path.join(str(layout_schemas_path), "*.bonsai.layout"))
