@@ -17,6 +17,7 @@ from aind_behavior_services import (
     AindBehaviorTaskLogicModel,
 )
 
+import aind_behavior_experiment_launcher
 from aind_behavior_experiment_launcher import ui_helper
 from aind_behavior_experiment_launcher.logging import logging_helper
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
@@ -56,8 +57,12 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         self.temp_dir = self.abspath(temp_dir) / secrets.token_hex(nbytes=16)
         self.temp_dir.mkdir(parents=True, exist_ok=True)
 
-        attached_logger = attached_logger if attached_logger is not None else logger
-        logging_helper.default_logger_builder(attached_logger, self.temp_dir / "launcher.log")
+        if attached_logger:
+            logging_helper.default_logger_builder(attached_logger, self.temp_dir / "launcher.log")
+        else:
+            logging_helper.default_logger_builder(
+                aind_behavior_experiment_launcher.logger, self.temp_dir / "launcher.log"
+            )
 
         self._ui_helper = ui_helper.UIHelper()
         self._cli_args = self._cli_wrapper()
