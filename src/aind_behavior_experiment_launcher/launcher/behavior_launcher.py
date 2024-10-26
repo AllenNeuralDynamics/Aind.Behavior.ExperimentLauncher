@@ -191,7 +191,7 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
 
         if self.services_factory_manager.bonsai_app.layout is None:
             self.services_factory_manager.bonsai_app.layout = (
-                self.services_factory_manager.bonsai_app.prompt_visualizer_layout_input(self._visualizer_layouts_dir)
+                self.services_factory_manager.bonsai_app.prompt_visualizer_layout_input(self.config_library_dir)
             )
         return self
 

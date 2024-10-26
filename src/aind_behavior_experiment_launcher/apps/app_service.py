@@ -13,6 +13,8 @@ from aind_behavior_experiment_launcher.ui_helper import UIHelper
 
 logger = logging.getLogger(__name__)
 
+VISUALIZERS_DIR = "VisualizerLayouts"
+
 
 class App(IService, abc.ABC):
     @abc.abstractmethod
@@ -133,6 +135,14 @@ class BonsaiApp(App):
         # 1. If a layout is provided, use that.
         # 2. If a layout is not provided, use the default layout
         # 3. if the layout is passed as "" (empty string) no layout is used.
+
+        if directory is None:
+            directory = self.layout_directory
+        else:
+            directory = Path(
+                os.path.join(directory, VISUALIZERS_DIR, os.environ['COMPUTERNAME'])
+            )
+
         layout_schemas_path = directory if directory is not None else self.layout_directory
         available_layouts = glob.glob(os.path.join(str(layout_schemas_path), "*.bonsai.layout"))
         picked: Optional[str | os.PathLike] = None

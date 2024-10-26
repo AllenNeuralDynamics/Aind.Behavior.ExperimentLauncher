@@ -32,7 +32,6 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
     RIG_DIR = "Rig"
     SUBJECT_DIR = "Subjects"
     TASK_LOGIC_DIR = "TaskLogic"
-    VISUALIZERS_DIR = "VisualizerLayouts"
 
     def __init__(
         self,
@@ -99,9 +98,7 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         self._rig_dir = Path(os.path.join(self.config_library_dir, self.RIG_DIR, self.computer_name))
         self._subject_dir = Path(os.path.join(self.config_library_dir, self.SUBJECT_DIR))
         self._task_logic_dir = Path(os.path.join(self.config_library_dir, self.TASK_LOGIC_DIR))
-        self._visualizer_layouts_dir = Path(
-            os.path.join(self.config_library_dir, self.VISUALIZERS_DIR, self.computer_name)
-        )
+    
         # Flags
         self.allow_dirty = self._cli_args.allow_dirty if self._cli_args.allow_dirty else allow_dirty
         self.skip_hardware_validation = (
