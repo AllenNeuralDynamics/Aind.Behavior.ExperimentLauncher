@@ -45,9 +45,9 @@ class BonsaiApp(App):
 
     def __init__(
         self,
+        /,
         workflow: os.PathLike,
         executable: os.PathLike = Path("./bonsai/bonsai.exe"),
-        /,
         is_editor_mode: bool = True,
         is_start_flag: bool = True,
         layout: Optional[os.PathLike] = None,
