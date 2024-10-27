@@ -1,3 +1,4 @@
+import os
 import unittest
 from datetime import time
 from pathlib import Path
@@ -11,13 +12,9 @@ from aind_behavior_experiment_launcher.data_transfer.watchdog_service import Wat
 
 
 class TestWatchdogDataTransferService(unittest.TestCase):
-    @patch("aind_behavior_experiment_launcher.data_transfer.watchdog_service.os.getenv")
-    def setUp(self, mock_getenv):
-        mock_getenv.side_effect = lambda key, default=None: {
-            "WATCHDOG_EXE": "watchdog.exe",
-            "WATCHDOG_CONFIG": "watchdog_config.yml",
-        }.get(key, default)
-
+    def setUp(self):
+        os.environ["WATCHDOG_EXE"] = "watchdog.exe"
+        os.environ["WATCHDOG_CONFIG"] = "watchdog_config.yml"
         self.destination = "destination_path"
         self.aind_data_mapper = MagicMock(spec=AindDataSchemaSessionDataMapper)
         self.schedule_time = time(hour=20)
