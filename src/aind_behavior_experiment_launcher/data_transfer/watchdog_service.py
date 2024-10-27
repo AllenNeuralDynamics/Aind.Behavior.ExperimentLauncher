@@ -240,7 +240,7 @@ class WatchdogDataTransferService(DataTransferService):
         output = subprocess.check_output(
             ["tasklist", "/FI", f"IMAGENAME eq {self.executable_path.name}"], shell=True, encoding="utf-8"
         )
-        processes = [line.split()[0] for line in output.splitlines()[3:]]
+        processes = [line.split()[0] for line in output.splitlines()[2:]]
         return len(processes) > 0
 
     def force_restart(self, kill_if_running: bool = True) -> subprocess.Popen[bytes]:
