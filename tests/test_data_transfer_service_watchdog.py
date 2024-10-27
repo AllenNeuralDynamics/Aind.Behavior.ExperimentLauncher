@@ -8,7 +8,7 @@ from aind_data_schema_models.platforms import Platform
 from aind_watchdog_service.models.manifest_config import BucketType
 
 from aind_behavior_experiment_launcher.data_mappers.aind_data_schema import AindDataSchemaSessionDataMapper
-from aind_behavior_experiment_launcher.data_transfer.watchdog_service import WatchdogDataTransferService
+from aind_behavior_experiment_launcher.data_transfer.watchdog_service import WatchConfig, WatchdogDataTransferService
 
 
 class TestWatchdogDataTransferService(unittest.TestCase):
@@ -94,9 +94,13 @@ class TestWatchdogDataTransferService(unittest.TestCase):
         "aind_behavior_experiment_launcher.data_transfer.watchdog_service.WatchdogDataTransferService.is_valid_project_name",
         return_value=True,
     )
-    def test_validate_success(self, mock_is_valid_project_name, mock_is_running):
+    @patch("aind_behavior_experiment_launcher.data_transfer.watchdog_service.WatchdogDataTransferService._read_yaml")
+    def test_validate_success(self, mock_read_yaml, mock_is_valid_project_name, mock_is_running):
+        mock_read_yaml.return_value = WatchConfig(
+            flag_dir="mock_flag_dir", manifest_complete="manifest_complete_dir"
+        ).model_dump()
         with patch.object(Path, "exists", return_value=True):
-            self.assertTrue(self.service.validate())
+            self.assertTrue(self.service.validate(create_config=False))
 
     @patch(
         "aind_behavior_experiment_launcher.data_transfer.watchdog_service.WatchdogDataTransferService.is_running",

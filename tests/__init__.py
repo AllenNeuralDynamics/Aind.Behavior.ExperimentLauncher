@@ -1,6 +1,7 @@
 import glob
 import importlib.util
 import logging
+import os
 from pathlib import Path
 from types import ModuleType
 
@@ -9,6 +10,8 @@ EXAMPLES_DIR = Path(__file__).parents[1] / "examples"
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 logging.disable(logging.CRITICAL)
+os.environ["WATCHDOG_EXE"] = "watchdog.exe"
+os.environ["WATCHDOG_CONFIG"] = "watchdog_config.yml"
 
 
 def build_example(script_path: str) -> ModuleType:
