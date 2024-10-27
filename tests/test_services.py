@@ -1,10 +1,11 @@
 import unittest
-from unittest.mock import MagicMock, create_autospec
-from src.aind_behavior_experiment_launcher.services import IService, ServiceFactory, ServicesFactoryManager
+from unittest.mock import create_autospec
+
 from src.aind_behavior_experiment_launcher.launcher import BaseLauncher
+from src.aind_behavior_experiment_launcher.services import IService, ServiceFactory, ServicesFactoryManager
+
 
 class TestServicesFactoryManager(unittest.TestCase):
-
     def setUp(self):
         self.launcher = create_autospec(BaseLauncher)
         self.manager = ServicesFactoryManager(self.launcher)
@@ -47,7 +48,6 @@ class TestServicesFactoryManager(unittest.TestCase):
         self.assertIsInstance(self.manager["service1"], IService)
         self.assertIsInstance(self.manager["service2"], IService)
 
-
     def test_get_services_of_type(self):
         class TestService(IService):
             pass
@@ -60,5 +60,6 @@ class TestServicesFactoryManager(unittest.TestCase):
         self.assertIn(service1, services)
         self.assertNotIn(service2, services)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -1,12 +1,18 @@
-import unittest
-from unittest.mock import MagicMock, patch
-from aind_behavior_experiment_launcher.resource_monitor.resource_monitor_service import ResourceMonitor, Constraint, available_storage_constraint_factory, remote_dir_exists_constraint_factory
-from shutil import _ntuple_diskusage
-import warnings
 import logging
+import unittest
+import warnings
+from shutil import _ntuple_diskusage
+from unittest.mock import MagicMock, patch
+
+from aind_behavior_experiment_launcher.resource_monitor.resource_monitor_service import (
+    Constraint,
+    ResourceMonitor,
+    available_storage_constraint_factory,
+    remote_dir_exists_constraint_factory,
+)
+
 
 class TestResourceMonitor(unittest.TestCase):
-
     def setUp(self):
         self.monitor = ResourceMonitor()
         warnings.simplefilter("ignore")
@@ -39,7 +45,7 @@ class TestResourceMonitor(unittest.TestCase):
         self.monitor.add_constraint(constraint2)
         self.assertFalse(self.monitor.evaluate_constraints())
 
-    @patch('shutil.disk_usage')
+    @patch("shutil.disk_usage")
     def test_available_storage_constraint_factory(self, mock_disk_usage):
         mock_disk_usage.return_value = _ntuple_diskusage(total=500e9, used=100e9, free=400e9)
         constraint = available_storage_constraint_factory(drive="C:\\", min_bytes=2e11)
@@ -47,11 +53,12 @@ class TestResourceMonitor(unittest.TestCase):
         constraint = available_storage_constraint_factory(drive="C:\\", min_bytes=2e13)
         self.assertFalse(constraint())
 
-    @patch('os.path.exists')
+    @patch("os.path.exists")
     def test_remote_dir_exists_constraint_factory(self, mock_exists):
         mock_exists.return_value = True
         constraint = remote_dir_exists_constraint_factory(dir_path="/some/remote/dir")
         self.assertTrue(constraint())
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

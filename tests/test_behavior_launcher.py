@@ -1,14 +1,14 @@
 import unittest
-from unittest.mock import MagicMock, create_autospec, patch
 from pathlib import Path
-from aind_behavior_experiment_launcher.launcher.behavior_launcher import BehaviorLauncher, BehaviorServicesFactoryManager
-from aind_behavior_experiment_launcher.services import IService
-from aind_behavior_experiment_launcher.records.subject_info import SubjectInfo
-from aind_behavior_services.db_utils import SubjectEntry, SubjectDataBase
-from aind_behavior_services.utils import model_from_json_file
+from unittest.mock import MagicMock, create_autospec, patch
+
+from aind_behavior_experiment_launcher.launcher.behavior_launcher import (
+    BehaviorLauncher,
+    BehaviorServicesFactoryManager,
+)
+
 
 class TestBehaviorLauncher(unittest.TestCase):
-
     def setUp(self):
         self.launcher = create_autospec(BehaviorLauncher)
         self.launcher.services_factory_manager = create_autospec(BehaviorServicesFactoryManager)
@@ -34,22 +34,22 @@ class TestBehaviorLauncher(unittest.TestCase):
         self.launcher._subject_db_data = None
         self.launcher._subject_info = None
 
-
-    @patch('aind_behavior_experiment_launcher.launcher.behavior_launcher.model_from_json_file')
-    @patch('aind_behavior_experiment_launcher.launcher.behavior_launcher.glob.glob')
+    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.model_from_json_file")
+    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.glob.glob")
     def test_prompt_rig_input(self, mock_glob, mock_model_from_json_file):
         mock_glob.return_value = ["/path/to/rig1.json"]
         mock_model_from_json_file.return_value = MagicMock()
         rig = self.launcher._prompt_rig_input("/path/to/directory")
         self.assertIsNotNone(rig)
 
-    @patch('aind_behavior_experiment_launcher.launcher.behavior_launcher.model_from_json_file')
-    @patch('aind_behavior_experiment_launcher.launcher.behavior_launcher.glob.glob')
+    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.model_from_json_file")
+    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.glob.glob")
     def test_prompt_task_logic_input(self, mock_glob, mock_model_from_json_file):
         mock_glob.return_value = ["/path/to/task1.json"]
         mock_model_from_json_file.return_value = MagicMock()
         task_logic = self.launcher._prompt_task_logic_input("/path/to/directory")
         self.assertIsNotNone(task_logic)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

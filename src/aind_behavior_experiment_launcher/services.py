@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 class IService(abc.ABC):
     "A base class for all services that defines a minimal interface"
+
     pass
 
 
