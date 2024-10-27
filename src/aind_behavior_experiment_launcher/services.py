@@ -1,14 +1,22 @@
 from __future__ import annotations
 
+import abc
 import logging
 from typing import TYPE_CHECKING, Any, Callable, Dict, Generic, Iterable, List, Optional, Self, Type, TypeVar, overload
 
 if TYPE_CHECKING:
     from aind_behavior_experiment_launcher.launcher import BaseLauncher
 
-from ._base import IService
-
 logger = logging.getLogger(__name__)
+
+
+class IService(abc.ABC):
+    "A base class for all services that defines a minimal interface"
+
+    @abc.abstractmethod
+    def validate(self, *args, **kwargs) -> bool:
+        pass
+
 
 TService = TypeVar("TService", bound=IService)
 

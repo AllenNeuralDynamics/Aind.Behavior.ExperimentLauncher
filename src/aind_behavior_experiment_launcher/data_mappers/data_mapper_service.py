@@ -15,7 +15,7 @@ from aind_behavior_services import (
 )
 from aind_behavior_services.rig import CameraController, CameraTypes
 
-from aind_behavior_experiment_launcher._base import IService
+from aind_behavior_experiment_launcher.services import IService
 
 logger = logging.getLogger(__name__)
 
