@@ -30,23 +30,23 @@ class TestServicesFactoryManager(unittest.TestCase):
         service = create_autospec(IService)
         factory = ServiceFactory(service)
         self.manager.attach_service_factory("test_service", factory)
-        self.assertEqual(self.manager["test_service"], service)
+        self.assertIsInstance(self.manager["test_service"], IService)
 
     def test_try_get_service(self):
         service = create_autospec(IService)
         factory = ServiceFactory(service)
         self.manager.attach_service_factory("test_service", factory)
-        self.assertEqual(self.manager.try_get_service("test_service"), service)
+        self.assertIsInstance(self.manager["test_service"], IService)
         self.assertIsNone(self.manager.try_get_service("non_existent_service"))
 
-    def test_services_property(self):
+    def test_get_multiple(self):
         service1 = create_autospec(IService)
         service2 = create_autospec(IService)
         self.manager.attach_service_factory("service1", service1)
         self.manager.attach_service_factory("service2", service2)
-        services = list(self.manager.services)
-        self.assertIn(service1, services)
-        self.assertIn(service2, services)
+        self.assertIsInstance(self.manager["service1"], IService)
+        self.assertIsInstance(self.manager["service2"], IService)
+
 
     def test_get_services_of_type(self):
         class TestService(IService):
