@@ -11,10 +11,6 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 logging.disable(logging.CRITICAL)
 
-os.environ["WATCHDOG_EXE"] = "watchdog.exe"
-os.environ["WATCHDOG_CONFIG"] = "watchdog_config.json"
-
-
 def build_example(script_path: str) -> ModuleType:
     module_name = Path(script_path).stem
     spec = importlib.util.spec_from_file_location(module_name, script_path)
