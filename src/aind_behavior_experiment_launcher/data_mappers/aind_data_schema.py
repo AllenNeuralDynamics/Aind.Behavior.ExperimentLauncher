@@ -29,7 +29,7 @@ from aind_behavior_services import (
 from aind_behavior_services.calibration import Calibration
 from aind_behavior_services.utils import model_from_json_file, utcnow
 
-from aind_behavior_experiment_launcher.records.subject_info import SubjectInfo
+from aind_behavior_experiment_launcher.records.subject import WaterLogResult
 
 from . import data_mapper_service
 
@@ -48,7 +48,7 @@ class AindDataSchemaSessionDataMapper(data_mapper_service.DataMapperService):
         script_path: os.PathLike,
         session_end_time: Optional[datetime.datetime] = None,
         output_parameters: Optional[Dict] = None,
-        subject_info: Optional[SubjectInfo] = None,
+        subject_info: Optional[WaterLogResult] = None,
         session_directory: Optional[os.PathLike] = None,
     ):
         self.session_model = session_model
@@ -103,7 +103,7 @@ class AindDataSchemaSessionDataMapper(data_mapper_service.DataMapperService):
         script_path: os.PathLike,
         session_end_time: Optional[datetime.datetime] = None,
         output_parameters: Optional[Dict] = None,
-        subject_info: Optional[SubjectInfo] = None,
+        subject_info: Optional[WaterLogResult] = None,
     ) -> Self:
         return cls(
             session_model=model_from_json_file(Path(schema_root) / "session_input.json", session_model),
@@ -131,7 +131,7 @@ class AindDataSchemaSessionDataMapper(data_mapper_service.DataMapperService):
         session_end_time: Optional[datetime.datetime],
         session_directory: Optional[os.PathLike] = None,
         output_parameters: Optional[Dict] = None,
-        subject_info: Optional[SubjectInfo] = None,
+        subject_info: Optional[WaterLogResult] = None,
         **kwargs,
     ) -> Self:
         return cls(
@@ -157,7 +157,7 @@ class AindDataSchemaSessionDataMapper(data_mapper_service.DataMapperService):
         script_path: os.PathLike,
         session_end_time: Optional[datetime.datetime] = None,
         output_parameters: Optional[Dict] = None,
-        subject_info: Optional[SubjectInfo] = None,
+        subject_info: Optional[WaterLogResult] = None,
     ) -> aind_data_schema.core.session.Session:
         if isinstance(repository, os.PathLike | str):
             repository = git.Repo(Path(repository))
@@ -218,9 +218,8 @@ class AindDataSchemaSessionDataMapper(data_mapper_service.DataMapperService):
 
         # Construct aind-data-schema session
         aind_data_schema_session = aind_data_schema.core.session.Session(
-            animal_weight_post=subject_info.animal_weight_post if subject_info else None,
-            animal_weight_prior=subject_info.animal_weight_prior if subject_info else None,
-            reward_consumed_total=subject_info.reward_consumed_total if subject_info else None,
+            animal_weight_post=subject_info.weight_g if subject_info else None,
+            reward_consumed_total=subject_info.water_earned_ml if subject_info else None,
             reward_delivery=reward_delivery_config,
             experimenter_full_name=session_model.experimenter,
             session_start_time=session_model.date,

@@ -21,7 +21,6 @@ from aind_behavior_experiment_launcher.data_transfer.robocopy_service import Rob
 from aind_behavior_experiment_launcher.data_transfer.watchdog_service import WatchdogDataTransferService
 from aind_behavior_experiment_launcher.launcher import BaseLauncher, TRig, TSession, TTaskLogic
 from aind_behavior_experiment_launcher.logging import logging_helper
-from aind_behavior_experiment_launcher.records.subject_info import SubjectInfo
 from aind_behavior_experiment_launcher.resource_monitor.resource_monitor_service import ResourceMonitor
 from aind_behavior_experiment_launcher.services import IService, ServiceFactory, ServicesFactoryManager
 
@@ -35,7 +34,6 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._subject_info: Optional[SubjectInfo] = None
         self._subject_db_data: Optional[SubjectEntry] = None
 
     def _post_init(self, validate: bool = True) -> None:
@@ -43,12 +41,6 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
         if validate:
             if self.services_factory_manager.resource_monitor is not None:
                 self.services_factory_manager.resource_monitor.evaluate_constraints()
-
-    @property
-    def subject_info(self) -> SubjectInfo:
-        if self._subject_info is None:
-            raise ValueError("Subject info instance not set.")
-        return self._subject_info
 
     @override
     def _prompt_session_input(self, directory: Optional[str] = None) -> TSession:
@@ -189,9 +181,6 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
         self.session_schema.experiment = self.task_logic_schema.name
         self.session_schema.experiment_version = self.task_logic_schema.version
 
-        self._subject_info = SubjectInfo.from_session(self.session_schema)
-        self._subject_info = self.subject_info.prompt_field("animal_weight_prior", None)
-
         if self.services_factory_manager.bonsai_app.layout is None:
             self.services_factory_manager.bonsai_app.layout = (
                 self.services_factory_manager.bonsai_app.prompt_visualizer_layout_input(self.config_library_dir)
@@ -231,13 +220,6 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
     @override
     def _post_run_hook(self, *args, **kwargs) -> Self:
         logger.info("Post-run hook started.")
-
-        self._subject_info = self.subject_info.prompt_field("animal_weight_post", None)
-        self._subject_info = self.subject_info.prompt_field("reward_consumed_total", None)
-        try:
-            logger.info("Subject Info: %s", self.subject_info.model_dump_json(indent=4))
-        except Exception as e:
-            logger.error("Failed to log subject info. %s", e)
 
         if self.services_factory_manager.data_mapper is not None:
             try:
@@ -349,7 +331,6 @@ def _aind_data_mapper_factory(launcher: BehaviorLauncher) -> AindDataSchemaSessi
         task_logic_model=launcher.task_logic_schema,
         repository=launcher.repository,
         script_path=launcher.services_factory_manager.bonsai_app.workflow,
-        subject_info=launcher.subject_info,
         session_directory=launcher.session_directory,
         session_end_time=now,
     )

@@ -4,11 +4,10 @@ from datetime import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from aind_data_schema_models.platforms import Platform
-from aind_watchdog_service.models.manifest_config import BucketType
-
 from aind_behavior_experiment_launcher.data_mappers.aind_data_schema import AindDataSchemaSessionDataMapper
 from aind_behavior_experiment_launcher.data_transfer.watchdog_service import WatchConfig, WatchdogDataTransferService
+from aind_data_schema_models.platforms import Platform
+from aind_watchdog_service.models.manifest_config import BucketType
 
 
 class TestWatchdogDataTransferService(unittest.TestCase):

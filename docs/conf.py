@@ -11,7 +11,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath("../src"))
-import aind_behavior_experiment_launcher
+import aind_behavior_experiment_launcher  # noqa: E402
 
 SOURCE_ROOT = "https://github.com/AllenNeuralDynamics/Aind.Behavior.ExperimentLauncher/tree/main/src/"
 
