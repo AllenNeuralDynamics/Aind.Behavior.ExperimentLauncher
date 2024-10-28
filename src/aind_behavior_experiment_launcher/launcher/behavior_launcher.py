@@ -257,6 +257,11 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
         return fpath
 
 
+_TServiceFactory = TypeVar(
+    "_TServiceFactory", bound=ServiceFactory[TService] | Callable[[BaseLauncher], TService] | TService
+)
+
+
 class BehaviorServicesFactoryManager(ServicesFactoryManager):
     def __init__(self, launcher: Optional[BehaviorLauncher] = None, **kwargs) -> None:
         super().__init__(launcher, **kwargs)
@@ -280,7 +285,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         return srv
 
     @bonsai_app.setter
-    def bonsai_app(self, value: ServiceFactory[BonsaiApp]) -> None:
+    def bonsai_app(self, value: _TServiceFactory[BonsaiApp] | BonsaiApp) -> None:
         self.attach_service_factory("bonsai_app", value)
 
     @property
@@ -289,7 +294,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         return self._validate_service_type(srv, DataMapperService)
 
     @data_mapper.setter
-    def data_mapper(self, value: ServiceFactory[DataMapperService]) -> None:
+    def data_mapper(self, value: _TServiceFactory[DataMapperService]) -> None:
         self.attach_service_factory("data_mapper", value)
 
     @property
@@ -298,7 +303,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         return self._validate_service_type(srv, ResourceMonitor)
 
     @resource_monitor.setter
-    def resource_monitor(self, value: ServiceFactory[ResourceMonitor]) -> None:
+    def resource_monitor(self, value: _TServiceFactory[ResourceMonitor]) -> None:
         self.attach_service_factory("resource_monitor", value)
 
     @property
@@ -307,7 +312,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         return self._validate_service_type(srv, DataTransferService)
 
     @data_transfer.setter
-    def data_transfer(self, value: ServiceFactory[DataTransferService]) -> None:
+    def data_transfer(self, value: _TServiceFactory[DataTransferService]) -> None:
         self.attach_service_factory("data_transfer", value)
 
     @staticmethod
