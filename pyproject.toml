@@ -5,25 +5,25 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "aind-behavior-experiment-launcher"
 description = "A library for a minimal framework that can be used to build experimental interfaces."
-
 authors = [
-    { name = "Bruno Cruz", email = "bruno.cruz@alleninstitute.org" },
+    { name = "Bruno Cruz", email = "bruno.cruz@alleninstitute.org" }
 ]
-license = {text = "MIT"}
+license = { text = "MIT" }
 requires-python = ">=3.11"
 dynamic = ["version", "readme"]
+
 classifiers = [
     "Programming Language :: Python :: 3.11",
     "License :: OSI Approved :: MIT License",
-    "Operating System :: Microsoft :: Windows",
+    "Operating System :: Microsoft :: Windows"
 ]
 
 dependencies = [
-    'pydantic>=2.7, <3.0',
-    'gitpython>=3.1, <4.0',
-    'semver',
-    'aind_behavior_services>=0.8.0, <0.9.0',
-    'aind-slims-api<0.2'
+    "pydantic>=2.7, <3.0",
+    "gitpython>=3.1, <4.0",
+    "semver",
+    "aind_behavior_services>=0.8.0, <0.9.0",
+    "aind-slims-api<0.2"
 ]
 
 [project.urls]
@@ -34,24 +34,22 @@ Changelog = "https://github.com/AllenNeuralDynamics/Aind.Behavior.ExperimentLaun
 
 [project.optional-dependencies]
 aind-services = [
-    'aind-watchdog-service>=0.1.0, <0.2.0',
-    'aind-data-schema<=1.2',
+    "aind-watchdog-service>=0.1.0, <0.2.0",
+    "aind-data-schema<=1.2"
 ]
-
 linters = [
-    'ruff',
-    'codespell'
+    "ruff",
+    "codespell"
 ]
 docs = [
-    'aind-behavior-experiment-launcher[aind-services]',
-    'Sphinx<7.3',
-    'furo',
-    'sphinx-jinja',
-    'sphinx-jsonschema',
-    'sphinx-copybutton',
+    "aind-behavior-experiment-launcher[aind-services]",
+    "Sphinx<7.3",
+    "furo",
+    "sphinx-jinja",
+    "sphinx-jsonschema",
+    "sphinx-copybutton",
     "sphinx_mdinclude",
-	"autodoc_pydantic",
-
+    "autodoc_pydantic"
 ]
 
 [tool.setuptools.packages.find]
@@ -61,19 +59,19 @@ where = ["src"]
 aind_behavior_task_launcher = ["py.typed"]
 
 [tool.setuptools.dynamic]
-version = {attr = "aind_behavior_experiment_launcher.__version__"}
-readme = {file = "README.md", content-type = "text/markdown"}
+version = { attr = "aind_behavior_experiment_launcher.__version__" }
+readme = { file = "README.md", content-type = "text/markdown" }
 
 [tool.ruff]
 line-length = 120
-target-version = 'py311'
+target-version = "py311"
 
 [tool.ruff.lint]
-extend-select = ['Q', 'RUF100', 'C90', 'I']
+extend-select = ["Q", "RUF100", "C90", "I"]
 extend-ignore = []
 mccabe = { max-complexity = 14 }
-pydocstyle = { convention = 'google' }
+pydocstyle = { convention = "google" }
 
 [tool.codespell]
-skip = '.git,*.pdf,*.svg,./docs/_build'
-ignore-words-list = 'nd, assertIn'
+skip = ".git,*.pdf,*.svg,./docs/_build"
+ignore-words-list = "nd, assertIn"

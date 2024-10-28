@@ -3,9 +3,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import create_autospec, patch
 
+from aind_behavior_services import AindBehaviorRigModel, AindBehaviorSessionModel, AindBehaviorTaskLogicModel
+
 from aind_behavior_experiment_launcher.launcher import BaseLauncher
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
-from aind_behavior_services import AindBehaviorRigModel, AindBehaviorSessionModel, AindBehaviorTaskLogicModel
 
 
 class TestBaseLauncher(unittest.TestCase):
