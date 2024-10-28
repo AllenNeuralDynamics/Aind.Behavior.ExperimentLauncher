@@ -27,7 +27,7 @@ jobs:
       - name: Run tests and coverage
         run: |
           coverage run -m unittest discover
-          coverage report
+          coverage report --rcfile=.\pyproject.toml
 
   tests:
     runs-on: windows-latest
