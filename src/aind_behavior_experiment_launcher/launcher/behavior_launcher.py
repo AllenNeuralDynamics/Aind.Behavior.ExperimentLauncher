@@ -284,8 +284,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
             raise ValueError("BonsaiApp is not set.")
         return srv
 
-    @bonsai_app.setter
-    def bonsai_app(self, value: _TServiceFactory[BonsaiApp] | BonsaiApp) -> None:
+    def attach_bonsai_app(self, value: _TServiceFactory[BonsaiApp] | BonsaiApp) -> None:
         self.attach_service_factory("bonsai_app", value)
 
     @property
@@ -293,8 +292,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         srv = self.try_get_service("data_mapper")
         return self._validate_service_type(srv, DataMapperService)
 
-    @data_mapper.setter
-    def data_mapper(self, value: _TServiceFactory[DataMapperService]) -> None:
+    def attach_data_mapper(self, value: _TServiceFactory[DataMapperService]) -> None:
         self.attach_service_factory("data_mapper", value)
 
     @property
@@ -302,8 +300,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         srv = self.try_get_service("resource_monitor")
         return self._validate_service_type(srv, ResourceMonitor)
 
-    @resource_monitor.setter
-    def resource_monitor(self, value: _TServiceFactory[ResourceMonitor]) -> None:
+    def attach_resource_monitor(self, value: _TServiceFactory[ResourceMonitor]) -> None:
         self.attach_service_factory("resource_monitor", value)
 
     @property
@@ -311,8 +308,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         srv = self.try_get_service("data_transfer")
         return self._validate_service_type(srv, DataTransferService)
 
-    @data_transfer.setter
-    def data_transfer(self, value: _TServiceFactory[DataTransferService]) -> None:
+    def attach_data_transfer(self, value: _TServiceFactory[DataTransferService]) -> None:
         self.attach_service_factory("data_transfer", value)
 
     @staticmethod
