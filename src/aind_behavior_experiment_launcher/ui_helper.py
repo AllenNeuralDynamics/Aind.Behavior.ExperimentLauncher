@@ -6,6 +6,7 @@ from aind_behavior_services.db_utils import SubjectDataBase
 from aind_behavior_services.rig import AindBehaviorRigModel
 from aind_behavior_services.session import AindBehaviorSessionModel
 from aind_behavior_services.task_logic import AindBehaviorTaskLogicModel
+from pydantic import BaseModel, TypeAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -116,3 +117,17 @@ class UIHelper:
         )
 
         return _str
+
+
+TModel = TypeVar("TModel", bound=BaseModel)
+
+T = TypeVar("T", bound=Any)
+
+
+def prompt_field_from_input(model: TModel, field_name: str, default: Optional[T] = None) -> Optional[T]:
+    _field = model.model_fields[field_name]
+    _type_adaptor: TypeAdapter = TypeAdapter(_field.annotation)
+    value: Optional[T] | str
+    _in = input(f"Enter {field_name} ({_field.description}): ")
+    value = _in if _in != "" else default
+    return _type_adaptor.validate_python(value)
