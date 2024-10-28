@@ -1,9 +1,8 @@
 import unittest
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel
-
 from aind_behavior_experiment_launcher.data_mappers.data_mapper_service import get_fields_of_type
+from pydantic import BaseModel
 
 
 class MockModel(BaseModel):

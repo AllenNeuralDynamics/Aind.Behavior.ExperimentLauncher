@@ -21,10 +21,12 @@ TService = TypeVar("TService", bound=IService)
 
 class ServiceFactory(Generic[TService]):
     @overload
-    def __init__(self, service_or_factory: TService) -> None: ...
+    def __init__(self, service_or_factory: TService) -> None:
+        ...
 
     @overload
-    def __init__(self, service_or_factory: Callable[[BaseLauncher], TService]) -> None: ...
+    def __init__(self, service_or_factory: Callable[[BaseLauncher], TService]) -> None:
+        ...
 
     def __init__(self, service_or_factory: Callable[[BaseLauncher], TService] | TService) -> None:
         self._service_factory: Optional[Callable[[BaseLauncher], TService]] = None
