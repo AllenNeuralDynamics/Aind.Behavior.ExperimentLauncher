@@ -37,10 +37,12 @@ aind-services = [
     "aind-watchdog-service>=0.1.0, <0.2.0",
     "aind-data-schema<=1.2"
 ]
-linters = [
+
+dev = [
     "ruff",
     "codespell",
     "coverage",
+    "aind-behavior-experiment-launcher[aind-services]",
 ]
 docs = [
     "aind-behavior-experiment-launcher[aind-services]",
