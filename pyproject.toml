@@ -23,6 +23,7 @@ dependencies = [
     'gitpython>=3.1, <4.0',
     'semver',
     'aind_behavior_services>=0.8.0, <0.9.0',
+    'aind-slims-api<0.2'
 ]
 
 [project.urls]
@@ -34,8 +35,7 @@ Changelog = "https://github.com/AllenNeuralDynamics/Aind.Behavior.ExperimentLaun
 [project.optional-dependencies]
 aind-services = [
     'aind-watchdog-service>=0.1.0, <0.2.0',
-    'aind-data-schema<1.1',
-    'pydantic<2.9'
+    'aind-data-schema<=1.2',
 ]
 
 linters = [
