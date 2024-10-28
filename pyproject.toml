@@ -39,7 +39,8 @@ aind-services = [
 ]
 linters = [
     "ruff",
-    "codespell"
+    "codespell",
+    "coverage",
 ]
 docs = [
     "aind-behavior-experiment-launcher[aind-services]",
@@ -75,3 +76,16 @@ pydocstyle = { convention = "google" }
 [tool.codespell]
 skip = ".git,*.pdf,*.svg,./docs/_build"
 ignore-words-list = "nd, assertIn"
+
+[tool.coverage.run]
+omit = ["*__init__*"]
+source = ["aind_behavior_experiment_launcher", "tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "if __name__ == .__main__.:",
+    "from",
+    "import",
+    "pragma: no cover"
+]
+fail_under = 60
