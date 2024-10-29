@@ -13,6 +13,7 @@ from aind_behavior_services.db_utils import SubjectDataBase, SubjectEntry
 from aind_behavior_services.utils import model_from_json_file, utcnow
 from typing_extensions import override
 
+from aind_behavior_experiment_launcher import logging_helper
 from aind_behavior_experiment_launcher.apps.app_service import BonsaiApp
 from aind_behavior_experiment_launcher.data_mappers.aind_data_schema import AindDataSchemaSessionDataMapper
 from aind_behavior_experiment_launcher.data_mappers.data_mapper_service import DataMapperService
@@ -20,7 +21,6 @@ from aind_behavior_experiment_launcher.data_transfer.data_transfer_service impor
 from aind_behavior_experiment_launcher.data_transfer.robocopy_service import RobocopyService
 from aind_behavior_experiment_launcher.data_transfer.watchdog_service import WatchdogDataTransferService
 from aind_behavior_experiment_launcher.launcher import BaseLauncher, TRig, TSession, TTaskLogic
-from aind_behavior_experiment_launcher.logging import logging_helper
 from aind_behavior_experiment_launcher.resource_monitor.resource_monitor_service import ResourceMonitor
 from aind_behavior_experiment_launcher.services import IService, ServiceFactory, ServicesFactoryManager
 
