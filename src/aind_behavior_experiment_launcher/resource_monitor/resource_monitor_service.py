@@ -56,6 +56,10 @@ class Constraint:
 
 
 def available_storage_constraint_factory(drive: str = "C:\\", min_bytes: float = 2e11) -> Constraint:
+    if not os.path.ismount(drive):
+        drive = os.path.splitdrive(drive)[0] + "\\"
+    if drive is None:
+        raise ValueError("Drive is not valid.")
     return Constraint(
         name="available_storage",
         constraint=lambda drive, min_bytes: shutil.disk_usage(drive).free >= min_bytes,
