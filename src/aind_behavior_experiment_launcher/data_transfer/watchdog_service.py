@@ -40,6 +40,7 @@ class WatchdogDataTransferService(DataTransferService):
 
     def __init__(
         self,
+        source: PathLike,
         destination: PathLike,
         aind_data_mapper: Optional[AindDataSchemaSessionDataMapper] = None,
         schedule_time: Optional[datetime.time] = datetime.time(hour=20),
@@ -53,6 +54,7 @@ class WatchdogDataTransferService(DataTransferService):
         transfer_endpoint: str = "http://aind-data-transfer-service/api/v1/submit_jobs",
         validate: bool = True,
     ) -> None:
+        self.source = source
         self.destination = destination
         self.project_name = project_name
         self.schedule_time = schedule_time
@@ -113,11 +115,7 @@ class WatchdogDataTransferService(DataTransferService):
         if not self.aind_data_mapper.is_mapped():
             raise ValueError("Data mapper has not been mapped yet.")
         ads_session = self.aind_data_mapper.mapped
-        session_directory = self.aind_data_mapper.session_directory
-        if session_directory is None:
-            raise ValueError("Session directory not found.")
         return self.create_manifest_config_from_ads_session(
-            source=session_directory,
             ads_session=ads_session,
             session_name=self.aind_data_mapper.session_model.session_name,
         )
@@ -182,7 +180,6 @@ class WatchdogDataTransferService(DataTransferService):
 
     def create_manifest_config_from_ads_session(
         self,
-        source: os.PathLike,
         ads_session: AdsSession,
         ads_schemas: Optional[List[os.PathLike]] = None,
         session_name: Optional[str] = None,
@@ -191,7 +188,7 @@ class WatchdogDataTransferService(DataTransferService):
         processor_full_name = ",".join(ads_session.experimenter_full_name) or os.environ.get("USERNAME", "unknown")
 
         destination = Path(self.destination).resolve()
-        source = Path(source).resolve()
+        source = Path(self.source).resolve()
 
         if session_name is None:
             session_name = (ads_session.stimulus_epochs[0]).stimulus_name
@@ -257,7 +254,9 @@ class WatchdogDataTransferService(DataTransferService):
     ) -> Path:
         path = Path(path if path else self._config_model.flag_dir / f"manifest_{manifest_config.name}.yaml").resolve()
         if "manifest" not in path.name:
-            raise ValueError("The file name must contain the string 'manifest' for the watchdog to work.")
+            logger.warning("Prefix " "manifest_" " not found in file name. Appending it.")
+            path = path.with_name(f"manifest_{path.name}")
+
         if make_dir and not path.parent.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
 

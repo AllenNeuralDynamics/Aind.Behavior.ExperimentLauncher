@@ -15,6 +15,7 @@ class TestWatchdogDataTransferService(unittest.TestCase):
     def setUp(self):
         os.environ["WATCHDOG_EXE"] = "watchdog.exe"
         os.environ["WATCHDOG_CONFIG"] = "watchdog_config.yml"
+        self.source = "source_path"
         self.destination = "destination_path"
         self.aind_data_mapper = MagicMock(spec=AindDataSchemaSessionDataMapper)
         self.schedule_time = time(hour=20)
@@ -29,6 +30,7 @@ class TestWatchdogDataTransferService(unittest.TestCase):
         self.validate = False
 
         self.service = WatchdogDataTransferService(
+            self.source,
             destination=self.destination,
             aind_data_mapper=self.aind_data_mapper,
             schedule_time=self.schedule_time,
