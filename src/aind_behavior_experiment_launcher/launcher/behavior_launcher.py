@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import glob
 import logging
 import os
@@ -181,6 +182,9 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
         self.session_schema.experiment = self.task_logic_schema.name
         self.session_schema.experiment_version = self.task_logic_schema.version
 
+        if self.services_factory_manager.data_transfer is not None:
+            if not self.services_factory_manager.data_transfer.validate():
+                raise ValueError("Data transfer service failed validation.")
         if self.services_factory_manager.bonsai_app.layout is None:
             self.services_factory_manager.bonsai_app.layout = (
                 self.services_factory_manager.bonsai_app.prompt_visualizer_layout_input(self.config_library_dir)
@@ -338,21 +342,32 @@ def _aind_data_mapper_factory(launcher: BehaviorLauncher) -> AindDataSchemaSessi
 
 
 def watchdog_data_transfer_factory(
-    watchdog: WatchdogDataTransferService,
+    *,
+    destination: os.PathLike,
+    schedule_time: Optional[datetime.time] = datetime.time(hour=20),
+    project_name: Optional[str] = None,
+    **watchdog_kwargs,
 ) -> Callable[[BehaviorLauncher], WatchdogDataTransferService]:
-    return partial(_watchdog_data_transfer_factory, watchdog=watchdog)
+    return partial(
+        _watchdog_data_transfer_factory,
+        destination=destination,
+        schedule_time=schedule_time,
+        project_name=project_name,
+        **watchdog_kwargs,
+    )
 
 
-def _watchdog_data_transfer_factory(
-    launcher: BehaviorLauncher, watchdog: WatchdogDataTransferService
-) -> WatchdogDataTransferService:
+def _watchdog_data_transfer_factory(launcher: BehaviorLauncher, **watchdog_kwargs) -> WatchdogDataTransferService:
     if launcher.services_factory_manager.data_mapper is None:
         raise ValueError("Data mapper service is not set. Cannot create watchdog.")
     if not isinstance(launcher.services_factory_manager.data_mapper, AindDataSchemaSessionDataMapper):
         raise ValueError(
             "Data mapper service is not of the correct type (AindDataSchemaSessionDataMapper). Cannot create watchdog."
         )
-    watchdog.aind_data_mapper = launcher.services_factory_manager.data_mapper
+    watchdog = WatchdogDataTransferService(
+        source=launcher.session_directory,
+        aind_data_mapper=launcher.services_factory_manager.data_mapper,
+        **watchdog_kwargs)
     return watchdog
 
 
