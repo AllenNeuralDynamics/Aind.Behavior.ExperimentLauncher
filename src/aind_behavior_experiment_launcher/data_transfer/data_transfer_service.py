@@ -17,3 +17,7 @@ class DataTransferService(IService, abc.ABC):
     @abc.abstractmethod
     def transfer(self) -> None:
         pass
+
+    @abc.abstractmethod
+    def validate(self) -> bool:
+        pass
