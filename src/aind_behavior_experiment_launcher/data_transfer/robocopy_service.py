@@ -81,7 +81,7 @@ class RobocopyService(DataTransferService):
                 raise ValueError("Destination should be provided when source is a single path.")
             return {source: Path(destination)}
 
-    def validate(self, *args, **kwargs):
+    def validate(self):
         if not shutil.which("robocopy"):
             logger.error("Robocopy command is not available on this system.")
             return False
