@@ -42,7 +42,7 @@ class WatchdogDataTransferService(DataTransferService):
         self,
         source: PathLike,
         destination: PathLike,
-        aind_data_mapper: Optional[AindDataSchemaSessionDataMapper] = None,
+        aind_session_data_mapper: Optional[AindDataSchemaSessionDataMapper] = None,
         schedule_time: Optional[datetime.time] = datetime.time(hour=20),
         project_name: Optional[str] = None,
         platform: Platform = getattr(Platform, "BEHAVIOR"),
@@ -65,27 +65,32 @@ class WatchdogDataTransferService(DataTransferService):
         self.mount = mount
         self.force_cloud_sync = force_cloud_sync
         self.transfer_endpoint = transfer_endpoint
-        self._aind_data_mapper = aind_data_mapper
+        self._aind_session_data_mapper = aind_session_data_mapper
 
         if self.DEFAULT_EXE is None or self.DEFAULT_CONFIG is None:
             raise ValueError("WATCHDOG_EXE and WATCHDOG_CONFIG environment variables must be defined.")
 
         self.executable_path = Path(self.DEFAULT_EXE)
         self.config_path = Path(self.DEFAULT_CONFIG)
-        self._config_model: WatchConfig = None
+
+        self._watch_config: Optional[WatchConfig] = None
+        self._manifest_config: Optional[ManifestConfig] = None
+
         self.validate_project_name = validate
         if validate:
             self.validate(create_config=True)
 
     @property
-    def aind_data_mapper(self) -> AindDataSchemaSessionDataMapper:
-        if self._aind_data_mapper is None:
+    def aind_session_data_mapper(self) -> AindDataSchemaSessionDataMapper:
+        if self._aind_session_data_mapper is None:
             raise ValueError("Data mapper is not set.")
-        return self._aind_data_mapper
+        return self._aind_session_data_mapper
 
-    @aind_data_mapper.setter
-    def aind_data_mapper(self, value: AindDataSchemaSessionDataMapper) -> None:
-        self._aind_data_mapper = value
+    @aind_session_data_mapper.setter
+    def aind_session_data_mapper(self, value: AindDataSchemaSessionDataMapper) -> None:
+        if not isinstance(value, AindDataSchemaSessionDataMapper):
+            raise ValueError("Data mapper must be an instance of AindDataSchemaSessionDataMapper.")
+        self._aind_session_data_mapper = value
 
     def transfer(self) -> None:
         try:
@@ -103,22 +108,24 @@ class WatchdogDataTransferService(DataTransferService):
 
             logger.info("Creating watchdog manifest config.")
 
-            config = self.manifest_config_factory()
+            if not self.aind_session_data_mapper.is_mapped():
+                raise ValueError("Data mapper has not been mapped yet.")
 
-            _manifest_path = self.dump_manifest_config(config, path=Path(self._config_model.flag_dir) / config.name)
+            self._manifest_config = self.create_manifest_config_from_ads_session(
+                ads_session=self.aind_session_data_mapper.mapped,
+                session_name=self.aind_session_data_mapper.session_name,
+            )
+
+            if self._watch_config is None:
+                raise ValueError("Watchdog config is not set.")
+
+            _manifest_path = self.dump_manifest_config(
+                path=Path(self._watch_config.flag_dir) / self._manifest_config.name
+            )
             logger.info("Watchdog manifest config created successfully at %s.", _manifest_path)
 
         except (pydantic.ValidationError, ValueError, IOError) as e:
             logger.error("Failed to create watchdog manifest config. %s", e)
-
-    def manifest_config_factory(self) -> ManifestConfig:
-        if not self.aind_data_mapper.is_mapped():
-            raise ValueError("Data mapper has not been mapped yet.")
-        ads_session = self.aind_data_mapper.mapped
-        return self.create_manifest_config_from_ads_session(
-            ads_session=ads_session,
-            session_name=self.aind_data_mapper.session_model.session_name,
-        )
 
     def validate(self, create_config: bool = True) -> bool:
         logger.info("Attempting to validate Watchdog service.")
@@ -128,12 +135,12 @@ class WatchdogDataTransferService(DataTransferService):
             if not create_config:
                 raise FileNotFoundError(f"Config file not found at {self.config_path}")
             else:
-                self._config_model = self.create_watchdog_config(
+                self._watch_config = self.create_watch_config(
                     self.config_path.parent / "Manifests", self.config_path.parent / "Completed"
                 )
-                self._write_yaml(self._config_model, self.config_path)
+                self._write_yaml(self._watch_config, self.config_path)
         else:
-            self._config_model = WatchConfig.model_validate(self._read_yaml(self.config_path))
+            self._watch_config = WatchConfig.model_validate(self._read_yaml(self.config_path))
 
         is_running = True
         if not self.is_running():
@@ -154,7 +161,7 @@ class WatchdogDataTransferService(DataTransferService):
         return is_running
 
     @staticmethod
-    def create_watchdog_config(
+    def create_watch_config(
         watched_directory: os.PathLike,
         manifest_complete_directory: os.PathLike,
         webhook_url: Optional[str] = None,
@@ -198,7 +205,7 @@ class WatchdogDataTransferService(DataTransferService):
             if self.project_name not in project_names:
                 raise ValueError(f"Project name {self.project_name} not found in {project_names}")
 
-        ads_schemas = [source / "session.json"] if ads_schemas is None else ads_schemas
+        ads_schemas = self._find_ads_schemas(source) if ads_schemas is None else ads_schemas
 
         return ManifestConfig(
             name=session_name,
@@ -221,6 +228,28 @@ class WatchdogDataTransferService(DataTransferService):
             force_cloud_sync=self.force_cloud_sync,
             transfer_endpoint=self.transfer_endpoint,
         )
+
+    @staticmethod
+    def _find_ads_schemas(source: PathLike) -> List[PathLike]:
+        # TODO as of version aind-data-schema 1.1.1 this list does not seem to exist...
+        # from https://github.com/AllenNeuralDynamics/aind-data-schema/blob/7b2a2a4bf8ed554c56dd33d17cd2f7a0addc1e22/src/aind_data_schema/core/metadata.py#L33
+        CORE_FILES = [
+            "subject",
+            "data_description",
+            "procedures",
+            "session",
+            "rig",
+            "processing",
+            "acquisition",
+            "instrument",
+            "quality_control",
+        ]
+        json_files = []
+        for core_file in CORE_FILES:
+            json_file = Path(source) / f"{core_file}.json"
+            if json_file.exists():
+                json_files.append(json_file)
+        return [path for path in json_files]
 
     @staticmethod
     def _get_project_names(
@@ -249,10 +278,14 @@ class WatchdogDataTransferService(DataTransferService):
 
         return subprocess.Popen(cmd_factory, start_new_session=True, shell=True)
 
-    def dump_manifest_config(
-        self, manifest_config: ManifestConfig, path: Optional[os.PathLike] = None, make_dir: bool = True
-    ) -> Path:
-        path = Path(path if path else self._config_model.flag_dir / f"manifest_{manifest_config.name}.yaml").resolve()
+    def dump_manifest_config(self, path: Optional[os.PathLike] = None, make_dir: bool = True) -> Path:
+        manifest_config = self._manifest_config
+        watch_config = self._watch_config
+
+        if manifest_config is None or watch_config is None:
+            raise ValueError("ManifestConfig or WatchConfig config is not set.")
+
+        path = Path(path if path else watch_config.flag_dir / f"manifest_{manifest_config.name}.yaml").resolve()
         if "manifest" not in path.name:
             logger.warning("Prefix " "manifest_" " not found in file name. Appending it.")
             path = path.with_name(f"manifest_{path.name}")
