@@ -29,10 +29,6 @@ logger = logging.getLogger(__name__)
 class AindDataSchemaDataMapper(data_mapper_service.DataMapperService[TAdsObject], abc.ABC, Generic[TAdsObject]):
     @property
     @abc.abstractmethod
-    def session_directory(self) -> Optional[Path]: ...
-
-    @property
-    @abc.abstractmethod
     def session_name(self) -> str: ...
 
 
