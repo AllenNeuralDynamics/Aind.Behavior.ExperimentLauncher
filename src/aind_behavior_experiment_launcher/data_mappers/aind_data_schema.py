@@ -12,8 +12,7 @@ except ImportError as _e:
 
 import abc
 import logging
-from pathlib import Path
-from typing import Generic, Optional, TypeVar, Union
+from typing import Generic, TypeVar, Union
 
 import aind_data_schema.components.devices
 import aind_data_schema.core.rig
