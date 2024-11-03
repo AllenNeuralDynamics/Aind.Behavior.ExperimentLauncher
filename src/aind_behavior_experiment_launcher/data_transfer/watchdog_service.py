@@ -50,6 +50,7 @@ class WatchdogDataTransferService(DataTransferService):
         force_cloud_sync: bool = True,
         transfer_endpoint: str = "http://aind-data-transfer-service/api/v1/submit_jobs",
         validate: bool = True,
+        session_name: Optional[str] = None,
     ) -> None:
         self.source = source
         self.destination = destination
@@ -63,6 +64,7 @@ class WatchdogDataTransferService(DataTransferService):
         self.force_cloud_sync = force_cloud_sync
         self.transfer_endpoint = transfer_endpoint
         self._aind_session_data_mapper = aind_session_data_mapper
+        self._session_name = session_name
 
         _default_exe = os.environ.get("WATCHDOG_EXE", None)
         _default_config = os.environ.get("WATCHDOG_CONFIG", None)
@@ -113,7 +115,7 @@ class WatchdogDataTransferService(DataTransferService):
 
             self._manifest_config = self.create_manifest_config_from_ads_session(
                 ads_session=self.aind_session_data_mapper.mapped,
-                session_name=self.aind_session_data_mapper.session_name,
+                session_name=self._session_name,
             )
 
             if self._watch_config is None:
@@ -199,7 +201,7 @@ class WatchdogDataTransferService(DataTransferService):
         source = Path(self.source).resolve()
 
         if session_name is None:
-            session_name = (ads_session.stimulus_epochs[0]).stimulus_name
+            session_name = self._session_name
 
         if self.validate_project_name:
             project_names = self._get_project_names()

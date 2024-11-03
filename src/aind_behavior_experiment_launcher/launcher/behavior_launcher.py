@@ -343,9 +343,11 @@ def _watchdog_data_transfer_factory(launcher: BehaviorLauncher, **watchdog_kwarg
         raise ValueError(
             "Data mapper service is not of the correct type (AindDataSchemaSessionDataMapper). Cannot create watchdog."
         )
+
     watchdog = WatchdogDataTransferService(
         source=launcher.session_directory,
         aind_session_data_mapper=launcher.services_factory_manager.data_mapper,
+        session_name=launcher.session_schema.session_name,
         **watchdog_kwargs,
     )
     return watchdog
