@@ -69,7 +69,8 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
             experiment_version="",  # Will be set later
         )
 
-    def _get_available_batches(self, directory: os.PathLike) -> List[str]:
+    @staticmethod
+    def _get_available_batches(directory: os.PathLike) -> List[str]:
         available_batches = glob.glob(os.path.join(directory, "*.json"))
         available_batches = [batch for batch in available_batches if os.path.isfile(batch)]
         if len(available_batches) == 0:
