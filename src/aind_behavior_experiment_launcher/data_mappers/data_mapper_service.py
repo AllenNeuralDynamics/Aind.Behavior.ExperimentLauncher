@@ -30,9 +30,18 @@ TMapTo = TypeVar("TMapTo", bound=Any)
 
 
 class DataMapperService(IService, abc.ABC, Generic[TMapTo]):
+    _mapped: Optional[TMapTo]
+
     @abc.abstractmethod
     def map(self) -> TMapTo:
         pass
+
+    @abc.abstractmethod
+    def is_mapped(self) -> bool: ...
+
+    @property
+    @abc.abstractmethod
+    def mapped(self) -> TMapTo: ...
 
 
 def get_cameras(
