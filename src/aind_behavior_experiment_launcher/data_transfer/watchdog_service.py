@@ -35,9 +35,6 @@ logger = logging.getLogger(__name__)
 
 
 class WatchdogDataTransferService(DataTransferService):
-    DEFAULT_EXE: Optional[str] = os.getenv("WATCHDOG_EXE", None)
-    DEFAULT_CONFIG: Optional[str] = os.getenv("WATCHDOG_CONFIG", None)
-
     def __init__(
         self,
         source: PathLike,
@@ -67,11 +64,14 @@ class WatchdogDataTransferService(DataTransferService):
         self.transfer_endpoint = transfer_endpoint
         self._aind_session_data_mapper = aind_session_data_mapper
 
-        if self.DEFAULT_EXE is None or self.DEFAULT_CONFIG is None:
+        _default_exe = os.environ.get("WATCHDOG_EXE", None)
+        _default_config = os.environ.get("WATCHDOG_CONFIG", None)
+
+        if _default_exe is None or _default_config is None:
             raise ValueError("WATCHDOG_EXE and WATCHDOG_CONFIG environment variables must be defined.")
 
-        self.executable_path = Path(self.DEFAULT_EXE)
-        self.config_path = Path(self.DEFAULT_CONFIG)
+        self.executable_path = Path(_default_exe)
+        self.config_path = Path(_default_config)
 
         self._watch_config: Optional[WatchConfig] = None
         self._manifest_config: Optional[ManifestConfig] = None
@@ -285,7 +285,7 @@ class WatchdogDataTransferService(DataTransferService):
         if manifest_config is None or watch_config is None:
             raise ValueError("ManifestConfig or WatchConfig config is not set.")
 
-        path = Path(path if path else watch_config.flag_dir / f"manifest_{manifest_config.name}.yaml").resolve()
+        path = (Path(path) if path else Path(watch_config.flag_dir) / f"manifest_{manifest_config.name}.yaml").resolve()
         if "manifest" not in path.name:
             logger.warning("Prefix " "manifest_" " not found in file name. Appending it.")
             path = path.with_name(f"manifest_{path.name}")
