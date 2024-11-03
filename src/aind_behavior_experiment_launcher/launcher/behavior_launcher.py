@@ -11,7 +11,7 @@ from typing import Any, Callable, Dict, Generic, List, Optional, Self, Type, Typ
 
 import pydantic
 from aind_behavior_services.db_utils import SubjectDataBase, SubjectEntry
-from aind_behavior_services.utils import model_from_json_file, utcnow
+from aind_behavior_services.utils import model_from_json_file
 from typing_extensions import override
 
 from aind_behavior_experiment_launcher import logging_helper
@@ -324,23 +324,6 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         return value
 
 
-def aind_data_mapper_factory() -> Callable[[BehaviorLauncher], AindDataSchemaSessionDataMapper]:
-    return _aind_data_mapper_factory
-
-
-def _aind_data_mapper_factory(launcher: BehaviorLauncher) -> AindDataSchemaSessionDataMapper:
-    now = utcnow()
-    return AindDataSchemaSessionDataMapper(
-        session_model=launcher.session_schema,
-        rig_model=launcher.rig_schema,
-        task_logic_model=launcher.task_logic_schema,
-        repository=launcher.repository,
-        script_path=launcher.services_factory_manager.bonsai_app.workflow,
-        session_directory=launcher.session_directory,
-        session_end_time=now,
-    )
-
-
 def watchdog_data_transfer_factory(
     *,
     destination: os.PathLike,
@@ -366,8 +349,9 @@ def _watchdog_data_transfer_factory(launcher: BehaviorLauncher, **watchdog_kwarg
         )
     watchdog = WatchdogDataTransferService(
         source=launcher.session_directory,
-        aind_data_mapper=launcher.services_factory_manager.data_mapper,
-        **watchdog_kwargs)
+        aind_session_data_mapper=launcher.services_factory_manager.data_mapper,
+        **watchdog_kwargs,
+    )
     return watchdog
 
 
