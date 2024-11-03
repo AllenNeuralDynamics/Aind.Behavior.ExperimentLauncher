@@ -32,7 +32,7 @@ class TestWatchdogDataTransferService(unittest.TestCase):
         self.service = WatchdogDataTransferService(
             self.source,
             destination=self.destination,
-            aind_data_mapper=self.aind_data_mapper,
+            aind_session_data_mapper=self.aind_data_mapper,
             schedule_time=self.schedule_time,
             project_name=self.project_name,
             platform=self.platform,
