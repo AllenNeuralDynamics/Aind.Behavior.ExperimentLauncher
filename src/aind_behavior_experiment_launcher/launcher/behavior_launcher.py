@@ -242,7 +242,6 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
                 if not self.services_factory_manager.data_transfer.validate():
                     raise ValueError("Data transfer service failed validation.")
                 self.services_factory_manager.data_transfer.transfer()
-                logger.info("Data transfer skipped by user request.")
             except Exception as e:
                 logger.error("Data transfer service has failed: %s", e)
 
