@@ -1,7 +1,10 @@
+import contextlib
 import glob
 import importlib.util
+import io
 import logging
 import os
+import sys
 from pathlib import Path
 from types import ModuleType
 
@@ -29,3 +32,13 @@ def build_example(script_path: str) -> ModuleType:
 def build_examples(examples_dir: Path = EXAMPLES_DIR):
     for script_path in glob.glob(str(examples_dir / "*.py")):
         _ = build_example(script_path)
+
+
+@contextlib.contextmanager
+def suppress_stdout():
+    original_stdout = sys.stdout
+    sys.stdout = io.StringIO()
+    try:
+        yield
+    finally:
+        sys.stdout = original_stdout

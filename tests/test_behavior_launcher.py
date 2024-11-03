@@ -5,34 +5,38 @@ from unittest.mock import MagicMock, create_autospec, patch
 from aind_behavior_experiment_launcher.launcher.behavior_launcher import (
     BehaviorLauncher,
     BehaviorServicesFactoryManager,
+    BonsaiApp,
+    DataMapperService,
+    DataTransferService,
+    ResourceMonitor,
 )
+from tests import suppress_stdout
 
 
 class TestBehaviorLauncher(unittest.TestCase):
     def setUp(self):
-        self.launcher = create_autospec(BehaviorLauncher)
-        self.launcher.services_factory_manager = create_autospec(BehaviorServicesFactoryManager)
-        self.launcher.services_factory_manager.resource_monitor = MagicMock()
-        self.launcher.services_factory_manager.bonsai_app = MagicMock()
-        self.launcher.services_factory_manager.data_mapper = MagicMock()
-        self.launcher.services_factory_manager.data_transfer = MagicMock()
-        self.launcher.session_schema_model = MagicMock()
-        self.launcher.rig_schema_model = MagicMock()
-        self.launcher.task_logic_schema_model = MagicMock()
-        self.launcher._ui_helper = MagicMock()
-        self.launcher.config_library_dir = "/path/to/config"
-        self.launcher._subject_dir = Path("/path/to/subject")
-        self.launcher._rig_dir = Path("/path/to/rig")
-        self.launcher._task_logic_dir = Path("/path/to/task_logic")
-        self.launcher.data_dir = Path("/path/to/data")
-        self.launcher.temp_dir = Path("/path/to/temp")
-        self.launcher.repository = MagicMock()
-        self.launcher.group_by_subject_log = False
-        self.launcher._debug_mode = False
-        self.launcher.allow_dirty = False
-        self.launcher.skip_hardware_validation = False
-        self.launcher._subject_db_data = None
-        self.launcher._subject_info = None
+        self.services_factory_manager = create_autospec(BehaviorServicesFactoryManager)
+        self.services_factory_manager.resource_monitor = MagicMock()
+        self.services_factory_manager.bonsai_app = MagicMock()
+        self.services_factory_manager.data_mapper = MagicMock()
+        self.services_factory_manager.data_transfer = MagicMock()
+
+        self.launcher = BehaviorLauncher(
+            rig_schema_model=MagicMock(),
+            task_logic_schema_model=MagicMock(),
+            session_schema_model=MagicMock(),
+            data_dir="/path/to/data",
+            config_library_dir="/path/to/config",
+            temp_dir="/path/to/temp",
+            repository_dir=None,
+            allow_dirty=False,
+            skip_hardware_validation=False,
+            debug_mode=False,
+            group_by_subject_log=False,
+            services=self.services_factory_manager,
+            validate_init=False,
+            attached_logger=None,
+        )
 
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.model_from_json_file")
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.glob.glob")
@@ -44,11 +48,104 @@ class TestBehaviorLauncher(unittest.TestCase):
 
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.model_from_json_file")
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.glob.glob")
-    def test_prompt_task_logic_input(self, mock_glob, mock_model_from_json_file):
-        mock_glob.return_value = ["/path/to/task1.json"]
-        mock_model_from_json_file.return_value = MagicMock()
-        task_logic = self.launcher._prompt_task_logic_input("/path/to/directory")
-        self.assertIsNotNone(task_logic)
+    @patch("os.path.isfile", return_value=True)
+    @patch("builtins.input", return_value="1")
+    def test_prompt_task_logic_input(self, mock_input, mock_is_file, mock_glob, mock_model_from_json_file):
+        with suppress_stdout():
+            mock_glob.return_value = ["/path/to/task1.json"]
+            mock_model_from_json_file.return_value = MagicMock()
+            task_logic = self.launcher._prompt_task_logic_input("/path/to/directory")
+            self.assertIsNotNone(task_logic)
+
+    @patch("os.path.isfile", return_value=True)
+    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.glob.glob")
+    def test_get_available_batches(self, mock_glob, mock_is_file):
+        mock_glob.return_value = ["/path/to/batch1.json", "/path/to/batch2.json"]
+        available_batches = self.launcher._get_available_batches("/path/to/directory")
+        self.assertEqual(len(available_batches), 2)
+
+    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.glob.glob")
+    def test_get_available_batches_no_files(self, mock_glob):
+        mock_glob.return_value = []
+        with self.assertRaises(FileNotFoundError):
+            self.launcher._get_available_batches("/path/to/directory")
+
+    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
+    def test_save_temp_model(self, mock_makedirs):
+        model = MagicMock()
+        model.__class__.__name__ = "TestModel"
+        model.model_dump_json.return_value = '{"key": "value"}'
+        path = self.launcher._save_temp_model(model, "/path/to/temp")
+        self.assertTrue(path.endswith("TestModel.json"))
+
+    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
+    def test_save_temp_model_default_directory(self, mock_makedirs):
+        model = MagicMock()
+        model.__class__.__name__ = "TestModel"
+        model.model_dump_json.return_value = '{"key": "value"}'
+        path = self.launcher._save_temp_model(model, None)
+        self.assertTrue(path.endswith("TestModel.json"))
+
+    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
+    def test_save_temp_model_creates_directory(self, mock_makedirs):
+        model = MagicMock()
+        model.__class__.__name__ = "TestModel"
+        model.model_dump_json.return_value = '{"key": "value"}'
+        self.launcher._save_temp_model(model, "/path/to/temp")
+        mock_makedirs.assert_called_once_with(Path("/path/to/temp"), exist_ok=True)
+
+
+class TestBehaviorServicesFactoryManager(unittest.TestCase):
+    def setUp(self):
+        self.launcher = create_autospec(BehaviorLauncher)
+        self.factory_manager = BehaviorServicesFactoryManager(self.launcher)
+
+    def test_attach_bonsai_app(self):
+        bonsai_app = BonsaiApp("test.bonsai")
+        self.factory_manager.attach_bonsai_app(bonsai_app)
+        self.assertEqual(self.factory_manager.bonsai_app, bonsai_app)
+
+    def test_attach_data_mapper(self):
+        class DataMapperServiceConcrete(DataMapperService):
+            def map(self):
+                return None
+
+            def is_mapped(self):
+                return False
+
+            def mapped(self):
+                return None
+
+        data_mapper = DataMapperServiceConcrete()
+        self.factory_manager.attach_data_mapper(data_mapper)
+        self.assertEqual(self.factory_manager.data_mapper, data_mapper)
+
+    def test_attach_resource_monitor(self):
+        resource_monitor = ResourceMonitor()
+        self.factory_manager.attach_resource_monitor(resource_monitor)
+        self.assertEqual(self.factory_manager.resource_monitor, resource_monitor)
+
+    def test_attach_data_transfer(self):
+        class DataTransferServiceConcrete(DataTransferService):
+            def transfer(self) -> None:
+                pass
+
+            def validate(self) -> bool:
+                return True
+
+        data_transfer = DataTransferServiceConcrete()
+        self.factory_manager.attach_data_transfer(data_transfer)
+        self.assertEqual(self.factory_manager.data_transfer, data_transfer)
+
+    def test_validate_service_type(self):
+        service = MagicMock()
+        validated_service = self.factory_manager._validate_service_type(service, MagicMock)
+        self.assertEqual(validated_service, service)
+
+    def test_validate_service_type_invalid(self):
+        service = MagicMock()
+        with self.assertRaises(ValueError):
+            self.factory_manager._validate_service_type(service, str)
 
 
 if __name__ == "__main__":
