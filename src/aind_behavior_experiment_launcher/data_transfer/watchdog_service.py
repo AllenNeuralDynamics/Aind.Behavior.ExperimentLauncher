@@ -77,8 +77,6 @@ class WatchdogDataTransferService(DataTransferService):
         self._manifest_config: Optional[ManifestConfig] = None
 
         self.validate_project_name = validate
-        if validate:
-            self.validate(create_config=True)
 
     @property
     def aind_session_data_mapper(self) -> AindDataSchemaSessionDataMapper:

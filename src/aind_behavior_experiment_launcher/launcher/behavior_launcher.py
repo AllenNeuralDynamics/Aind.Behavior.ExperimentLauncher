@@ -183,9 +183,6 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
         self.session_schema.experiment = self.task_logic_schema.name
         self.session_schema.experiment_version = self.task_logic_schema.version
 
-        if self.services_factory_manager.data_transfer is not None:
-            if not self.services_factory_manager.data_transfer.validate():
-                raise ValueError("Data transfer service failed validation.")
         if self.services_factory_manager.bonsai_app.layout is None:
             self.services_factory_manager.bonsai_app.layout = (
                 self.services_factory_manager.bonsai_app.prompt_visualizer_layout_input(self.config_library_dir)
@@ -242,11 +239,10 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
 
         if self.services_factory_manager.data_transfer is not None:
             try:
-                _is_transfer = self._ui_helper.prompt_yes_no_question("Would you like to transfer data?")
-                if _is_transfer:
-                    self.services_factory_manager.data_transfer.transfer()
-                else:
-                    logger.info("Data transfer skipped by user request.")
+                if not self.services_factory_manager.data_transfer.validate():
+                    raise ValueError("Data transfer service failed validation.")
+                self.services_factory_manager.data_transfer.transfer()
+                logger.info("Data transfer skipped by user request.")
             except Exception as e:
                 logger.error("Data transfer service has failed: %s", e)
 
