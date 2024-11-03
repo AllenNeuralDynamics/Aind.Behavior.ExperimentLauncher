@@ -98,9 +98,11 @@ class WatchdogDataTransferService(DataTransferService):
                     self.force_restart(kill_if_running=False)
                 except subprocess.CalledProcessError as e:
                     logger.error("Failed to start watchdog service. %s", e)
+                    raise RuntimeError("Failed to start watchdog service.")
                 else:
                     if not self.is_running():
                         logger.error("Failed to start watchdog service.")
+                        raise RuntimeError("Failed to start watchdog service.")
                     else:
                         logger.info("Watchdog service restarted successfully.")
 
@@ -124,6 +126,7 @@ class WatchdogDataTransferService(DataTransferService):
 
         except (pydantic.ValidationError, ValueError, IOError) as e:
             logger.error("Failed to create watchdog manifest config. %s", e)
+            raise e
 
     def validate(self, create_config: bool = True) -> bool:
         logger.info("Attempting to validate Watchdog service.")
@@ -155,7 +158,7 @@ class WatchdogDataTransferService(DataTransferService):
                 logger.warning("Watchdog project name is not valid.")
             except HTTPError as e:
                 logger.error("Failed to fetch project names from endpoint. %s", e)
-
+                raise e
         return is_running
 
     @staticmethod
