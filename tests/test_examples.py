@@ -1,4 +1,3 @@
-# pragma: no cover
 """testing examples"""
 
 import glob
@@ -7,7 +6,7 @@ import unittest
 from . import EXAMPLES_DIR, build_example
 
 
-class ExampleTests(unittest.TestCase):
+class ExampleTests(unittest.TestCase):  # pragma: no cover
     """tests for examples"""
 
     def test_examples(self):
