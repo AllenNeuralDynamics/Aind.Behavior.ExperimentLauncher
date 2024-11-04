@@ -41,10 +41,11 @@ class TestBehaviorLauncher(unittest.TestCase):
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.model_from_json_file")
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.glob.glob")
     def test_prompt_rig_input(self, mock_glob, mock_model_from_json_file):
-        mock_glob.return_value = ["/path/to/rig1.json"]
-        mock_model_from_json_file.return_value = MagicMock()
-        rig = self.launcher._prompt_rig_input("/path/to/directory")
-        self.assertIsNotNone(rig)
+        with suppress_stdout():
+            mock_glob.return_value = ["/path/to/rig1.json"]
+            mock_model_from_json_file.return_value = MagicMock()
+            rig = self.launcher._prompt_rig_input("/path/to/directory")
+            self.assertIsNotNone(rig)
 
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.model_from_json_file")
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.glob.glob")
