@@ -1,7 +1,7 @@
 import logging
 import shutil
 import subprocess
-from os import PathLike
+from os import PathLike, makedirs
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -21,7 +21,7 @@ class RobocopyService(DataTransferService):
         extra_args: Optional[str] = None,
         delete_src: bool = False,
         overwrite: bool = False,
-        force_dir: bool = True,
+        force_dir: bool = True
     ):
         self.source = source
         self.destination = destination
@@ -52,9 +52,9 @@ class RobocopyService(DataTransferService):
                 if self.overwrite:
                     command.append("/IS")
                 if self.force_dir:
-                    command.append("/CREATE")
+                    makedirs(dst, exist_ok=True)
                 cmd = " ".join(command)
-                logger.info("Running Robocopy command: %s", " ".join(command))
+                logger.info("Running Robocopy command: %s", cmd)
                 with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as process:
                     if process.stdout:
                         for line in process.stdout:
