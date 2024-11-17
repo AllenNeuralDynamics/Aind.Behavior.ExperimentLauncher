@@ -1,8 +1,10 @@
 # aind-behavior-experiment-laucher
 
+![CI](https://github.com/AllenNeuralDynamics/Aind.Behavior.ExperimentLauncher/actions/workflows/ci.yml/badge.svg)
 [![PyPI - Version](https://img.shields.io/pypi/v/aind-behavior-experiment-launcher)](https://pypi.org/project/aind-behavior-experiment-launcher/)
 [![License](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE)
-[![CodeStyle](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 
 Source for for a minimal framework that can be used to build experimental interfaces
 
