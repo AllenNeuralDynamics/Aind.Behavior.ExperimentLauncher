@@ -15,9 +15,9 @@ class TestBaseLauncher(unittest.TestCase):
         self.rig_schema_model = create_autospec(AindBehaviorRigModel)
         self.session_schema_model = create_autospec(AindBehaviorSessionModel)
         self.task_logic_schema_model = create_autospec(AindBehaviorTaskLogicModel)
-        self.data_dir = Path("/fake/data/dir")
-        self.config_library_dir = Path("/fake/config/dir")
-        self.temp_dir = Path("/fake/temp/dir")
+        self.data_dir = Path("/tmp/fake/data/dir")
+        self.config_library_dir = Path("/tmp/fake/config/dir")
+        self.temp_dir = Path("/tmp/fake/temp/dir")
         self.launcher = BaseLauncher(
             rig_schema_model=self.rig_schema_model,
             session_schema_model=self.session_schema_model,
@@ -63,7 +63,7 @@ class TestBaseLauncher(unittest.TestCase):
     @patch("os.makedirs")
     @patch("os.path.exists", return_value=False)
     def test_create_directory(self, mock_path_exists, mock_makedirs):
-        directory = Path("/fake/directory")
+        directory = Path("/tmp/fake/directory")
         BaseLauncher._create_directory(directory)
         mock_makedirs.assert_called_once_with(directory)
 
@@ -77,7 +77,7 @@ class TestBaseLauncher(unittest.TestCase):
     def test_cli_wrapper(self, mock_parse_known_args):
         mock_parse_known_args.return_value = (
             argparse.Namespace(
-                data_dir="/fake/data/dir",
+                data_dir="/tmp/fake/data/dir",
                 repository_dir=None,
                 config_library_dir=None,
                 create_directories=False,
@@ -88,7 +88,7 @@ class TestBaseLauncher(unittest.TestCase):
             [],
         )
         args = BaseLauncher._cli_wrapper()
-        self.assertEqual(args.data_dir, "/fake/data/dir")
+        self.assertEqual(args.data_dir, "/tmp/fake/data/dir")
         self.assertFalse(args.create_directories)
         self.assertFalse(args.debug)
         self.assertFalse(args.allow_dirty)
@@ -98,7 +98,7 @@ class TestBaseLauncher(unittest.TestCase):
     def test_cli_args_integration(self, mock_parse_known_args):
         mock_parse_known_args.return_value = (
             argparse.Namespace(
-                data_dir="/fake/data/dir",
+                data_dir="/tmp/fake/data/dir",
                 repository_dir=None,
                 config_library_dir=None,
                 create_directories=True,
