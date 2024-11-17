@@ -7,11 +7,14 @@ jobs:
   tag:
     runs-on: ubuntu-latest
     steps:
-    - name: Set up Python
-      uses: actions/setup-python@v4
+    - uses: actions/checkout@v4
+    - name: Pull latest changes
+      run: git pull origin ${{ env.DEFAULT_BRANCH }}
+    - uses: astral-sh/setup-uv@v3
       with:
-        python-version: 3.11
-    - uses: actions/checkout@v3
+        enable-cache: true
+    - name: Set up Python
+      run: uv python install
     - name: Extract version from __init__.py and package name from pyproject.toml
       id: get_version_and_name
       run: |
@@ -46,19 +49,18 @@ jobs:
     if: always()  # Enable publishing
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Pull latest changes
         run: git pull origin ${{ env.DEFAULT_BRANCH }}
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
       - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.11
-      - name: Install dependencies
-        run: |
-          pip install --upgrade setuptools wheel twine build
-          python -m build
-          twine check dist/*
-      - name: Publish on PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.AIND_PYPI_TOKEN }}
+        run: uv python install
+
+      - name: Build
+        run: uv build
+
+      - name: Publish
+        run: uv publish --token ${{ secrets.AIND_PYPI_TOKEN }}
