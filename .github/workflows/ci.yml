@@ -28,9 +28,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev
       - name: Run ruff format
-        run: uv run ruff format . --config .\pyproject.toml
+        run: uv run ruff format .
       - name: Run ruff check
-        run: uv run ruff check . --config .\pyproject.toml
+        run: uv run ruff check .
       - name: Run codespell
         run : uv run codespell .
 
