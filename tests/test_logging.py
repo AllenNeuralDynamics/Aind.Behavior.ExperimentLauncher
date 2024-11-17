@@ -16,7 +16,7 @@ class TestLoggingHelper(unittest.TestCase):
         mock_file_handler_instance = MagicMock()
         mock_file_handler.return_value = mock_file_handler_instance
 
-        output_path = Path("/fake/path/to/logfile.log")
+        output_path = Path("/tmp/fake/path/to/logfile.log")
         logger = add_file_logger(self.logger, output_path)
 
         self.assertEqual(len(logger.handlers), 1)
