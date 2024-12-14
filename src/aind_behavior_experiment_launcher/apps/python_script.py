@@ -22,7 +22,7 @@ if not _HAS_UV:
 
 
 @dataclass
-class UvEnvironmentManager:
+class _UvEnvironmentManager:
     project_directory: os.PathLike = Path(".")
     optional_toml_dependencies: list[str] = field(default_factory=list)
 
@@ -77,7 +77,7 @@ class PythonScriptApp(App):
         self._optional_toml_dependencies = optional_toml_dependencies if optional_toml_dependencies else []
         self._append_python_exe = append_python_exe
 
-        self._environment_manager = UvEnvironmentManager(
+        self._environment_manager = _UvEnvironmentManager(
             project_directory=self._project_directory, optional_toml_dependencies=self._optional_toml_dependencies
         )
         self._result: Optional[subprocess.CompletedProcess] = None

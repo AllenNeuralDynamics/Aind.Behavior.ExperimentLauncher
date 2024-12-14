@@ -3,12 +3,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from aind_behavior_experiment_launcher.apps.python_script import PythonScriptApp, UvEnvironmentManager
+from aind_behavior_experiment_launcher.apps.python_script import PythonScriptApp, _UvEnvironmentManager
 
 
 class TestUvEnvironmentManager(unittest.TestCase):
     def setUp(self):
-        self.manager = UvEnvironmentManager(
+        self.manager = _UvEnvironmentManager(
             project_directory=Path("/test/project").as_posix(), optional_toml_dependencies=["dep1", "dep2"]
         )
 
