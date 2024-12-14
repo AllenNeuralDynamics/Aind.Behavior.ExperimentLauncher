@@ -380,6 +380,8 @@ class _CliArgs:
     def _parse_extra_args(args: list[str]) -> dict[str, str]:
         print(args)
         extra_kwargs: dict[str, str] = {}
+        if len(args) == 0:
+            return extra_kwargs
         _ = args.pop(0)  # remove the "--" separator
         for arg in args:
             if arg.startswith("--"):
@@ -388,5 +390,5 @@ class _CliArgs:
                     key, value = key_value
                     extra_kwargs[key] = value
                 else:
-                    logger.error(f"Skipping invalid argument format: {arg}")
+                    logger.error("Skipping invalid argument format: %s", arg)
         return extra_kwargs
