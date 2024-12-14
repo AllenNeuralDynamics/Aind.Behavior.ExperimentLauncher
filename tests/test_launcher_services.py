@@ -1,6 +1,6 @@
 import unittest
 
-from aind_behavior_experiment_launcher.apps import app_service
+from aind_behavior_experiment_launcher.apps import bonsai
 from aind_behavior_experiment_launcher.resource_monitor import resource_monitor_service
 
 
@@ -38,7 +38,7 @@ class LauncherServicesTests(unittest.TestCase):
         self.assertFalse(constraint(), False)
 
     def test_app_service(self):
-        _ = app_service.BonsaiApp("test.bonsai")
+        _ = bonsai.BonsaiApp("test.bonsai")
 
 
 if __name__ == "__main__":
