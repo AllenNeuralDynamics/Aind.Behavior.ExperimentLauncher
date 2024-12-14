@@ -49,7 +49,6 @@ class UvEnvironmentManager:
     def run_command(self, command: str, run_kwargs: Optional[dict[str, any]] = None) -> subprocess.CompletedProcess:
         logger.info("Running command %s in uv venv at %s...", command, self.project_directory)
         run_kwargs = run_kwargs or {}
-        print(f"uv run {command} {self._add_uv_optional_toml_dependencies()}")
         proc = subprocess.run(
             f"uv run {command} {self._add_uv_optional_toml_dependencies()}",
             shell=True,
@@ -59,7 +58,6 @@ class UvEnvironmentManager:
             cwd=self.project_directory,
             **run_kwargs,
         )
-        print(proc)
         return proc
 
 
