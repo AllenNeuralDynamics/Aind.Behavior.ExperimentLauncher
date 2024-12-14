@@ -1,15 +1,14 @@
 from __future__ import annotations
-import subprocess
-from aind_behavior_experiment_launcher.apps import App
-from typing import Literal, Optional
+
 import logging
-from dataclasses import dataclass, field
-import abc
-from pathlib import Path
 import os
 import shutil
-from typing import Self
+import subprocess
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Optional, Self
 
+from aind_behavior_experiment_launcher.apps import App
 
 logger = logging.getLogger(__name__)
 
@@ -17,11 +16,13 @@ _HAS_UV = shutil.which("uv") is not None
 
 if not _HAS_UV:
     logging.error("uv executable not detected.")
-    raise RuntimeError("uv is not installed in this computer. Please install uv. see https://docs.astral.sh/uv/getting-started/installation/")
+    raise RuntimeError(
+        "uv is not installed in this computer. Please install uv. see https://docs.astral.sh/uv/getting-started/installation/"
+    )
 
 
 @dataclass
-class UvEnvironmentManager():
+class UvEnvironmentManager:
     project_directory: os.PathLike = Path(".")
     optional_toml_dependencies: list[str] = field(default_factory=list)
 
@@ -41,7 +42,7 @@ class UvEnvironmentManager():
             text=True,
             check=True,
             cwd=self.project_directory,
-            **run_kwargs
+            **run_kwargs,
         )
         return proc
 
@@ -56,26 +57,31 @@ class UvEnvironmentManager():
             text=True,
             check=True,
             cwd=self.project_directory,
-            **run_kwargs
+            **run_kwargs,
         )
         print(proc)
         return proc
 
 
 class PythonScriptApp(App):
-    def __init__(self, /,
-                 script: str,
-                 project_directory: os.PathLike = Path("."),
-                 optional_toml_dependencies: Optional[list[str]] = None,
-                 append_python_exe: bool = False,
-                 timeout: Optional[float] = None) -> None:
+    def __init__(
+        self,
+        /,
+        script: str,
+        project_directory: os.PathLike = Path("."),
+        optional_toml_dependencies: Optional[list[str]] = None,
+        append_python_exe: bool = False,
+        timeout: Optional[float] = None,
+    ) -> None:
         self._script = script
         self._project_directory = project_directory
         self._timeout = timeout
         self._optional_toml_dependencies = optional_toml_dependencies if optional_toml_dependencies else []
         self._append_python_exe = append_python_exe
 
-        self._environment_manager = UvEnvironmentManager(project_directory=self._project_directory, optional_toml_dependencies=self._optional_toml_dependencies)
+        self._environment_manager = UvEnvironmentManager(
+            project_directory=self._project_directory, optional_toml_dependencies=self._optional_toml_dependencies
+        )
         self._result: Optional[subprocess.CompletedProcess] = None
 
     @property
@@ -96,7 +102,9 @@ class PythonScriptApp(App):
     def run(self) -> subprocess.CompletedProcess:
         logger.info("Starting Python process...")
         if self._append_python_exe:
-            proc = self._environment_manager.run_command(f"python {self._script}", run_kwargs={"timeout": self._timeout})
+            proc = self._environment_manager.run_command(
+                f"python {self._script}", run_kwargs={"timeout": self._timeout}
+            )
         else:
             proc = self._environment_manager.run_command(f"{self._script}", run_kwargs={"timeout": self._timeout})
         logger.info("Python process completed.")
@@ -123,4 +131,3 @@ class PythonScriptApp(App):
 
     def prompt_input(self, *args, **kwargs) -> Self:
         raise NotImplementedError("Not implemented yet.")
-
