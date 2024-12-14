@@ -377,7 +377,9 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         self, rig_path_path: Optional[os.PathLike] = None, task_logic_path: Optional[os.PathLike] = None
     ) -> None:
         rig_path_path = self._cli_args.rig_path if self._cli_args.rig_path is not None else rig_path_path
-        task_logic_path = self._cli_args.task_logic_path if self._cli_args.task_logic_path is not None else task_logic_path
+        task_logic_path = (
+            self._cli_args.task_logic_path if self._cli_args.task_logic_path is not None else task_logic_path
+        )
         if rig_path_path is not None:
             logging.info("Loading rig schema from %s", self._cli_args.rig_path)
             self._rig_schema = model_from_json_file(rig_path_path, self.rig_schema_model)
