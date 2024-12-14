@@ -5,7 +5,7 @@ from unittest.mock import create_autospec, patch
 
 from aind_behavior_services import AindBehaviorRigModel, AindBehaviorSessionModel, AindBehaviorTaskLogicModel
 
-from aind_behavior_experiment_launcher.launcher import BaseLauncher
+from aind_behavior_experiment_launcher.launcher import BaseLauncher, _CliArgs
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
 
 
@@ -88,16 +88,15 @@ class TestBaseLauncher(unittest.TestCase):
             [],
         )
         args = BaseLauncher._cli_wrapper()
-        self.assertEqual(args.data_dir, "/tmp/fake/data/dir")
+        self.assertEqual(args.data_dir, Path("/tmp/fake/data/dir"))
         self.assertFalse(args.create_directories)
         self.assertFalse(args.debug)
         self.assertFalse(args.allow_dirty)
         self.assertFalse(args.skip_hardware_validation)
 
-    @patch("argparse.ArgumentParser.parse_known_args")
+    @patch("argparse.ArgumentParser.parse_args")
     def test_cli_args_integration(self, mock_parse_known_args):
-        mock_parse_known_args.return_value = (
-            argparse.Namespace(
+        mock_parse_known_args.return_value = argparse.Namespace(
                 data_dir="/tmp/fake/data/dir",
                 repository_dir=None,
                 config_library_dir=None,
@@ -105,8 +104,6 @@ class TestBaseLauncher(unittest.TestCase):
                 debug=True,
                 allow_dirty=True,
                 skip_hardware_validation=True,
-            ),
-            [],
         )
         launcher = BaseLauncher(
             rig_schema_model=self.rig_schema_model,
@@ -120,6 +117,33 @@ class TestBaseLauncher(unittest.TestCase):
         self.assertTrue(launcher._cli_args.debug)
         self.assertTrue(launcher._cli_args.allow_dirty)
         self.assertTrue(launcher._cli_args.skip_hardware_validation)
+
+
+class TestCliArgs(unittest.TestCase):
+
+    def test_parse_extra_args_valid(self):
+        args = ["--", "--key1=value1", "--key2=value2"]
+        expected_output = {"key1": "value1", "key2": "value2"}
+        self.assertEqual(_CliArgs._parse_extra_args(args), expected_output)
+
+    def test_parse_extra_args_invalid_format_no_equals(self):
+        args = ["--", "--key1=value1", "--invalid_arg a"]
+        result = _CliArgs._parse_extra_args(args)
+        self.assertEqual(result, {"key1": "value1"})
+
+    def test_parse_extra_args_invalid_format_is_a_flag(self):
+        args = ["--", "--key1=value1", "--invalid_flag"]
+        result = _CliArgs._parse_extra_args(args)
+        self.assertEqual(result, {"key1": "value1"})
+
+    def test_validate_extras_with_list(self):
+        extras = ["--", "--key1=value1", "--key2=value2"]
+        expected_output = {"key1": "value1", "key2": "value2"}
+        self.assertEqual(_CliArgs._validate_extras(extras), expected_output)
+
+    def test_validate_extras_with_dict(self):
+        extras = {"key1": "value1", "key2": "value2"}
+        self.assertEqual(_CliArgs._validate_extras(extras), extras)
 
 
 if __name__ == "__main__":
