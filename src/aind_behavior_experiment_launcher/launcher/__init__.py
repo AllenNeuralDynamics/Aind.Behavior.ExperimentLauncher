@@ -16,6 +16,7 @@ from aind_behavior_services import (
     AindBehaviorSessionModel,
     AindBehaviorTaskLogicModel,
 )
+from aind_behavior_services.utils import model_from_json_file
 
 from aind_behavior_experiment_launcher import logging_helper, ui_helper
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
@@ -37,6 +38,7 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
 
     def __init__(
         self,
+        *,
         rig_schema_model: Type[TRig],
         session_schema_model: Type[TSession],
         task_logic_schema_model: Type[TTaskLogic],
@@ -51,6 +53,9 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         services: Optional[ServicesFactoryManager] = None,
         validate_init: bool = True,
         attached_logger: Optional[logging.Logger] = None,
+        rig_schema_path: Optional[os.PathLike] = None,
+        task_logic_schema: Optional[os.PathLike] = None,
+        subject: Optional[str] = None,
     ) -> None:
         self.temp_dir = self.abspath(temp_dir) / secrets.token_hex(nbytes=16)
         self.temp_dir.mkdir(parents=True, exist_ok=True)
@@ -64,7 +69,7 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
             _logger.setLevel(logging.DEBUG)
 
         self._ui_helper = ui_helper.UIHelper()
-        self._cli_args = self._cli_wrapper()
+        self._cli_args: _CliArgs = self._cli_wrapper()
         self._bind_launcher_services(services)
 
         repository_dir = (
@@ -88,6 +93,8 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         self._rig_schema: Optional[TRig] = None
         self._session_schema: Optional[TSession] = None
         self._task_logic_schema: Optional[TTaskLogic] = None
+        self._solve_schema_instances(rig_path_path=rig_schema_path, task_logic_path=task_logic_schema)
+        self._subject: Optional[str] = self._cli_args.subject if self._cli_args.subject else subject
 
         # Directories
         self.data_dir = Path(self._cli_args.data_dir) if self._cli_args.data_dir is not None else self.abspath(data_dir)
@@ -182,8 +189,10 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
             self._print_diagnosis()
 
         self._session_schema = self._prompt_session_input()
-        self._task_logic_schema = self._prompt_task_logic_input()
-        self._rig_schema = self._prompt_rig_input()
+        if self._task_logic_schema is None:
+            self._task_logic_schema = self._prompt_task_logic_input()
+        if self._rig_schema is None:
+            self._rig_schema = self._prompt_rig_input()
         return self
 
     def _prompt_session_input(self) -> TSession:
@@ -332,13 +341,25 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
             default=False,
         )
 
+        # These should default to None
+        parser.add_argument("--subject", help="Specifies the name of the subject")
+        parser.add_argument("--task-logic-path", help="Specifies the path to a json file containing task logic")
+        parser.add_argument("--rig-path", help="Specifies the path to a json file containing rig configuration")
+
+        # Catch all additional arguments
+        # Syntax is a bit clunky, but it works
+        # e.g. "python script.py -- --arg1 --arg"
+        # This will capture "--arg1 --arg2" in the "extras" list
+        parser.add_argument(
+            "extras", nargs=argparse.REMAINDER, help="Capture all remaining arguments after -- separator"
+        )
         return parser
 
     @classmethod
-    def _cli_wrapper(cls) -> argparse.Namespace:
+    def _cli_wrapper(cls) -> _CliArgs:
         parser = cls._get_default_arg_parser()
-        args, _ = parser.parse_known_args()
-        return args
+        args = vars(parser.parse_args())
+        return _CliArgs(**args)
 
     def _copy_tmp_directory(self, dst: os.PathLike) -> None:
         dst = Path(dst) / ".launcher"
@@ -351,3 +372,55 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         if self._services_factory_manager is not None:
             self._services_factory_manager.register_launcher(self)
         return self._services_factory_manager
+
+    def _solve_schema_instances(
+        self, rig_path_path: Optional[os.PathLike] = None, task_logic_path: Optional[os.PathLike] = None
+    ) -> None:
+        rig_path_path = self._cli_args.rig_path if self._cli_args.rig_path is not None else rig_path_path
+        task_logic_path = (
+            self._cli_args.task_logic_path if self._cli_args.task_logic_path is not None else task_logic_path
+        )
+        if rig_path_path is not None:
+            logging.info("Loading rig schema from %s", self._cli_args.rig_path)
+            self._rig_schema = model_from_json_file(rig_path_path, self.rig_schema_model)
+        if task_logic_path is not None:
+            logging.info("Loading task logic schema from %s", self._cli_args.task_logic_path)
+            self._task_logic_schema = model_from_json_file(task_logic_path, self.task_logic_schema_model)
+
+
+@pydantic.dataclasses.dataclass
+class _CliArgs:
+    data_dir: Optional[os.PathLike] = None
+    repository_dir: Optional[os.PathLike] = None
+    config_library_dir: Optional[os.PathLike] = None
+    create_directories: bool = False
+    debug: bool = False
+    allow_dirty: bool = False
+    skip_hardware_validation: bool = False
+    subject: Optional[str] = None
+    task_logic_path: Optional[os.PathLike] = None
+    rig_path: Optional[os.PathLike] = None
+    extras: dict[str, str] = pydantic.Field(default_factory=dict)
+
+    @pydantic.field_validator("extras", mode="before")
+    @classmethod
+    def _validate_extras(cls, v):
+        if isinstance(v, list):
+            v = cls._parse_extra_args(v)
+        return v
+
+    @staticmethod
+    def _parse_extra_args(args: list[str]) -> dict[str, str]:
+        extra_kwargs: dict[str, str] = {}
+        if len(args) == 0:
+            return extra_kwargs
+        _ = args.pop(0)  # remove the "--" separator
+        for arg in args:
+            if arg.startswith("--"):
+                key_value = arg.lstrip("--").split("=", 1)
+                if len(key_value) == 2:
+                    key, value = key_value
+                    extra_kwargs[key] = value
+                else:
+                    logger.error("Skipping invalid argument format: %s", arg)
+        return extra_kwargs

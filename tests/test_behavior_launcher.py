@@ -1,3 +1,4 @@
+import os
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, create_autospec, patch
@@ -147,6 +148,53 @@ class TestBehaviorServicesFactoryManager(unittest.TestCase):
         service = MagicMock()
         with self.assertRaises(ValueError):
             self.factory_manager._validate_service_type(service, str)
+
+
+class TestBehaviorLauncherSaveTempModel(unittest.TestCase):
+    def setUp(self):
+        self.services_factory_manager = create_autospec(BehaviorServicesFactoryManager)
+        self.launcher = BehaviorLauncher(
+            rig_schema_model=MagicMock(),
+            task_logic_schema_model=MagicMock(),
+            session_schema_model=MagicMock(),
+            data_dir="/path/to/data",
+            config_library_dir="/path/to/config",
+            temp_dir="/path/to/temp",
+            repository_dir=None,
+            allow_dirty=False,
+            skip_hardware_validation=False,
+            debug_mode=False,
+            group_by_subject_log=False,
+            services=self.services_factory_manager,
+            validate_init=False,
+            attached_logger=None,
+        )
+
+    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
+    def test_save_temp_model_creates_directory(self, mock_makedirs):
+        model = MagicMock()
+        model.__class__.__name__ = "TestModel"
+        model.model_dump_json.return_value = '{"key": "value"}'
+        self.launcher._save_temp_model(model, "/path/to/temp")
+        mock_makedirs.assert_called_once_with(Path("/path/to/temp"), exist_ok=True)
+
+    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
+    def test_save_temp_model_default_directory(self, mock_makedirs):
+        model = MagicMock()
+        model.__class__.__name__ = "TestModel"
+        model.model_dump_json.return_value = '{"key": "value"}'
+        path = self.launcher._save_temp_model(model, None)
+        self.assertTrue(path.endswith("TestModel.json"))
+
+    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
+    @patch("builtins.open", new_callable=unittest.mock.mock_open)
+    def test_save_temp_model_returns_correct_path(self, mock_open, mock_makedirs):
+        model = MagicMock()
+        model.__class__.__name__ = "TestModel"
+        model.model_dump_json.return_value = '{"key": "value"}'
+        path = self.launcher._save_temp_model(model, Path("/path/to/temp"))
+        expected_path = os.path.join(Path("/path/to/temp"), "TestModel.json")
+        self.assertEqual(path, expected_path)
 
 
 if __name__ == "__main__":
