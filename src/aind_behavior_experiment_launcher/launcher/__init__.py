@@ -16,6 +16,7 @@ from aind_behavior_services import (
     AindBehaviorSessionModel,
     AindBehaviorTaskLogicModel,
 )
+from aind_behavior_services.utils import model_from_json_file
 
 from aind_behavior_experiment_launcher import logging_helper, ui_helper
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
@@ -52,7 +53,9 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         services: Optional[ServicesFactoryManager] = None,
         validate_init: bool = True,
         attached_logger: Optional[logging.Logger] = None,
-        
+        rig_schema_path: Optional[os.PathLike] = None,
+        task_logic_schema: Optional[os.PathLike] = None,
+        subject: Optional[str] = None,
     ) -> None:
         self.temp_dir = self.abspath(temp_dir) / secrets.token_hex(nbytes=16)
         self.temp_dir.mkdir(parents=True, exist_ok=True)
@@ -66,7 +69,7 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
             _logger.setLevel(logging.DEBUG)
 
         self._ui_helper = ui_helper.UIHelper()
-        self._cli_args = self._cli_wrapper()
+        self._cli_args: _CliArgs = self._cli_wrapper()
         self._bind_launcher_services(services)
 
         repository_dir = (
@@ -90,6 +93,8 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         self._rig_schema: Optional[TRig] = None
         self._session_schema: Optional[TSession] = None
         self._task_logic_schema: Optional[TTaskLogic] = None
+        self._solve_schema_instances(rig_path_path=rig_schema_path, task_logic_path=task_logic_schema)
+        self._subject: Optional[str] = self._cli_args.subject if self._cli_args.subject else subject
 
         # Directories
         self.data_dir = Path(self._cli_args.data_dir) if self._cli_args.data_dir is not None else self.abspath(data_dir)
@@ -367,6 +372,18 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         if self._services_factory_manager is not None:
             self._services_factory_manager.register_launcher(self)
         return self._services_factory_manager
+
+    def _solve_schema_instances(
+        self, rig_path_path: Optional[os.PathLike] = None, task_logic_path: Optional[os.PathLike] = None
+    ) -> None:
+        rig_path_path = self._cli_args.rig_path if self._cli_args.rig_path is not None else rig_path_path
+        task_logic_path = self._cli_args.task_logic_path if self._cli_args.task_logic_path is not None else task_logic_path
+        if rig_path_path is not None:
+            logging.info("Loading rig schema from %s", self._cli_args.rig_path)
+            self._rig_schema = model_from_json_file(rig_path_path, self.rig_schema_model)
+        if task_logic_path is not None:
+            logging.info("Loading task logic schema from %s", self._cli_args.task_logic_path)
+            self._task_logic_schema = model_from_json_file(task_logic_path, self.task_logic_schema_model)
 
 
 @pydantic.dataclasses.dataclass
