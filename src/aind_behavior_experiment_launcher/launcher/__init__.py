@@ -189,8 +189,10 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
             self._print_diagnosis()
 
         self._session_schema = self._prompt_session_input()
-        self._task_logic_schema = self._prompt_task_logic_input()
-        self._rig_schema = self._prompt_rig_input()
+        if self._task_logic_schema is None:
+            self._task_logic_schema = self._prompt_task_logic_input()
+        if self._rig_schema is None:
+            self._rig_schema = self._prompt_rig_input()
         return self
 
     def _prompt_session_input(self) -> TSession:
@@ -349,9 +351,7 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         # e.g. "python script.py -- --arg1 --arg"
         # This will capture "--arg1 --arg2" in the "extras" list
         parser.add_argument(
-            "extras",
-            nargs=argparse.REMAINDER,
-            help="Capture all remaining arguments after -- separator"
+            "extras", nargs=argparse.REMAINDER, help="Capture all remaining arguments after -- separator"
         )
         return parser
 
@@ -409,7 +409,6 @@ class _CliArgs:
 
     @staticmethod
     def _parse_extra_args(args: list[str]) -> dict[str, str]:
-        print(args)
         extra_kwargs: dict[str, str] = {}
         if len(args) == 0:
             return extra_kwargs

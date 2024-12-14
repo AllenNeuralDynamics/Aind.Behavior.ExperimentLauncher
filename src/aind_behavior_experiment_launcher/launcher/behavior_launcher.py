@@ -45,14 +45,20 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
 
     @override
     def _prompt_session_input(self, directory: Optional[str] = None) -> TSession:
-        _local_config_directory = (
-            Path(os.path.join(self.config_library_dir, directory)) if directory is not None else self._subject_dir
-        )
-        available_batches = self._get_available_batches(_local_config_directory)
         experimenter = self._ui_helper.prompt_experimenter(strict=True)
-        subject_list = self._get_subject_list(available_batches)
-        subject = self._ui_helper.choose_subject(subject_list)
-        self._subject_db_data = subject_list.get_subject(subject)
+        if self._subject is not None:
+            logging.info("Subject provided via CLABE: %s", self._cli_args.subject)
+            subject = self._subject
+        else:
+            _local_config_directory = (
+                Path(os.path.join(self.config_library_dir, directory)) if directory is not None else self._subject_dir
+            )
+            available_batches = self._get_available_batches(_local_config_directory)
+            subject_list = self._get_subject_list(available_batches)
+            subject = self._ui_helper.choose_subject(subject_list)
+            self._subject = subject
+            self._subject_db_data = subject_list.get_subject(subject)
+
         notes = self._ui_helper.prompt_get_notes()
 
         return self.session_schema_model(
@@ -142,7 +148,8 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
             Path(os.path.join(self.config_library_dir, directory)) if directory is not None else self._task_logic_dir
         )
         hint_input: Optional[SubjectEntry] = self._subject_db_data
-        task_logic: Optional[TTaskLogic] = None
+        task_logic: Optional[TTaskLogic] = self._task_logic_schema
+        # If the task logic is already set (e.g. from CLI), skip the prompt
         while task_logic is None:
             try:
                 if hint_input is None:
