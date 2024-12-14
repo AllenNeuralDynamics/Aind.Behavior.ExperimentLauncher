@@ -353,3 +353,40 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         if self._services_factory_manager is not None:
             self._services_factory_manager.register_launcher(self)
         return self._services_factory_manager
+
+
+@pydantic.dataclasses.dataclass
+class _CliArgs:
+    data_dir: Optional[os.PathLike] = None
+    repository_dir: Optional[os.PathLike] = None
+    config_library_dir: Optional[os.PathLike] = None
+    create_directories: bool = False
+    debug: bool = False
+    allow_dirty: bool = False
+    skip_hardware_validation: bool = False
+    subject: Optional[str] = None
+    task_logic_path: Optional[os.PathLike] = None
+    rig_path: Optional[os.PathLike] = None
+    extras: dict[str, str] = pydantic.Field(default_factory=dict)
+
+    @pydantic.field_validator("extras", mode="before")
+    @classmethod
+    def _validate_extras(cls, v):
+        if isinstance(v, list):
+            v = cls._parse_extra_args(v)
+        return v
+
+    @staticmethod
+    def _parse_extra_args(args: list[str]) -> dict[str, str]:
+        print(args)
+        extra_kwargs: dict[str, str] = {}
+        _ = args.pop(0)  # remove the "--" separator
+        for arg in args:
+            if arg.startswith("--"):
+                key_value = arg.lstrip("--").split("=", 1)
+                if len(key_value) == 2:
+                    key, value = key_value
+                    extra_kwargs[key] = value
+                else:
+                    logger.error(f"Skipping invalid argument format: {arg}")
+        return extra_kwargs
