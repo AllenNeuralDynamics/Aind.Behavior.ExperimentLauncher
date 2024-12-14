@@ -37,6 +37,7 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
 
     def __init__(
         self,
+        *,
         rig_schema_model: Type[TRig],
         session_schema_model: Type[TSession],
         task_logic_schema_model: Type[TTaskLogic],
@@ -51,6 +52,7 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         services: Optional[ServicesFactoryManager] = None,
         validate_init: bool = True,
         attached_logger: Optional[logging.Logger] = None,
+        
     ) -> None:
         self.temp_dir = self.abspath(temp_dir) / secrets.token_hex(nbytes=16)
         self.temp_dir.mkdir(parents=True, exist_ok=True)
