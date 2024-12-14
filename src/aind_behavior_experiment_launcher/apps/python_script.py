@@ -4,7 +4,6 @@ import logging
 import os
 import shutil
 import subprocess
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, Self
 
@@ -21,51 +20,12 @@ if not _HAS_UV:
     )
 
 
-@dataclass
-class _UvEnvironmentManager:
-    project_directory: os.PathLike = Path(".")
-    optional_toml_dependencies: list[str] = field(default_factory=list)
-
-    def _add_uv_project_directory(self) -> str:
-        return f" --directory {self.project_directory}"
-
-    def _add_uv_optional_toml_dependencies(self) -> str:
-        return " ".join([f"--extra {dep}" for dep in self.optional_toml_dependencies])
-
-    def create_environment(self, run_kwargs: Optional[dict[str, any]] = None) -> subprocess.CompletedProcess:
-        logger.info("Creating Python environment with uv venv at %s...", self.project_directory)
-        run_kwargs = run_kwargs or {}
-        proc = subprocess.run(
-            f"uv venv {self._add_uv_project_directory()} ",
-            shell=True,
-            capture_output=True,
-            text=True,
-            check=True,
-            cwd=self.project_directory,
-            **run_kwargs,
-        )
-        return proc
-
-    def run_command(self, command: str, run_kwargs: Optional[dict[str, any]] = None) -> subprocess.CompletedProcess:
-        logger.info("Running command %s in uv venv at %s...", command, self.project_directory)
-        run_kwargs = run_kwargs or {}
-        proc = subprocess.run(
-            f"uv run {command} {self._add_uv_optional_toml_dependencies()}",
-            shell=True,
-            capture_output=True,
-            text=True,
-            check=True,
-            cwd=self.project_directory,
-            **run_kwargs,
-        )
-        return proc
-
-
 class PythonScriptApp(App):
     def __init__(
         self,
         /,
         script: str,
+        additional_arguments: str = "",
         project_directory: os.PathLike = Path("."),
         optional_toml_dependencies: Optional[list[str]] = None,
         append_python_exe: bool = False,
@@ -76,10 +36,8 @@ class PythonScriptApp(App):
         self._timeout = timeout
         self._optional_toml_dependencies = optional_toml_dependencies if optional_toml_dependencies else []
         self._append_python_exe = append_python_exe
+        self._additional_arguments = additional_arguments
 
-        self._environment_manager = _UvEnvironmentManager(
-            project_directory=self._project_directory, optional_toml_dependencies=self._optional_toml_dependencies
-        )
         self._result: Optional[subprocess.CompletedProcess] = None
 
     @property
@@ -88,24 +46,31 @@ class PythonScriptApp(App):
             raise RuntimeError("The app has not been run yet.")
         return self._result
 
-    def create_environment(self) -> subprocess.CompletedProcess:
-        proc = self._environment_manager.create_environment(run_kwargs={"timeout": self._timeout})
+    def run(self) -> subprocess.CompletedProcess:
+        logger.info("Starting python script %s...", self._script)
+
+        if not self._has_venv():
+            logging.warning("Python environment not found. Creating one...")
+            self.create_environment()
+
+        _script = f"{self._script} {self._additional_arguments}"
+        _python_exe = "python" if self._append_python_exe else ""
+        command = f"uv run {_python_exe} {_script} {self._add_uv_optional_toml_dependencies()}"
+
         try:
-            proc.check_returncode()
+            proc = subprocess.run(
+                command,
+                shell=False,
+                capture_output=True,
+                text=True,
+                check=True,
+                cwd=self._project_directory,
+            )
         except subprocess.CalledProcessError as e:
             logger.error("Error creating Python environment. %s", e)
             raise e
-        return proc
 
-    def run(self) -> subprocess.CompletedProcess:
-        logger.info("Starting Python process...")
-        if self._append_python_exe:
-            proc = self._environment_manager.run_command(
-                f"python {self._script}", run_kwargs={"timeout": self._timeout}
-            )
-        else:
-            proc = self._environment_manager.run_command(f"{self._script}", run_kwargs={"timeout": self._timeout})
-        logger.info("Python process completed.")
+        logger.info("Python script completed.")
         return proc
 
     def output_from_result(self, allow_stderr: Optional[bool] = True) -> Self:
@@ -129,3 +94,31 @@ class PythonScriptApp(App):
 
     def prompt_input(self, *args, **kwargs) -> Self:
         raise NotImplementedError("Not implemented yet.")
+
+    def _has_venv(self) -> bool:
+        return (Path(self._project_directory) / ".venv").exists()
+
+    def create_environment(self, run_kwargs: Optional[dict[str, any]] = None) -> subprocess.CompletedProcess:
+        logger.info("Creating Python environment with uv venv at %s...", self._project_directory)
+        run_kwargs = run_kwargs or {}
+        try:
+            proc = subprocess.run(
+                f"uv venv {self._add_uv_project_directory()} ",
+                shell=False,
+                capture_output=True,
+                text=True,
+                check=True,
+                cwd=self._project_directory,
+                **run_kwargs,
+            )
+            proc.check_returncode()
+        except subprocess.CalledProcessError as e:
+            logger.error("Error creating Python environment. %s", e)
+            raise e
+        return proc
+
+    def _add_uv_project_directory(self) -> str:
+        return f" --directory {self._project_directory}"
+
+    def _add_uv_optional_toml_dependencies(self) -> str:
+        return " ".join([f"--extra {dep}" for dep in self._optional_toml_dependencies])

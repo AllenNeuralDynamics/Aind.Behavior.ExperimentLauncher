@@ -3,41 +3,14 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from aind_behavior_experiment_launcher.apps.python_script import PythonScriptApp, _UvEnvironmentManager
-
-
-class TestUvEnvironmentManager(unittest.TestCase):
-    def setUp(self):
-        self.manager = _UvEnvironmentManager(
-            project_directory=Path("/test/project").as_posix(), optional_toml_dependencies=["dep1", "dep2"]
-        )
-
-    def test_add_uv_project_directory(self):
-        self.assertEqual(self.manager._add_uv_project_directory(), " --directory /test/project")
-
-    def test_add_uv_optional_toml_dependencies(self):
-        self.assertEqual(self.manager._add_uv_optional_toml_dependencies(), "--extra dep1 --extra dep2")
-
-    @patch("subprocess.run")
-    def test_create_environment(self, mock_run):
-        mock_run.return_value = MagicMock(returncode=0)
-        result = self.manager.create_environment()
-        mock_run.assert_called_once()
-        self.assertEqual(result.returncode, 0)
-
-    @patch("subprocess.run")
-    def test_run_command(self, mock_run):
-        mock_run.return_value = MagicMock(returncode=0)
-        result = self.manager.run_command("test_command")
-        mock_run.assert_called_once()
-        self.assertEqual(result.returncode, 0)
+from aind_behavior_experiment_launcher.apps.python_script import PythonScriptApp
 
 
 class TestPythonScriptApp(unittest.TestCase):
     def setUp(self):
         self.app = PythonScriptApp(
             script="test_script.py",
-            project_directory=Path("/test/project"),
+            project_directory=Path("/test/project").as_posix(),
             optional_toml_dependencies=["dep1", "dep2"],
             append_python_exe=True,
             timeout=30,
@@ -51,14 +24,16 @@ class TestPythonScriptApp(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
 
     @patch("subprocess.run")
-    def test_run_with_python_exe(self, mock_run):
+    @patch("aind_behavior_experiment_launcher.apps.python_script.PythonScriptApp._has_venv", return_value=True)
+    def test_run_with_python_exe(self, mock_has_env, mock_run):
         mock_run.return_value = MagicMock(returncode=0)
         result = self.app.run()
         mock_run.assert_called_once()
         self.assertEqual(result.returncode, 0)
 
     @patch("subprocess.run")
-    def test_run_without_python_exe(self, mock_run):
+    @patch("aind_behavior_experiment_launcher.apps.python_script.PythonScriptApp._has_venv", return_value=True)
+    def test_run_without_python_exe(self, mock_has_env, mock_run):
         self.app._append_python_exe = False
         mock_run.return_value = MagicMock(returncode=0)
         result = self.app.run()
@@ -86,3 +61,9 @@ class TestPythonScriptApp(unittest.TestCase):
     def test_prompt_input(self):
         with self.assertRaises(NotImplementedError):
             self.app.prompt_input()
+
+    def test_add_uv_project_directory(self):
+        self.assertEqual(self.app._add_uv_project_directory(), " --directory /test/project")
+
+    def test_add_uv_optional_toml_dependencies(self):
+        self.assertEqual(self.app._add_uv_optional_toml_dependencies(), "--extra dep1 --extra dep2")
