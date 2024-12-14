@@ -334,13 +334,27 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
             default=False,
         )
 
+        # These should default to None
+        parser.add_argument("--subject", help="Specifies the name of the subject")
+        parser.add_argument("--task-logic-path", help="Specifies the path to a json file containing task logic")
+        parser.add_argument("--rig-path", help="Specifies the path to a json file containing rig configuration")
+
+        # Catch all additional arguments
+        # Syntax is a bit clunky, but it works
+        # e.g. "python script.py -- --arg1 --arg"
+        # This will capture "--arg1 --arg2" in the "extras" list
+        parser.add_argument(
+            "extras",
+            nargs=argparse.REMAINDER,
+            help="Capture all remaining arguments after -- separator"
+        )
         return parser
 
     @classmethod
-    def _cli_wrapper(cls) -> argparse.Namespace:
+    def _cli_wrapper(cls) -> _CliArgs:
         parser = cls._get_default_arg_parser()
-        args, _ = parser.parse_known_args()
-        return args
+        args = vars(parser.parse_args())
+        return _CliArgs(**args)
 
     def _copy_tmp_directory(self, dst: os.PathLike) -> None:
         dst = Path(dst) / ".launcher"
