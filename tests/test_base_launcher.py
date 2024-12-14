@@ -97,13 +97,13 @@ class TestBaseLauncher(unittest.TestCase):
     @patch("argparse.ArgumentParser.parse_args")
     def test_cli_args_integration(self, mock_parse_known_args):
         mock_parse_known_args.return_value = argparse.Namespace(
-                data_dir="/tmp/fake/data/dir",
-                repository_dir=None,
-                config_library_dir=None,
-                create_directories=True,
-                debug=True,
-                allow_dirty=True,
-                skip_hardware_validation=True,
+            data_dir="/tmp/fake/data/dir",
+            repository_dir=None,
+            config_library_dir=None,
+            create_directories=True,
+            debug=True,
+            allow_dirty=True,
+            skip_hardware_validation=True,
         )
         launcher = BaseLauncher(
             rig_schema_model=self.rig_schema_model,
@@ -120,7 +120,6 @@ class TestBaseLauncher(unittest.TestCase):
 
 
 class TestCliArgs(unittest.TestCase):
-
     def test_parse_extra_args_valid(self):
         args = ["--", "--key1=value1", "--key2=value2"]
         expected_output = {"key1": "value1", "key2": "value2"}

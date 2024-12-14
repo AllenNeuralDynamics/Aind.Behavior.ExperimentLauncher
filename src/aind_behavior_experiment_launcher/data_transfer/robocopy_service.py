@@ -21,7 +21,7 @@ class RobocopyService(DataTransferService):
         extra_args: Optional[str] = None,
         delete_src: bool = False,
         overwrite: bool = False,
-        force_dir: bool = True
+        force_dir: bool = True,
     ):
         self.source = source
         self.destination = destination
