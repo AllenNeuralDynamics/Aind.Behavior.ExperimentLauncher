@@ -69,4 +69,7 @@ ipython_config.py
 # vscode
 .vscode/
 
+# venv
+.venv/
+
 local

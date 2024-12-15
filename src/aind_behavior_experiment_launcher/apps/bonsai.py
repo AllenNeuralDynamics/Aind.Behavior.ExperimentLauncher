@@ -1,4 +1,3 @@
-import abc
 import glob
 import logging
 import os
@@ -8,26 +7,12 @@ from typing import Dict, Optional, Self
 
 from aind_behavior_services.utils import run_bonsai_process
 
-from aind_behavior_experiment_launcher.services import IService
+from aind_behavior_experiment_launcher.apps import App
 from aind_behavior_experiment_launcher.ui_helper import UIHelper
 
 logger = logging.getLogger(__name__)
 
 VISUALIZERS_DIR = "VisualizerLayouts"
-
-
-class App(IService, abc.ABC):
-    @abc.abstractmethod
-    def run(self) -> subprocess.CompletedProcess:
-        pass
-
-    @abc.abstractmethod
-    def output_from_result(self, allow_stderr: Optional[bool]) -> Self:
-        pass
-
-    @abc.abstractmethod
-    def prompt_input(self, *args, **kwargs) -> Self:
-        pass
 
 
 class BonsaiApp(App):
