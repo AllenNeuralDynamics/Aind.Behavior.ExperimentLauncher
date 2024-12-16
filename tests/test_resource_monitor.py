@@ -4,7 +4,7 @@ import warnings
 from shutil import _ntuple_diskusage
 from unittest.mock import MagicMock, patch
 
-from aind_behavior_experiment_launcher.resource_monitor.resource_monitor_service import (
+from aind_behavior_experiment_launcher.resource_monitor import (
     Constraint,
     ResourceMonitor,
     available_storage_constraint_factory,
@@ -58,6 +58,34 @@ class TestResourceMonitor(unittest.TestCase):
         mock_exists.return_value = True
         constraint = remote_dir_exists_constraint_factory(dir_path="/some/remote/dir")
         self.assertTrue(constraint())
+
+    def test_resource_monitor_service(self):
+        resource_monitor = ResourceMonitor()
+
+        resource_monitor.add_constraint(
+            Constraint(name="test_constraint", constraint=lambda: True, fail_msg_handler=lambda: "Constraint failed.")
+        )
+
+        self.assertTrue(resource_monitor.evaluate_constraints())
+
+        resource_monitor.add_constraint(
+            Constraint(name="test_constraint", constraint=lambda: False, fail_msg_handler=lambda: "Constraint failed.")
+        )
+
+        resource_monitor.add_constraint(resource_monitor)
+        self.assertFalse(resource_monitor.evaluate_constraints())
+
+    def test_resource_monitor_service_constraint(self):
+        constraint = Constraint(
+            name="test_constraint", constraint=lambda x: x, fail_msg_handler=lambda: "Constraint failed.", args=[True]
+        )
+
+        self.assertTrue(constraint(), True)
+
+        constraint = Constraint(
+            name="test_constraint", constraint=lambda x: x, fail_msg_handler=lambda: "Constraint failed.", args=[False]
+        )
+        self.assertFalse(constraint(), False)
 
 
 if __name__ == "__main__":

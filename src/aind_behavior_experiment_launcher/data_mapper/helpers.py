@@ -1,47 +1,22 @@
 from __future__ import annotations
 
-import abc
 import logging
 import os
 import xml.etree.ElementTree as ET
 from importlib import metadata
 from pathlib import Path
-from typing import Any, Dict, Generic, Iterable, List, Optional, Tuple, Type, TypeVar, Union, get_args
+from typing import Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, get_args
 
 import pydantic
 from aind_behavior_services import (
     AindBehaviorRigModel,
-    AindBehaviorSessionModel,
 )
 from aind_behavior_services.rig import CameraController, CameraTypes
 
-from aind_behavior_experiment_launcher.services import IService
-
 logger = logging.getLogger(__name__)
 
 
-TSession = TypeVar("TSession", bound=AindBehaviorSessionModel)
 T = TypeVar("T")
-
-logger = logging.getLogger(__name__)
-
-TSchema = TypeVar("TSchema", bound=pydantic.BaseModel)
-TMapTo = TypeVar("TMapTo", bound=Any)
-
-
-class DataMapperService(IService, abc.ABC, Generic[TMapTo]):
-    _mapped: Optional[TMapTo]
-
-    @abc.abstractmethod
-    def map(self) -> TMapTo:
-        pass
-
-    @abc.abstractmethod
-    def is_mapped(self) -> bool: ...
-
-    @property
-    @abc.abstractmethod
-    def mapped(self) -> TMapTo: ...
 
 
 def get_cameras(
