@@ -7,7 +7,7 @@ from aind_behavior_experiment_launcher.launcher.behavior_launcher import (
     BehaviorLauncher,
     BehaviorServicesFactoryManager,
     BonsaiApp,
-    DataMapperService,
+    DataMapper,
     DataTransferService,
     ResourceMonitor,
 )
@@ -108,7 +108,7 @@ class TestBehaviorServicesFactoryManager(unittest.TestCase):
         self.assertEqual(self.factory_manager.bonsai_app, bonsai_app)
 
     def test_attach_data_mapper(self):
-        class DataMapperServiceConcrete(DataMapperService):
+        class DataMapperServiceConcrete(DataMapper):
             def map(self):
                 return None
 

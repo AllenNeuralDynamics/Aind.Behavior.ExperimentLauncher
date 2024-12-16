@@ -94,16 +94,19 @@ class TestBaseLauncher(unittest.TestCase):
         self.assertFalse(args.allow_dirty)
         self.assertFalse(args.skip_hardware_validation)
 
-    @patch("argparse.ArgumentParser.parse_args")
+    @patch("argparse.ArgumentParser.parse_known_args")
     def test_cli_args_integration(self, mock_parse_known_args):
-        mock_parse_known_args.return_value = argparse.Namespace(
-            data_dir="/tmp/fake/data/dir",
-            repository_dir=None,
-            config_library_dir=None,
-            create_directories=True,
-            debug=True,
-            allow_dirty=True,
-            skip_hardware_validation=True,
+        mock_parse_known_args.return_value = (
+            argparse.Namespace(
+                data_dir="/tmp/fake/data/dir",
+                repository_dir=None,
+                config_library_dir=None,
+                create_directories=True,
+                debug=True,
+                allow_dirty=True,
+                skip_hardware_validation=True,
+            ),
+            [],
         )
         launcher = BaseLauncher(
             rig_schema_model=self.rig_schema_model,

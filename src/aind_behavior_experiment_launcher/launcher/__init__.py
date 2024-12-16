@@ -358,7 +358,8 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
     @classmethod
     def _cli_wrapper(cls) -> _CliArgs:
         parser = cls._get_default_arg_parser()
-        args = vars(parser.parse_args())
+        parsed, _ = parser.parse_known_args()
+        args = vars(parsed)
         return _CliArgs(**args)
 
     def _copy_tmp_directory(self, dst: os.PathLike) -> None:

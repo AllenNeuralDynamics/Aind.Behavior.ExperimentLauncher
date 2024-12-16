@@ -18,14 +18,14 @@ import aind_data_schema.components.devices
 import aind_data_schema.core.rig
 import aind_data_schema.core.session
 
-from . import data_mapper_service
+from . import _base
 
 TAdsObject = TypeVar("TAdsObject", bound=Union[aind_data_schema.core.session.Session, aind_data_schema.core.rig.Rig])
 
 logger = logging.getLogger(__name__)
 
 
-class AindDataSchemaDataMapper(data_mapper_service.DataMapperService[TAdsObject], abc.ABC, Generic[TAdsObject]):
+class AindDataSchemaDataMapper(_base.DataMapper[TAdsObject], abc.ABC, Generic[TAdsObject]):
     @property
     @abc.abstractmethod
     def session_name(self) -> str: ...

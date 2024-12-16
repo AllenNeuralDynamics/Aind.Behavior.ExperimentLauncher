@@ -16,8 +16,8 @@ from typing_extensions import override
 
 from aind_behavior_experiment_launcher import logging_helper
 from aind_behavior_experiment_launcher.apps import BonsaiApp
+from aind_behavior_experiment_launcher.data_mappers._base import DataMapper
 from aind_behavior_experiment_launcher.data_mappers.aind_data_schema import AindDataSchemaSessionDataMapper
-from aind_behavior_experiment_launcher.data_mappers.data_mapper_service import DataMapperService
 from aind_behavior_experiment_launcher.data_transfer.data_transfer_service import DataTransferService
 from aind_behavior_experiment_launcher.data_transfer.robocopy_service import RobocopyService
 from aind_behavior_experiment_launcher.data_transfer.watchdog_service import WatchdogDataTransferService
@@ -295,11 +295,11 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         self.attach_service_factory("bonsai_app", value)
 
     @property
-    def data_mapper(self) -> Optional[DataMapperService]:
+    def data_mapper(self) -> Optional[DataMapper]:
         srv = self.try_get_service("data_mapper")
-        return self._validate_service_type(srv, DataMapperService)
+        return self._validate_service_type(srv, DataMapper)
 
-    def attach_data_mapper(self, value: _TServiceFactory[DataMapperService]) -> None:
+    def attach_data_mapper(self, value: _TServiceFactory[DataMapper]) -> None:
         self.attach_service_factory("data_mapper", value)
 
     @property
