@@ -21,7 +21,7 @@ from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindD
 from aind_behavior_experiment_launcher.data_transfer import DataTransfer
 from aind_behavior_experiment_launcher.data_transfer.aind_watchdog import WatchdogDataTransferService
 from aind_behavior_experiment_launcher.data_transfer.robocopy import RobocopyService
-from aind_behavior_experiment_launcher.resource_monitor.resource_monitor_service import ResourceMonitor
+from aind_behavior_experiment_launcher.resource_monitor import ResourceMonitor
 from aind_behavior_experiment_launcher.services import IService, ServiceFactory, ServicesFactoryManager
 
 from ._base import BaseLauncher, TRig, TSession, TTaskLogic
