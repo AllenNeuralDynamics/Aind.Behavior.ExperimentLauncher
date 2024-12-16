@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import xml.etree.ElementTree as ET
 from importlib import metadata
 from pathlib import Path
@@ -76,8 +77,13 @@ def get_fields_of_type(
     return result
 
 
+def _sanity_snapshot_keys(snapshot: Dict[str, str]) -> Dict[str, str]:
+    # Sanitize the key names https://github.com/AllenNeuralDynamics/Aind.Behavior.ExperimentLauncher/issues/18
+    return {re.sub(r"[.$]", "_", k): v for k, v in snapshot.items()}
+
+
 def snapshot_python_environment() -> Dict[str, str]:
-    return {dist.name: dist.version for dist in metadata.distributions()}
+    return _sanity_snapshot_keys({dist.name: dist.version for dist in metadata.distributions()})
 
 
 def snapshot_bonsai_environment(
@@ -86,4 +92,4 @@ def snapshot_bonsai_environment(
     tree = ET.parse(Path(config_file))
     root = tree.getroot()
     packages = root.findall("Packages/Package")
-    return {leaf.attrib["id"]: leaf.attrib["version"] for leaf in packages}
+    return _sanity_snapshot_keys({leaf.attrib["id"]: leaf.attrib["version"] for leaf in packages})
