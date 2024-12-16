@@ -1,9 +1,19 @@
 import unittest
+
+# from . import TESTS_ASSETS, REPO_ROOT
+from pathlib import Path
 from typing import Dict, List, Optional
+from unittest.mock import patch
 
 from pydantic import BaseModel
 
-from aind_behavior_experiment_launcher.data_mapper.helpers import get_fields_of_type
+from aind_behavior_experiment_launcher.data_mapper.helpers import (
+    get_fields_of_type,
+    snapshot_bonsai_environment,
+    snapshot_python_environment,
+)
+
+from . import TESTS_ASSETS
 
 
 class MockModel(BaseModel):
@@ -64,6 +74,25 @@ class TestGetFieldsOfType(unittest.TestCase):
         result = get_fields_of_type(data, MockModel, recursive=True, stop_recursion_on_type=False)
         expected = [("field6", model), ("sub_model", sub_model)]
         self.assertEqual(result, expected)
+
+
+class TestHelpers(unittest.TestCase):
+    @patch("importlib.metadata.distributions")
+    def test_snapshot_python_environment(self, mock_distributions):
+        mock_distributions.return_value = [
+            type("Distribution", (object,), {"name": "package1", "version": "1.0.0"}),
+            type("Distribution", (object,), {"name": "package2", "version": "2.0.0"}),
+        ]
+        expected_result = {"package1": "1.0.0", "package2": "2.0.0"}
+        result = snapshot_python_environment()
+        self.assertEqual(result, expected_result)
+
+    def test_snapshot_bonsai_environment_from_mock(self):
+        out = snapshot_bonsai_environment(config_file=Path(TESTS_ASSETS) / "bonsai.config")
+        self.assertEqual(
+            out,
+            {"Bonsai": "2.8.5", "Bonsai.Core": "2.8.5", "Bonsai.Design": "2.8.5", "Bonsai.Design.Visualizers": "2.8.0"},
+        )
 
 
 if __name__ == "__main__":

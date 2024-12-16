@@ -8,7 +8,10 @@ import sys
 from pathlib import Path
 from types import ModuleType
 
-EXAMPLES_DIR = Path(__file__).parents[1] / "examples"
+REPO_ROOT = Path(__file__).parents[1]
+
+EXAMPLES_DIR = REPO_ROOT / "examples"
+TESTS_ASSETS = REPO_ROOT / "tests" / "assets"
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
