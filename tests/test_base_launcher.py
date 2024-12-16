@@ -5,7 +5,8 @@ from unittest.mock import create_autospec, patch
 
 from aind_behavior_services import AindBehaviorRigModel, AindBehaviorSessionModel, AindBehaviorTaskLogicModel
 
-from aind_behavior_experiment_launcher.launcher import BaseLauncher, _CliArgs
+from aind_behavior_experiment_launcher.launcher import BaseLauncher
+from aind_behavior_experiment_launcher.launcher._base import _CliArgs
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
 
 
