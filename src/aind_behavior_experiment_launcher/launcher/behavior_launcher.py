@@ -16,11 +16,11 @@ from typing_extensions import override
 
 from aind_behavior_experiment_launcher import logging_helper
 from aind_behavior_experiment_launcher.apps import BonsaiApp
-from aind_behavior_experiment_launcher.data_mappers._base import DataMapper
-from aind_behavior_experiment_launcher.data_mappers.aind_data_schema import AindDataSchemaSessionDataMapper
-from aind_behavior_experiment_launcher.data_transfer.data_transfer_service import DataTransferService
-from aind_behavior_experiment_launcher.data_transfer.robocopy_service import RobocopyService
-from aind_behavior_experiment_launcher.data_transfer.watchdog_service import WatchdogDataTransferService
+from aind_behavior_experiment_launcher.data_mapper._base import DataMapper
+from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
+from aind_behavior_experiment_launcher.data_transfer._base import DataTransfer
+from aind_behavior_experiment_launcher.data_transfer.aind_watchdog import WatchdogDataTransferService
+from aind_behavior_experiment_launcher.data_transfer.robocopy import RobocopyService
 from aind_behavior_experiment_launcher.launcher import BaseLauncher, TRig, TSession, TTaskLogic
 from aind_behavior_experiment_launcher.resource_monitor.resource_monitor_service import ResourceMonitor
 from aind_behavior_experiment_launcher.services import IService, ServiceFactory, ServicesFactoryManager
@@ -311,11 +311,11 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         self.attach_service_factory("resource_monitor", value)
 
     @property
-    def data_transfer(self) -> Optional[DataTransferService]:
+    def data_transfer(self) -> Optional[DataTransfer]:
         srv = self.try_get_service("data_transfer")
-        return self._validate_service_type(srv, DataTransferService)
+        return self._validate_service_type(srv, DataTransfer)
 
-    def attach_data_transfer(self, value: _TServiceFactory[DataTransferService]) -> None:
+    def attach_data_transfer(self, value: _TServiceFactory[DataTransfer]) -> None:
         self.attach_service_factory("data_transfer", value)
 
     @staticmethod

@@ -27,14 +27,14 @@ from aind_watchdog_service.models.watch_config import WatchConfig
 from pydantic import BaseModel
 from requests.exceptions import HTTPError
 
-from aind_behavior_experiment_launcher.data_mappers.aind_data_schema import AindDataSchemaSessionDataMapper
+from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
 
-from .data_transfer_service import DataTransferService
+from ._base import DataTransfer
 
 logger = logging.getLogger(__name__)
 
 
-class WatchdogDataTransferService(DataTransferService):
+class WatchdogDataTransferService(DataTransfer):
     def __init__(
         self,
         source: PathLike,

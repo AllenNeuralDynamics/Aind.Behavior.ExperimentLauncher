@@ -5,14 +5,14 @@ from os import PathLike, makedirs
 from pathlib import Path
 from typing import Dict, Optional
 
-from .data_transfer_service import DataTransferService
+from ._base import DataTransfer
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_EXTRA_ARGS = "/E /DCOPY:DAT /R:100 /W:3 /tee"
 
 
-class RobocopyService(DataTransferService):
+class RobocopyService(DataTransfer):
     def __init__(
         self,
         source: PathLike,

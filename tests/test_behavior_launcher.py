@@ -8,7 +8,7 @@ from aind_behavior_experiment_launcher.launcher.behavior_launcher import (
     BehaviorServicesFactoryManager,
     BonsaiApp,
     DataMapper,
-    DataTransferService,
+    DataTransfer,
     ResourceMonitor,
 )
 from tests import suppress_stdout
@@ -128,7 +128,7 @@ class TestBehaviorServicesFactoryManager(unittest.TestCase):
         self.assertEqual(self.factory_manager.resource_monitor, resource_monitor)
 
     def test_attach_data_transfer(self):
-        class DataTransferServiceConcrete(DataTransferService):
+        class DataTransferServiceConcrete(DataTransfer):
             def transfer(self) -> None:
                 pass
 
