@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional, Self
 
-from aind_behavior_experiment_launcher.apps import App
+from ._base import App
 
 logger = logging.getLogger(__name__)
 

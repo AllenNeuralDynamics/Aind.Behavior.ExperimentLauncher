@@ -15,7 +15,7 @@ from aind_behavior_services.utils import model_from_json_file
 from typing_extensions import override
 
 from aind_behavior_experiment_launcher import logging_helper
-from aind_behavior_experiment_launcher.apps.bonsai import BonsaiApp
+from aind_behavior_experiment_launcher.apps import BonsaiApp
 from aind_behavior_experiment_launcher.data_mappers.aind_data_schema import AindDataSchemaSessionDataMapper
 from aind_behavior_experiment_launcher.data_mappers.data_mapper_service import DataMapperService
 from aind_behavior_experiment_launcher.data_transfer.data_transfer_service import DataTransferService

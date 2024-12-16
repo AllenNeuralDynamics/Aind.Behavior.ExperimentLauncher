@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from aind_behavior_experiment_launcher.apps.bonsai import BonsaiApp
+from aind_behavior_experiment_launcher.apps import BonsaiApp
 
 
 class TestBonsaiApp(unittest.TestCase):

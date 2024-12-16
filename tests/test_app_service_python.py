@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from aind_behavior_experiment_launcher.apps.python_script import PythonScriptApp
+from aind_behavior_experiment_launcher.apps import PythonScriptApp
 
 
 class TestPythonScriptApp(unittest.TestCase):
