@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 from typing import Any, Generic, Optional, Self, Type, TypeVar
 
-import git
 import pydantic
 from aind_behavior_services import (
     AindBehaviorRigModel,
@@ -20,6 +19,8 @@ from aind_behavior_services.utils import model_from_json_file
 
 from aind_behavior_experiment_launcher import logging_helper, ui_helper
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
+
+from .git_manager import GitRepository
 
 TRig = TypeVar("TRig", bound=AindBehaviorRigModel)  # pylint: disable=invalid-name
 TSession = TypeVar("TSession", bound=AindBehaviorSessionModel)  # pylint: disable=invalid-name
@@ -76,9 +77,9 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
             Path(self._cli_args.repository_dir) if self._cli_args.repository_dir is not None else repository_dir
         )
         if repository_dir is None:
-            self.repository = git.Repo()
+            self.repository = GitRepository()
         else:
-            self.repository = git.Repo(path=repository_dir)
+            self.repository = GitRepository(path=repository_dir)
 
         # Always work from the root of the repository
         self._cwd = self.repository.working_dir
@@ -279,8 +280,12 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
                     "Git repository is dirty. Discard changes before continuing unless you know what you are doing!"
                 )
                 if not self.allow_dirty:
-                    logger.error("Dirty repository not allowed. Exiting. Consider running with --allow-dirty flag.")
-                    self._exit(-1)
+                    self.repository.try_prompt_full_reset(self._ui_helper, force_reset=False)
+                    if self.repository.is_dirty_with_submodules():
+                        logger.error("Dirty repository not allowed. Exiting. Consider running with --allow-dirty flag.")
+                        self._exit(-1)
+                else:
+                    logger.info("Untracked files: %s", self.repository.untracked_files_with_submodules())
 
         except Exception as e:
             logger.error("Failed to validate dependencies. %s", e)
