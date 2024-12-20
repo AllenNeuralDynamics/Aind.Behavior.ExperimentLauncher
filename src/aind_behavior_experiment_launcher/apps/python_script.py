@@ -67,7 +67,7 @@ class PythonScriptApp(App):
                 cwd=self._project_directory,
             )
         except subprocess.CalledProcessError as e:
-            logger.error("Error creating Python environment. %s", e)
+            logger.error("Error running the Python script. %s", e)
             raise e
 
         logger.info("Python script completed.")
