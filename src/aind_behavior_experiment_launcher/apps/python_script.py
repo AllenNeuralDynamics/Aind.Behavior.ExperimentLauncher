@@ -71,6 +71,7 @@ class PythonScriptApp(App):
             raise e
 
         logger.info("Python script completed.")
+        self._result = proc
         return proc
 
     def output_from_result(self, allow_stderr: Optional[bool] = True) -> Self:
