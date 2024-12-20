@@ -1,8 +1,7 @@
-import json
 import unittest
 from pathlib import Path
 
-from aind_behavior_services.task_logic import AindBehaviorTaskLogicModel
+from aind_behavior_curriculum import TrainerState
 from semver import Version
 
 from aind_behavior_experiment_launcher.apps import PythonScriptApp
@@ -41,9 +40,32 @@ class TestCurriculumIntegration(unittest.TestCase):
         curriculum_app.run()
         curriculum_app.result.check_returncode()
         output = curriculum_app.result.stdout
-        json_output = json.loads(output)
-        AindBehaviorTaskLogicModel.model_validate(json_output["stage"]["task"])
-        # TODO change this once we release a stable package
+        deserialized = TrainerState.model_validate_json(output)
+        expected = """
+        {
+          "stage": {
+            "name": "stage_b",
+            "task": {
+              "name": "TemplateTask",
+              "description": "A template task",
+              "task_parameters": {
+            "example_parameter": 1.0,
+            "mode": "bar"
+              },
+              "version": "0.0.0",
+              "stage_name": null
+            },
+            "graph": {
+              "nodes": {},
+              "graph": {}
+            },
+            "start_policies": []
+          },
+          "is_on_curriculum": true,
+          "active_policies": []
+        }
+        """
+        self.assertEqual(deserialized, TrainerState.model_validate_json(expected))
 
 
 if __name__ == "__main__":
