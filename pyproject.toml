@@ -22,8 +22,9 @@ dependencies = [
     "pydantic>=2.7, <3.0",
     "gitpython",
     "semver",
-    "aind_behavior_services>=0.8.0, <0.9.0",
-    "aind-slims-api<0.2"
+    "aind_behavior_curriculum @ git+https://github.com/AllenNeuralDynamics/aind-behavior-curriculum@refactor-expose-public-evaluator",
+    "aind_behavior_services @ git+https://github.com/AllenNeuralDynamics/Aind.Behavior.Services@release-0.9",
+    "aind-slims-api < 0.2"
 ]
 
 [project.urls]
