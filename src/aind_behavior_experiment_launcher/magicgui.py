@@ -129,13 +129,16 @@ def _make_widget_from_field(
 def create_container_from_model(
     model: Type[BaseModel] | BaseModel,
     *,
-    fields: Optional[Iterable[str]] = None,
+    include_fields: Optional[Iterable[str]] = None,
+    exclude_fields: Optional[Iterable[str]] = None,
     override_type: Optional[dict[str, Type[ValueWidget]]] = None,
     validation_error_sink: Optional[_ValidationErrorSink] = None,
     populate_with_instance: bool = False,
 ) -> "Container":
-    if fields is None:
-        fields = model.model_fields.keys()
+    if include_fields is None:
+        include_fields = model.model_fields.keys()
+    if exclude_fields is None:
+        exclude_fields = []
 
     if populate_with_instance:
         if not isinstance(model, BaseModel):
@@ -150,7 +153,7 @@ def create_container_from_model(
             validation_error_sink=validation_error_sink,
         )
         for name, field in model.model_fields.items()
-        if name in fields
+        if (name in include_fields) and (name not in exclude_fields)
     ]
 
     container = Container(widgets=widgets)
@@ -160,7 +163,8 @@ def create_container_from_model(
 def create_form(
     model: BaseModel | Type[BaseModel],
     *,
-    fields: Optional[Iterable[str]] = None,
+    include_fields: Optional[Iterable[str]] = None,
+    exclude_fields: Optional[Iterable[str]] = None,
     populate_with_instance: bool = False,
     allow_errors: bool = False,
 ) -> dict[str, Any]:
@@ -168,7 +172,11 @@ def create_form(
     error_stack = Textarea(enabled=False)
     error_sink = _ValidationErrorSink(error_stack)
     model_widget = create_container_from_model(
-        model, fields=fields, validation_error_sink=error_sink, populate_with_instance=populate_with_instance
+        model,
+        include_fields=include_fields,
+        exclude_fields=exclude_fields,
+        validation_error_sink=error_sink,
+        populate_with_instance=populate_with_instance,
     )
     container = Container(
         widgets=[
