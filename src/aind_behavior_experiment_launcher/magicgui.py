@@ -76,7 +76,8 @@ def _container_updater(container, validator, error_sink: Optional[_ValidationErr
         value = validator(value)
         if value is not None:
             # in case the type adapter does something fancy
-            input_widget.value = value
+            with input_widget.changed.blocked():
+                input_widget.set_value(value)
 
         validation_button.set_icon("material-symbols:check-circle-outline-rounded", "#0b7500")
         error_sink.clear()
@@ -187,9 +188,9 @@ def create_form(
     )
     submit_button.changed.connect(container.close)
     if isinstance(model, BaseModel):
-        container.native.setWindowTitle(type(model).__name__)
+        container.native.setWindowTitle(model.__class__.__name__)
     else:
-        container.native.setWindowTitle(model)
+        container.native.setWindowTitle(model.__name__)
     with event_loop():
         container.show()
 
