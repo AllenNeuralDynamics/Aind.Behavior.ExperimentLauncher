@@ -66,24 +66,24 @@ def _container_updater(container, validator, error_sink: Optional[_ValidationErr
         error_sink = _ValidationErrorSink()
 
     is_null = null_checkbox.value
-    input_widget.enabled = not is_null
-    try:
-        if is_null:
-            value = None
-        else:
-            value = input_widget.value
+    with input_widget.changed.blocked():
+        input_widget.enabled = not is_null
+        try:
+            if is_null:
+                value = None
+            else:
+                value = input_widget.value
 
-        value = validator(value)
-        if value is not None:
-            # in case the type adapter does something fancy
-            with input_widget.changed.blocked():
+            value = validator(value)
+            if value is not None:
+                # in case the type adapter does something fancy
                 input_widget.set_value(value)
 
-        validation_button.set_icon("material-symbols:check-circle-outline-rounded", "#0b7500")
-        error_sink.clear()
-    except ValidationError as e:
-        validation_button.set_icon("material-symbols:cancel", "#fd0000")
-        error_sink(e)
+            validation_button.set_icon("material-symbols:check-circle-outline-rounded", "#0b7500")
+            error_sink.clear()
+        except ValidationError as e:
+            validation_button.set_icon("material-symbols:cancel", "#fd0000")
+            error_sink(e)
 
 
 def _make_widget_from_field(
@@ -117,6 +117,7 @@ def _make_widget_from_field(
         )
     )
     widget = create_widget(default, field.annotation, name=name, widget_type=widget_type)
+
     container.append(widget)
     container.append(Button(icon="material-symbols:check-circle-outline-rounded", icon_color="#0b7500", enabled=True))
     container.tooltip = field.description
