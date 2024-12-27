@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-try:
-    import aind_data_schema
-except ImportError as _e:
-    _e.add_note(
+import importlib.util
+
+if importlib.util.find_spec("aind_data_schema") is None:
+    raise ImportError(
         "The 'aind-data-schema' package is required to use this module. \
             Install the optional dependencies defined in `project.toml' \
                 by running `pip install .[aind-services]`"
     )
-    raise _e
 
 import abc
 import logging

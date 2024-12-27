@@ -23,7 +23,7 @@ dependencies = [
     "gitpython",
     "semver",
     "aind_behavior_services>=0.8.0, <0.9.0",
-    "aind-slims-api<0.2"
+    "aind-slims-api<0.2",
 ]
 
 [project.urls]
@@ -38,11 +38,17 @@ aind-services = [
     "aind-data-schema<=1.2"
 ]
 
+magicgui = [
+    "magicgui[pyqt6]"
+]
+
 dev = [
     "ruff",
     "codespell",
     "coverage",
     "aind-behavior-experiment-launcher[aind-services]",
+    "aind-behavior-experiment-launcher[magicgui]",
+
 ]
 
 docs = [
