@@ -1,11 +1,16 @@
-from magicgui import widgets as widgets
-import magicgui
-import magicgui.types
-from typing import Optional, TypeVar, List
-from magicgui.widgets.bases import BaseValueWidget
-
+import logging
 import os
 from pathlib import Path
+from typing import List, Optional, TypeVar
+
+import magicgui
+import magicgui.types
+from aind_behavior_services.db_utils import SubjectDataBase
+from magicgui import widgets as widgets
+from magicgui.types import Undefined, _Undefined
+from magicgui.widgets.bases import BaseValueWidget
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
@@ -127,7 +132,7 @@ def choose_subject(subject_list: SubjectDataBase) -> Optional[str]:
     _task_logic = [str(getattr(x, "task_logic_target", None)) for x in subject_list.subjects.values()]
     _choices = [f"{subject} => {task_logic}" for subject, task_logic in zip(_subject, _task_logic)]
 
-    container = widgets.Container(layout="vertical")
+    container: widgets.Container = widgets.Container(layout="vertical")
     subjects = widgets.Select(choices=_choices, allow_multiple=False, label="Subject")
     btn = widgets.Button(text="Submit")
     btn.changed.connect(container.close)
@@ -135,10 +140,45 @@ def choose_subject(subject_list: SubjectDataBase) -> Optional[str]:
     container.append(btn)
     container.append(subjects)
 
-    container.show(run=True)
+    with magicgui.event_loop():
+        container.show()
 
     v = subjects.get_value()
     if v is None:
         return None
     else:
         return _subject[_choices.index(v[0])]
+
+
+def prompt_experimenter(
+    *, default: List[str] | _Undefined = Undefined, allow_empty_string: bool = True
+) -> Optional[List[str]]:
+    def _close_if_valid(container: widgets.Container, list_edit: widgets.ListEdit):
+        if r := list_edit.get_value():
+            if len(r) > 0:
+                container.close()
+
+    if default is Undefined:
+        default = [""]
+
+    container: widgets.Container = widgets.Container(layout="vertical")
+    w_experimenter = widgets.ListEdit(value=default)
+    btn = widgets.Button(text="Submit")
+    btn.changed.connect(lambda _: _close_if_valid(container, w_experimenter))
+    container.append(w_experimenter)
+    container.append(btn)
+
+    container.native.setWindowTitle("Enter experimenters: ")
+    with magicgui.event_loop():
+        container.show()
+
+    experimenter = w_experimenter.get_value()
+    if experimenter is None:
+        return None
+    experimenter = [x.strip() for x in experimenter if x.strip() != ""]
+    if len(experimenter) == 0:
+        if not allow_empty_string:
+            logger.error("Experimenter name is not valid.")
+        else:
+            return None
+    return experimenter
