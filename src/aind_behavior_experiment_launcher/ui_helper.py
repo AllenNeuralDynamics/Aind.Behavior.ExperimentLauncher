@@ -3,9 +3,6 @@ import os
 from typing import Any, Callable, List, Optional, TypeVar
 
 from aind_behavior_services.db_utils import SubjectDataBase
-from aind_behavior_services.rig import AindBehaviorRigModel
-from aind_behavior_services.session import AindBehaviorSessionModel
-from aind_behavior_services.task_logic import AindBehaviorTaskLogicModel
 from pydantic import BaseModel, TypeAdapter
 
 logger = logging.getLogger(__name__)
@@ -88,35 +85,21 @@ class UIHelper:
         notes = str(input("Enter notes:"))
         return notes
 
-    def make_header(
-        self,
-        task_logic_schema_model: type[AindBehaviorTaskLogicModel],
-        rig_schema_model: type[AindBehaviorRigModel],
-        session_schema_model: type[AindBehaviorSessionModel],
-    ) -> str:
+    def make_header(self) -> None:
         _HEADER = r"""
 
-        ██████╗██╗      █████╗ ██████╗ ███████╗
+         ██████╗██╗      █████╗ ██████╗ ███████╗
         ██╔════╝██║     ██╔══██╗██╔══██╗██╔════╝
         ██║     ██║     ███████║██████╔╝█████╗
         ██║     ██║     ██╔══██║██╔══██╗██╔══╝
         ╚██████╗███████╗██║  ██║██████╔╝███████╗
-        ╚═════╝╚══════╝╚═╝  ╚═╝╚═════╝ ╚══════╝
+         ╚═════╝╚══════╝╚═╝  ╚═╝╚═════╝ ╚══════╝
 
         Command-line-interface Launcher for AIND Behavior Experiments
         Press Control+C to exit at any time.
         """
 
-        _str = (
-            "-------------------------------\n"
-            f"{_HEADER}\n"
-            f"TaskLogic ({task_logic_schema_model.__name__}) Schema Version: {task_logic_schema_model.model_construct().version}\n"
-            f"Rig ({rig_schema_model.__name__}) Schema Version: {rig_schema_model.model_construct().version}\n"
-            f"Session ({session_schema_model.__name__}) Schema Version: {session_schema_model.model_construct().version}\n"
-            "-------------------------------"
-        )
-
-        return _str
+        self._print(_HEADER)
 
 
 TModel = TypeVar("TModel", bound=BaseModel)

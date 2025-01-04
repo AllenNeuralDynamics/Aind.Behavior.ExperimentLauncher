@@ -179,13 +179,13 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
             return
 
     def _ui_prompt(self) -> Self:
-        logger.info(
-            self._ui_helper.make_header(
-                task_logic_schema_model=self.task_logic_schema_model,
-                rig_schema_model=self.rig_schema_model,
-                session_schema_model=self.session_schema_model,
-            )
+        self._ui_helper.make_header()
+        _str = (
+            f"Rig ({self.rig_schema_model.__name__}) Schema Version: {self.rig_schema_model.model_construct().version}\n"
+            f"Session ({self.session_schema_model.__name__}) Schema Version: {self.session_schema_model.model_construct().version}\n"
+            f"TaskLogic ({self.task_logic_schema_model.__name__}) Schema Version: {self.task_logic_schema_model.model_construct().version}\n"
         )
+        logger.info(_str)
         if self._debug_mode:
             self._print_diagnosis()
 
