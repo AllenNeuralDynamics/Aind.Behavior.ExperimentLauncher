@@ -9,6 +9,7 @@ from aind_behavior_services.db_utils import SubjectDataBase
 from magicgui import widgets as widgets
 from magicgui.types import Undefined, _Undefined
 from magicgui.widgets.bases import BaseValueWidget
+from qtpy.QtCore import Qt
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +99,6 @@ def prompt_pick_from_list(
 def prompt_yes_no_question(*, prompt: str = "Select one option:") -> Optional[bool]:
     _container_outer: widgets.Container = widgets.Container(layout="vertical")
     _container_inner: widgets.Container = widgets.Container(layout="horizontal")
-    print(prompt)
     _p = widgets.Label(value=prompt)
 
     _w_yes = widgets.Button(value=True, text="Yes")
@@ -182,3 +182,56 @@ def prompt_experimenter(
         else:
             return None
     return experimenter
+
+
+def prompt_get_notes() -> str:
+    container: widgets.Container = widgets.Container(layout="vertical")
+
+    # Add button to submit
+    submit_button = widgets.Button(text="Submit")
+    submit_button.changed.connect(container.close)
+    container.append(submit_button)
+
+    # Make the picker
+    notes_ui = widgets.TextEdit()
+    container.append(notes_ui)
+    container.native.setWindowTitle("Enter notes:")
+
+    with magicgui.event_loop():
+        container.show()
+
+    return notes_ui.get_value()
+
+
+def make_header() -> None:
+    _HEADER = """\n
+     ██████╗██╗      █████╗ ██████╗ ███████╗
+    ██╔════╝██║     ██╔══██╗██╔══██╗██╔════╝
+    ██║     ██║     ███████║██████╔╝█████╗
+    ██║     ██║     ██╔══██║██╔══██╗██╔══╝
+    ╚██████╗███████╗██║  ██║██████╔╝███████╗
+     ╚═════╝╚══════╝╚═╝  ╚═╝╚═════╝ ╚══════╝
+    """
+
+    sub_text = """
+    Command-line-interface Launcher for AIND Behavior Experiments
+    Press Control+C to exit at any time.
+    """
+
+    container = widgets.Container()
+    text_ui = widgets.Label(value=_HEADER)
+    text_ui.native.setTextFormat(Qt.TextFormat.MarkdownText)
+    font = text_ui.native.font()
+    font.setPointSize(15)
+    font.setFamily("Courier New")
+    text_ui.native.setFont(font)
+    sub_text_ui = widgets.Label(value=sub_text)
+    ok_ui = widgets.Button(text="Close")
+    container.append(text_ui)
+    container.append(sub_text_ui)
+    container.append(ok_ui)
+    ok_ui.clicked.connect(container.close)
+
+    container.native.setWindowTitle("CLABE")
+    with magicgui.event_loop():
+        container.show()
