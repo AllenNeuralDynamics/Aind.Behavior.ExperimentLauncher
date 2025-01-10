@@ -32,7 +32,7 @@ class UIHelper:
         if zero_label is not None:
             self._print(f"0: {zero_label}")
         for i, file in enumerate(available_files):
-            self._print(f"{i+1}: {os.path.split(file)[1]}")
+            self._print(f"{i + 1}: {os.path.split(file)[1]}")
         choice = int(input("Choice: "))
         if choice < 0 or choice >= len(available_files) + 1:
             raise ValueError
