@@ -97,4 +97,4 @@ exclude_lines = [
     "import",
     "pragma: no cover"
 ]
-fail_under = 70
+fail_under = 75
