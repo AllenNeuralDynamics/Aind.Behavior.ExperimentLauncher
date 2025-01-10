@@ -100,7 +100,7 @@ class WatchdogDataTransferService(DataTransfer):
                     self.force_restart(kill_if_running=False)
                 except subprocess.CalledProcessError as e:
                     logger.error("Failed to start watchdog service. %s", e)
-                    raise RuntimeError("Failed to start watchdog service.")
+                    raise RuntimeError("Failed to start watchdog service.") from e
                 else:
                     if not self.is_running():
                         logger.error("Failed to start watchdog service.")
@@ -263,7 +263,6 @@ class WatchdogDataTransferService(DataTransfer):
             content = json.loads(response.content)
         else:
             response.raise_for_status()
-        return content["data"]
 
     def is_running(self) -> bool:
         output = subprocess.check_output(
@@ -290,7 +289,7 @@ class WatchdogDataTransferService(DataTransfer):
 
         path = (Path(path) if path else Path(watch_config.flag_dir) / f"manifest_{manifest_config.name}.yaml").resolve()
         if "manifest" not in path.name:
-            logger.warning("Prefix " "manifest_" " not found in file name. Appending it.")
+            logger.warning("Prefix manifest_ not found in file name. Appending it.")
             path = path.with_name(f"manifest_{path.name}.yaml")
 
         if make_dir and not path.parent.exists():
