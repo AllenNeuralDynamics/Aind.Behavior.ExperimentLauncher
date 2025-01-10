@@ -22,7 +22,7 @@ dependencies = [
     "pydantic>=2.7, <3.0",
     "gitpython",
     "semver",
-    "aind_behavior_services>=0.8.0, <0.9.0",
+    "aind_behavior_services<=0.9",
     "aind-slims-api<0.2"
 ]
 
