@@ -260,9 +260,10 @@ class WatchdogDataTransferService(DataTransfer):
     ) -> list[str]:
         response = requests.get(end_point, timeout=timeout)
         if response.ok:
-            content = json.loads(response.content)
+            return json.loads(response.content)["data"]
         else:
             response.raise_for_status()
+            raise HTTPError(f"Failed to fetch project names from endpoint. {response.content}")
 
     def is_running(self) -> bool:
         output = subprocess.check_output(
