@@ -1,5 +1,4 @@
 import unittest
-
 from pathlib import Path
 from typing import Dict, List, Optional
 from unittest.mock import patch
@@ -11,8 +10,8 @@ from aind_behavior_experiment_launcher.data_mapper.helpers import (
     snapshot_bonsai_environment,
     snapshot_python_environment,
 )
-
 from tests import TESTS_ASSETS
+
 
 class MockModel(BaseModel):
     field1: int
