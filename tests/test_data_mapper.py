@@ -1,6 +1,5 @@
 import unittest
 
-# from . import TESTS_ASSETS, REPO_ROOT
 from pathlib import Path
 from typing import Dict, List, Optional
 from unittest.mock import patch
@@ -13,8 +12,7 @@ from aind_behavior_experiment_launcher.data_mapper.helpers import (
     snapshot_python_environment,
 )
 
-from . import TESTS_ASSETS
-
+from tests import TESTS_ASSETS
 
 class MockModel(BaseModel):
     field1: int
