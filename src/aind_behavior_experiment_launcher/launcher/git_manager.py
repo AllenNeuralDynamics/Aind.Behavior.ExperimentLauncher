@@ -8,16 +8,14 @@ from aind_behavior_experiment_launcher.ui_helper import UIHelper
 
 logger = logging.getLogger(__name__)
 
-_HAS_GIT = shutil.which("git") is not None
 
-if not _HAS_GIT:
-    logging.error("git executable not detected.")
-    raise RuntimeError("git is not installed in this computer. Please install git. https://git-scm.com/downloads")
+_HAS_GIT = shutil.which("git") is not None
 
 
 class GitRepository(Repo):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._validate_git()
 
     def reset_repo(self) -> Self:
         self.git.reset("--hard")
@@ -67,3 +65,12 @@ class GitRepository(Repo):
                 logging.info("Full reset of repository and submodules: %s", self.working_dir)
                 self.full_reset()
         return self
+
+    @staticmethod
+    def _validate_git() -> bool:
+        if not _HAS_GIT:
+            logging.error("git executable not detected.")
+            raise RuntimeError(
+                "git is not installed in this computer. Please install git. https://git-scm.com/downloads"
+            )
+        return True

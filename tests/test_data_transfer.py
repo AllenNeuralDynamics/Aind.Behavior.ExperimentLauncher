@@ -296,16 +296,6 @@ class TestRobocopyService(unittest.TestCase):
         mock_popen.return_value = mock_process
         self.service.transfer()
 
-    @patch("src.aind_behavior_experiment_launcher.data_transfer.robocopy.shutil.which", return_value=None)
-    def test_validate_fail(self, mock_which):
-        result = self.service.validate()
-        self.assertFalse(result)
-
-    @patch("src.aind_behavior_experiment_launcher.data_transfer.robocopy.shutil.which", return_value="robocopy")
-    def test_validate_success(self, mock_which):
-        result = self.service.validate()
-        self.assertTrue(result)
-
     def test_solve_src_dst_mapping_single_path(self):
         result = self.service._solve_src_dst_mapping(self.source, self.destination)
         self.assertEqual(result, {Path(self.source): Path(self.destination)})

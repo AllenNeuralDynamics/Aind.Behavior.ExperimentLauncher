@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_EXTRA_ARGS = "/E /DCOPY:DAT /R:100 /W:3 /tee"
 
+_HAS_ROBOCOPY = shutil.which("robocopy") is not None
+
 
 class RobocopyService(DataTransfer):
     def __init__(
@@ -82,7 +84,7 @@ class RobocopyService(DataTransfer):
             return {source: Path(destination)}
 
     def validate(self):
-        if not shutil.which("robocopy"):
+        if not _HAS_ROBOCOPY:
             logger.error("Robocopy command is not available on this system.")
             return False
         return True
