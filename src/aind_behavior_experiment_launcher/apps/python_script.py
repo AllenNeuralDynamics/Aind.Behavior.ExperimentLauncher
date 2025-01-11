@@ -13,12 +13,6 @@ logger = logging.getLogger(__name__)
 
 _HAS_UV = shutil.which("uv") is not None
 
-if not _HAS_UV:
-    logging.error("uv executable not detected.")
-    raise RuntimeError(
-        "uv is not installed in this computer. Please install uv. see https://docs.astral.sh/uv/getting-started/installation/"
-    )
-
 
 class PythonScriptApp(App):
     def __init__(
@@ -31,6 +25,7 @@ class PythonScriptApp(App):
         append_python_exe: bool = False,
         timeout: Optional[float] = None,
     ) -> None:
+        self._validate_uv()
         self._script = script
         self._project_directory = project_directory
         self._timeout = timeout
@@ -122,3 +117,12 @@ class PythonScriptApp(App):
 
     def _add_uv_optional_toml_dependencies(self) -> str:
         return " ".join([f"--extra {dep}" for dep in self._optional_toml_dependencies])
+
+    @staticmethod
+    def _validate_uv() -> bool:
+        if not _HAS_UV:
+            logging.error("uv executable not detected.")
+            raise RuntimeError(
+                "uv is not installed in this computer. Please install uv. see https://docs.astral.sh/uv/getting-started/installation/"
+            )
+        return True
