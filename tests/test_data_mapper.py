@@ -1,10 +1,12 @@
 import unittest
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from unittest.mock import patch
 
+from aind_data_schema.base import AindGeneric
 from pydantic import BaseModel
 
+from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import create_encoding_model
 from aind_behavior_experiment_launcher.data_mapper.helpers import (
     _sanity_snapshot_keys,
     snapshot_bonsai_environment,
@@ -63,6 +65,20 @@ class TestHelpers(unittest.TestCase):
         expected = {"key_1_": "value1", "key_2_": "value2"}
         result = _sanity_snapshot_keys(snapshot)
         self.assertEqual(result, expected)
+
+
+class TestAindDataMapper(unittest.TestCase):
+    class MyMockModel(BaseModel):
+        a_dict: Dict[str, Any]
+        a_generic: AindGeneric
+
+    def test_encoding_with_illegal_characters(self):
+        _input = {"key": "value", "$key.key": "value"}
+        _expected = {"key": "value", "\\u0024key\\u002ekey": "value"}
+        encoding_model = create_encoding_model(self.MyMockModel)
+        ser = encoding_model(a_dict=_input, a_generic=_input)
+        self.assertEqual(ser.a_dict, _expected)
+        self.assertEqual(ser.a_generic.model_dump(), _expected)
 
 
 if __name__ == "__main__":
