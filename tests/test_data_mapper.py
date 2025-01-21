@@ -76,9 +76,9 @@ class TestAindDataMapper(unittest.TestCase):
         _input = {"key": "value", "$key.key": "value"}
         _expected = {"key": "value", "\\u0024key\\u002ekey": "value"}
         encoding_model = create_encoding_model(self.MyMockModel)
-        ser = encoding_model(a_dict=_input, a_generic=_input)
-        self.assertEqual(ser.a_dict, _expected)
-        self.assertEqual(ser.a_generic.model_dump(), _expected)
+        test = encoding_model(a_dict=_input, a_generic=_input)
+        self.assertEqual(test.a_dict, _expected)
+        self.assertEqual(test.a_generic.model_dump(), _expected)
 
 
 if __name__ == "__main__":
