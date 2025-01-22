@@ -24,7 +24,6 @@ def prompt_pick_file_from_list(
 ) -> Optional[os.PathLike[str]]:
     def _force_dst(src: BaseValueWidget, dst: BaseValueWidget):
         with dst.changed.blocked():
-            print(dst.get_value())
             dst.set_value(Path(src.get_value()))
 
     container: widgets.Container = widgets.Container(layout="vertical")
