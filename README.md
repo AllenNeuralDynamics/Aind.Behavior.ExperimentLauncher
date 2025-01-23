@@ -15,8 +15,7 @@ Source for for a minimal framework that can be used to build experimental interf
 
 The launcher module of this library provides a frontend interface to launch, monitor and manage behavior tasks using this library. It is also designed to interface with the AIND Services.
 
-AIND Services Module
-####################
+### AIND Services Module
 
 While we will try to keep this library up to date, it is recommended to check the original repositories for the most recent updates.
 
