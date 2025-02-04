@@ -39,13 +39,13 @@ def get_cameras(
 ISearchable = Union[pydantic.BaseModel, Dict, List]
 
 
-def _sanity_snapshot_keys(snapshot: Dict[str, str]) -> Dict[str, str]:
+def _sanitize_snapshot_keys(snapshot: Dict[str, str]) -> Dict[str, str]:
     # Sanitize the key names https://github.com/AllenNeuralDynamics/Aind.Behavior.ExperimentLauncher/issues/18
     return {re.sub(r"[.$]", "_", k): v for k, v in snapshot.items()}
 
 
 def snapshot_python_environment() -> Dict[str, str]:
-    return _sanity_snapshot_keys({dist.name: dist.version for dist in metadata.distributions()})
+    return _sanitize_snapshot_keys({dist.name: dist.version for dist in metadata.distributions()})
 
 
 def snapshot_bonsai_environment(
@@ -54,4 +54,4 @@ def snapshot_bonsai_environment(
     tree = ET.parse(Path(config_file))
     root = tree.getroot()
     packages = root.findall("Packages/Package")
-    return _sanity_snapshot_keys({leaf.attrib["id"]: leaf.attrib["version"] for leaf in packages})
+    return _sanitize_snapshot_keys({leaf.attrib["id"]: leaf.attrib["version"] for leaf in packages})
