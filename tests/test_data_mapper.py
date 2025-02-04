@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import create_encoding_model
 from aind_behavior_experiment_launcher.data_mapper.helpers import (
-    _sanity_snapshot_keys,
+    _sanitize_snapshot_keys,
     snapshot_bonsai_environment,
     snapshot_python_environment,
 )
@@ -42,28 +42,28 @@ class TestHelpers(unittest.TestCase):
             {"Bonsai": "2.8.5", "Bonsai_Core": "2.8.5", "Bonsai_Design": "2.8.5", "Bonsai_Design_Visualizers": "2.8.0"},
         )
 
-    def test_sanity_snapshot_keys_no_special_chars(self):
+    def test_sanitize_snapshot_keys_no_special_chars(self):
         snapshot = {"key1": "value1", "key2": "value2"}
         expected = {"key1": "value1", "key2": "value2"}
-        result = _sanity_snapshot_keys(snapshot)
+        result = _sanitize_snapshot_keys(snapshot)
         self.assertEqual(result, expected)
 
-    def test_sanity_snapshot_keys_with_dots(self):
+    def test_sanitize_snapshot_keys_with_dots(self):
         snapshot = {"key.1": "value1", "key.2": "value2"}
         expected = {"key_1": "value1", "key_2": "value2"}
-        result = _sanity_snapshot_keys(snapshot)
+        result = _sanitize_snapshot_keys(snapshot)
         self.assertEqual(result, expected)
 
-    def test_sanity_snapshot_keys_with_dollars(self):
+    def test_sanitize_snapshot_keys_with_dollars(self):
         snapshot = {"key$1": "value1", "key$2": "value2"}
         expected = {"key_1": "value1", "key_2": "value2"}
-        result = _sanity_snapshot_keys(snapshot)
+        result = _sanitize_snapshot_keys(snapshot)
         self.assertEqual(result, expected)
 
-    def test_sanity_snapshot_keys_with_dots_and_dollars(self):
+    def test_sanitize_snapshot_keys_with_dots_and_dollars(self):
         snapshot = {"key.1$": "value1", "key.2$": "value2"}
         expected = {"key_1_": "value1", "key_2_": "value2"}
-        result = _sanity_snapshot_keys(snapshot)
+        result = _sanitize_snapshot_keys(snapshot)
         self.assertEqual(result, expected)
 
 
