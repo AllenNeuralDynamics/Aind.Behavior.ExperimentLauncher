@@ -73,19 +73,21 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         if debug_mode:
             _logger.setLevel(logging.DEBUG)
 
+        self._logger = _logger
+
+        # Solve UI helper
         self._ui_helper = ui_helper.UIHelper()
+
+        # Solve CLI arguments
         self._cli_args: _CliArgs = self._cli_wrapper()
+
+        # Solve services and git repository
         self._bind_launcher_services(services)
 
         repository_dir = (
             Path(self._cli_args.repository_dir) if self._cli_args.repository_dir is not None else repository_dir
         )
-        if repository_dir is None:
-            self.repository = GitRepository()
-        else:
-            self.repository = GitRepository(path=repository_dir)
-
-        # Always work from the root of the repository
+        self.repository = GitRepository() if repository_dir is None else GitRepository(path=repository_dir)
         self._cwd = self.repository.working_dir
         os.chdir(self._cwd)
 
