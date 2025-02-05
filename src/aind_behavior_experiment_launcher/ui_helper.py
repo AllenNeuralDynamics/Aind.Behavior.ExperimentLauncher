@@ -2,13 +2,13 @@ import logging
 import os
 from typing import Any, Callable, List, Optional, TypeVar
 
-import aind_behavior_experiment_launcher
-
 from aind_behavior_services.db_utils import SubjectDataBase
 from aind_behavior_services.rig import AindBehaviorRigModel
 from aind_behavior_services.session import AindBehaviorSessionModel
 from aind_behavior_services.task_logic import AindBehaviorTaskLogicModel
 from pydantic import BaseModel, TypeAdapter
+
+import aind_behavior_experiment_launcher
 
 logger = logging.getLogger(__name__)
 

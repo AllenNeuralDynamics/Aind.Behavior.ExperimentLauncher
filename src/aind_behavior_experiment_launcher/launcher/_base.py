@@ -5,9 +5,9 @@ import logging
 import os
 import shutil
 import sys
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Generic, Optional, Self, Type, TypeVar
-from abc import ABC, abstractmethod
 
 import pydantic
 from aind_behavior_services import (
@@ -15,11 +15,10 @@ from aind_behavior_services import (
     AindBehaviorSessionModel,
     AindBehaviorTaskLogicModel,
 )
-from aind_behavior_services.utils import model_from_json_file, utcnow, format_datetime
+from aind_behavior_services.utils import format_datetime, model_from_json_file, utcnow
 
 from aind_behavior_experiment_launcher import logging_helper, ui_helper
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
-
 
 from .git_manager import GitRepository
 
