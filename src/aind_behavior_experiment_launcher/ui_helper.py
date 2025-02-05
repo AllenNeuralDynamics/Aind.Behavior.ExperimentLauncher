@@ -2,6 +2,8 @@ import logging
 import os
 from typing import Any, Callable, List, Optional, TypeVar
 
+import aind_behavior_experiment_launcher
+
 from aind_behavior_services.db_utils import SubjectDataBase
 from aind_behavior_services.rig import AindBehaviorRigModel
 from aind_behavior_services.session import AindBehaviorSessionModel
@@ -110,6 +112,7 @@ class UIHelper:
         _str = (
             "-------------------------------\n"
             f"{_HEADER}\n"
+            f"CLABE Version: {aind_behavior_experiment_launcher.__version__}\n"
             f"TaskLogic ({task_logic_schema_model.__name__}) Schema Version: {task_logic_schema_model.model_construct().version}\n"
             f"Rig ({rig_schema_model.__name__}) Schema Version: {rig_schema_model.model_construct().version}\n"
             f"Session ({session_schema_model.__name__}) Schema Version: {session_schema_model.model_construct().version}\n"
