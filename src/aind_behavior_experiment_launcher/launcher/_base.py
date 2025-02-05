@@ -60,7 +60,6 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
     ) -> None:
         self.temp_dir = self.abspath(temp_dir) / format_datetime(utcnow())
         self.temp_dir.mkdir(parents=True, exist_ok=True)
-        print(self.temp_dir)
 
         # Solve logger
         if attached_logger:
