@@ -8,6 +8,8 @@ from aind_behavior_services.session import AindBehaviorSessionModel
 from aind_behavior_services.task_logic import AindBehaviorTaskLogicModel
 from pydantic import BaseModel, TypeAdapter
 
+import aind_behavior_experiment_launcher
+
 logger = logging.getLogger(__name__)
 
 
@@ -110,6 +112,7 @@ class UIHelper:
         _str = (
             "-------------------------------\n"
             f"{_HEADER}\n"
+            f"CLABE Version: {aind_behavior_experiment_launcher.__version__}\n"
             f"TaskLogic ({task_logic_schema_model.__name__}) Schema Version: {task_logic_schema_model.model_construct().version}\n"
             f"Rig ({rig_schema_model.__name__}) Schema Version: {rig_schema_model.model_construct().version}\n"
             f"Session ({session_schema_model.__name__}) Schema Version: {session_schema_model.model_construct().version}\n"

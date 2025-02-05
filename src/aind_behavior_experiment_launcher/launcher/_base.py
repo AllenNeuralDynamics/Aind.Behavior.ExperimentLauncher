@@ -3,9 +3,9 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-import secrets
 import shutil
 import sys
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Generic, Optional, Self, Type, TypeVar
 
@@ -15,7 +15,7 @@ from aind_behavior_services import (
     AindBehaviorSessionModel,
     AindBehaviorTaskLogicModel,
 )
-from aind_behavior_services.utils import model_from_json_file
+from aind_behavior_services.utils import format_datetime, model_from_json_file, utcnow
 
 from aind_behavior_experiment_launcher import logging_helper, ui_helper
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
@@ -32,7 +32,7 @@ TModel = TypeVar("TModel", bound=pydantic.BaseModel)  # pylint: disable=invalid-
 logger = logging.getLogger(__name__)
 
 
-class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
+class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
     RIG_DIR = "Rig"
     SUBJECT_DIR = "Subjects"
     TASK_LOGIC_DIR = "TaskLogic"
@@ -58,30 +58,34 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         task_logic_schema: Optional[os.PathLike] = None,
         subject: Optional[str] = None,
     ) -> None:
-        self.temp_dir = self.abspath(temp_dir) / secrets.token_hex(nbytes=16)
+        self.temp_dir = self.abspath(temp_dir) / format_datetime(utcnow())
         self.temp_dir.mkdir(parents=True, exist_ok=True)
 
+        # Solve logger
         if attached_logger:
             _logger = logging_helper.add_file_logger(attached_logger, self.temp_dir / "launcher.log")
         else:
-            _logger = logging_helper.add_file_logger(logger, self.temp_dir / "launcher.log")
+            root_logger = logging.getLogger()
+            _logger = logging_helper.add_file_logger(root_logger, self.temp_dir / "launcher.log")
 
         if debug_mode:
             _logger.setLevel(logging.DEBUG)
 
+        self._logger = _logger
+
+        # Solve UI helper
         self._ui_helper = ui_helper.UIHelper()
+
+        # Solve CLI arguments
         self._cli_args: _CliArgs = self._cli_wrapper()
+
+        # Solve services and git repository
         self._bind_launcher_services(services)
 
         repository_dir = (
             Path(self._cli_args.repository_dir) if self._cli_args.repository_dir is not None else repository_dir
         )
-        if repository_dir is None:
-            self.repository = GitRepository()
-        else:
-            self.repository = GitRepository(path=repository_dir)
-
-        # Always work from the root of the repository
+        self.repository = GitRepository() if repository_dir is None else GitRepository(path=repository_dir)
         self._cwd = self.repository.working_dir
         os.chdir(self._cwd)
 
@@ -196,12 +200,15 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
             self._rig_schema = self._prompt_rig_input()
         return self
 
+    @abstractmethod
     def _prompt_session_input(self) -> TSession:
         raise NotImplementedError("Method not implemented.")
 
+    @abstractmethod
     def _prompt_task_logic_input(self) -> TTaskLogic:
         raise NotImplementedError("Method not implemented.")
 
+    @abstractmethod
     def _prompt_rig_input(self) -> TRig:
         raise NotImplementedError("Method not implemented.")
 
@@ -214,12 +221,15 @@ class BaseLauncher(Generic[TRig, TSession, TTaskLogic]):
         logger.info("Post-run hook completed.")
         return self
 
+    @abstractmethod
     def _pre_run_hook(self, *args, **kwargs) -> Self:
         raise NotImplementedError("Method not implemented.")
 
+    @abstractmethod
     def _run_hook(self, *args, **kwargs) -> Self:
         raise NotImplementedError("Method not implemented.")
 
+    @abstractmethod
     def _post_run_hook(self, *args, **kwargs) -> Self:
         raise NotImplementedError("Method not implemented.")
 
