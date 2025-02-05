@@ -9,6 +9,25 @@ from aind_behavior_experiment_launcher.launcher import BaseLauncher
 from aind_behavior_experiment_launcher.launcher._base import _CliArgs
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
 
+class BaseLauncherMock(BaseLauncher):
+    def _prompt_session_input(self):
+        pass
+
+    def _prompt_task_logic_input(self):
+        pass
+
+    def _prompt_rig_input(self):
+        pass
+
+    def _pre_run_hook(self, *args, **kwargs):
+        pass
+
+    def _run_hook(self, *args, **kwargs):
+        pass
+
+    def _post_run_hook(self, *args, **kwargs):
+        pass
+
 
 class TestBaseLauncher(unittest.TestCase):
     @patch("aind_behavior_experiment_launcher.launcher.BaseLauncher.validate", return_value=True)
@@ -19,7 +38,7 @@ class TestBaseLauncher(unittest.TestCase):
         self.data_dir = Path("/tmp/fake/data/dir")
         self.config_library_dir = Path("/tmp/fake/config/dir")
         self.temp_dir = Path("/tmp/fake/temp/dir")
-        self.launcher = BaseLauncher(
+        self.launcher = BaseLauncherMock(
             rig_schema_model=self.rig_schema_model,
             session_schema_model=self.session_schema_model,
             task_logic_schema_model=self.task_logic_schema_model,
@@ -88,7 +107,7 @@ class TestBaseLauncher(unittest.TestCase):
             ),
             [],
         )
-        args = BaseLauncher._cli_wrapper()
+        args = BaseLauncherMock._cli_wrapper()
         self.assertEqual(args.data_dir, Path("/tmp/fake/data/dir"))
         self.assertFalse(args.create_directories)
         self.assertFalse(args.debug)
@@ -109,7 +128,7 @@ class TestBaseLauncher(unittest.TestCase):
             ),
             [],
         )
-        launcher = BaseLauncher(
+        launcher = BaseLauncherMock(
             rig_schema_model=self.rig_schema_model,
             session_schema_model=self.session_schema_model,
             task_logic_schema_model=self.task_logic_schema_model,
