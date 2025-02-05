@@ -63,10 +63,12 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         self.temp_dir.mkdir(parents=True, exist_ok=True)
         print(self.temp_dir)
 
+        # Solve logger
         if attached_logger:
             _logger = logging_helper.add_file_logger(attached_logger, self.temp_dir / "launcher.log")
         else:
-            _logger = logging_helper.add_file_logger(logger, self.temp_dir / "launcher.log")
+            root_logger = logging.getLogger()
+            _logger = logging_helper.add_file_logger(root_logger, self.temp_dir / "launcher.log")
 
         if debug_mode:
             _logger.setLevel(logging.DEBUG)
