@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-import secrets
 import shutil
 import sys
 from pathlib import Path
@@ -16,7 +15,7 @@ from aind_behavior_services import (
     AindBehaviorSessionModel,
     AindBehaviorTaskLogicModel,
 )
-from aind_behavior_services.utils import model_from_json_file
+from aind_behavior_services.utils import model_from_json_file, utcnow, format_datetime
 
 from aind_behavior_experiment_launcher import logging_helper, ui_helper
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
@@ -60,7 +59,7 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         task_logic_schema: Optional[os.PathLike] = None,
         subject: Optional[str] = None,
     ) -> None:
-        self.temp_dir = self.abspath(temp_dir) / secrets.token_hex(nbytes=16)
+        self.temp_dir = self.abspath(temp_dir) / format_datetime(utcnow())
         self.temp_dir.mkdir(parents=True, exist_ok=True)
         print(self.temp_dir)
 
