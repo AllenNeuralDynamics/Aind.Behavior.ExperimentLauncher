@@ -9,6 +9,7 @@ from aind_behavior_experiment_launcher.launcher import BaseLauncher
 from aind_behavior_experiment_launcher.launcher._base import _CliArgs
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
 
+
 class BaseLauncherMock(BaseLauncher):
     def _prompt_session_input(self):
         pass
