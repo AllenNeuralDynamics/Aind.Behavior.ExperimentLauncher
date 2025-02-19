@@ -1,0 +1,31 @@
+aind\_behavior\_experiment\_launcher.launcher.git\_manager
+==========================================================
+
+.. automodule:: aind_behavior_experiment_launcher.launcher.git_manager
+  
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst               
+   
+      GitRepository
+   
+   
+
+   
+   
+   
+
+
+
