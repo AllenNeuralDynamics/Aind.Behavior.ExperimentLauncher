@@ -45,7 +45,7 @@ def _sanitize_snapshot_keys(snapshot: Dict[str, str]) -> Dict[str, str]:
 
 
 def snapshot_python_environment() -> Dict[str, str]:
-    return _sanitize_snapshot_keys({dist.name: dist.version for dist in metadata.distributions()})
+    return {dist.name: dist.version for dist in metadata.distributions()}
 
 
 def snapshot_bonsai_environment(
@@ -54,4 +54,4 @@ def snapshot_bonsai_environment(
     tree = ET.parse(Path(config_file))
     root = tree.getroot()
     packages = root.findall("Packages/Package")
-    return _sanitize_snapshot_keys({leaf.attrib["id"]: leaf.attrib["version"] for leaf in packages})
+    return {leaf.attrib["id"]: leaf.attrib["version"] for leaf in packages}
