@@ -22,9 +22,15 @@ dependencies = [
     "pydantic>=2.7, <3.0",
     "gitpython",
     "semver",
+<<<<<<< HEAD
     "rich",
     "aind_behavior_services<1",
     "aind-slims-api<0.2",
+=======
+    "aind_behavior_curriculum @ git+https://github.com/AllenNeuralDynamics/aind-behavior-curriculum@refactor-expose-public-evaluator",
+    "aind_behavior_services @ git+https://github.com/AllenNeuralDynamics/Aind.Behavior.Services@release-0.9",
+    "aind-slims-api < 0.2"
+>>>>>>> 449e79ee01293ca9ff2889bc4c85a7877ab7c3da
 ]
 
 [project.urls]
@@ -36,7 +42,11 @@ Changelog = "https://github.com/AllenNeuralDynamics/Aind.Behavior.ExperimentLaun
 [project.optional-dependencies]
 aind-services = [
     "aind-watchdog-service>=0.1.0, <0.2.0",
+<<<<<<< HEAD
     "aind-data-schema<2"
+=======
+    "aind-data-schema<=1.2",
+>>>>>>> 449e79ee01293ca9ff2889bc4c85a7877ab7c3da
 ]
 
 dev = [

@@ -7,16 +7,12 @@ resolution-markers = [
 
 [[package]]
 name = "aind-behavior-curriculum"
-version = "0.0.30"
-source = { registry = "https://pypi.org/simple" }
+version = "0.0.28"
+source = { git = "https://github.com/AllenNeuralDynamics/aind-behavior-curriculum?rev=refactor-expose-public-evaluator#6b5b32abe409ee8a2dcad66ead0b79f171198294" }
 dependencies = [
     { name = "jinja2" },
     { name = "pydantic" },
     { name = "semver" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/b0/76/5dbd7f48de65b1cedd77c3edc34227788a8def5920ad2cf82023cdec6991/aind_behavior_curriculum-0.0.30.tar.gz", hash = "sha256:697567505fa3a3cc8c5ba24b7e70ae67e180c2671e5f6686e3c8c6cfdccc187f", size = 121445 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e9/bd/5c90c48f6079e27379d82cd6ac182df8193c81c4f8034d230b9a977257e7/aind_behavior_curriculum-0.0.30-py3-none-any.whl", hash = "sha256:193f243a69b663299afe75661d007ba545249d78a8b52c4277e18630dca2a149", size = 46762 },
 ]
 
 [[package]]
@@ -61,8 +57,8 @@ requires-dist = [
     { name = "aind-behavior-curriculum", git = "https://github.com/AllenNeuralDynamics/aind-behavior-curriculum?rev=refactor-expose-public-evaluator" },
     { name = "aind-behavior-experiment-launcher", extras = ["aind-services"], marker = "extra == 'dev'" },
     { name = "aind-behavior-experiment-launcher", extras = ["aind-services"], marker = "extra == 'docs'" },
-    { name = "aind-behavior-services", specifier = "<1" },
-    { name = "aind-data-schema", marker = "extra == 'aind-services'", specifier = "<2" },
+    { name = "aind-behavior-services", git = "https://github.com/AllenNeuralDynamics/Aind.Behavior.Services?rev=release-0.9" },
+    { name = "aind-data-schema", marker = "extra == 'aind-services'", specifier = "<=1.2" },
     { name = "aind-slims-api", specifier = "<0.2" },
     { name = "aind-watchdog-service", marker = "extra == 'aind-services'", specifier = ">=0.1.0,<0.2.0" },
     { name = "autodoc-pydantic", marker = "extra == 'docs'" },
@@ -83,8 +79,8 @@ requires-dist = [
 
 [[package]]
 name = "aind-behavior-services"
-version = "0.10.0"
-source = { registry = "https://pypi.org/simple" }
+version = "0.8.9"
+source = { git = "https://github.com/AllenNeuralDynamics/Aind.Behavior.Services?rev=release-0.9#5af6c468eafbfa8e6c8eb4b52a14bef4396fb006" }
 dependencies = [
     { name = "aind-behavior-curriculum" },
     { name = "gitpython" },
@@ -92,10 +88,6 @@ dependencies = [
     { name = "pydantic" },
     { name = "scikit-learn" },
     { name = "semver" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/62/0e/62f30748c41f13723314c5780ceda7378aaeb8c996bc7882498527e7a3a5/aind_behavior_services-0.10.0.tar.gz", hash = "sha256:4a6fce7a3c9c229d51434c654fdf347be3ce4731de420062aa5308fbfdb67361", size = 136013 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d8/5c/dc8ac422fa633668947b58180c5958bfda65afb637a01e756714b4c73129/aind_behavior_services-0.10.0-py3-none-any.whl", hash = "sha256:e89acc4a129d6f12e5b2feaebd86890a43ca2256bf1907f6502350ce042497d2", size = 49469 },
 ]
 
 [[package]]
