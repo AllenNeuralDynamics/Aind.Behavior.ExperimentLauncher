@@ -1,18 +1,17 @@
 import unittest
-from pathlib import Path
 
 from aind_behavior_curriculum import TrainerState
 from semver import Version
 
 from aind_behavior_experiment_launcher.apps import PythonScriptApp
-from aind_behavior_experiment_launcher.launcher import git_manager
+from tests import TESTS_ASSETS, SubmoduleManager
+
+SubmoduleManager.initialize_submodules()
 
 
 class TestCurriculumIntegration(unittest.TestCase):
     def setUp(self):
-        self.submodule_path = Path(__file__).parents[0] / "assets" / "Aind.Behavior.curriculumTemplate"
-        self.repo = git_manager.GitRepository(self.submodule_path)
-        self.repo.full_reset().force_update_submodules()
+        self.submodule_path = TESTS_ASSETS / "Aind.Behavior.curriculumTemplate"
 
     def test_can_create_venv(self):
         curriculum_app = PythonScriptApp("curriculum", project_directory=self.submodule_path, timeout=20)
@@ -40,32 +39,14 @@ class TestCurriculumIntegration(unittest.TestCase):
         curriculum_app.run()
         curriculum_app.result.check_returncode()
         output = curriculum_app.result.stdout
+        with open(TESTS_ASSETS / "expected_curriculum_suggestion.json", "r", encoding="utf-8") as f:
+            expected = f.read()
+        output: str = output.replace("\n", "").strip()
+        expected = expected.replace("\n", "").strip()
         deserialized = TrainerState.model_validate_json(output)
-        expected = """
-        {
-          "stage": {
-            "name": "stage_b",
-            "task": {
-              "name": "TemplateTask",
-              "description": "A template task",
-              "task_parameters": {
-            "example_parameter": 1.0,
-            "mode": "bar"
-              },
-              "version": "0.0.0",
-              "stage_name": null
-            },
-            "graph": {
-              "nodes": {},
-              "graph": {}
-            },
-            "start_policies": []
-          },
-          "is_on_curriculum": true,
-          "active_policies": []
-        }
-        """
+
         self.assertEqual(deserialized, TrainerState.model_validate_json(expected))
+        self.assertEqual(output, expected)
 
 
 if __name__ == "__main__":
