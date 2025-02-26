@@ -1,6 +1,6 @@
 import unittest
 
-from aind_behavior_curriculum import TrainerState
+from aind_behavior_curriculum import Metrics, TrainerState
 from semver import Version
 
 from aind_behavior_experiment_launcher.apps import PythonScriptApp
@@ -34,19 +34,25 @@ class TestCurriculumIntegration(unittest.TestCase):
 
     def test_curriculum_run(self):
         curriculum_app = PythonScriptApp(
-            "curriculum run this_is_not_a_path --skip-upload", project_directory=self.submodule_path, timeout=20
+            "curriculum run this_is_not_a_path this_is_not_a_path --demo",
+            project_directory=self.submodule_path,
+            timeout=20,
         )
+
         curriculum_app.run()
         curriculum_app.result.check_returncode()
-        output = curriculum_app.result.stdout
+        output: str = curriculum_app.result.stdout
+        lines = [line.strip() for line in output.strip().split("\n")]
+        trainer_state = TrainerState.model_validate_json(lines[0])
+        metrics = Metrics.model_validate_json(lines[1])
+
         with open(TESTS_ASSETS / "expected_curriculum_suggestion.json", "r", encoding="utf-8") as f:
             expected = f.read()
-        output: str = output.replace("\n", "").strip()
-        expected = expected.replace("\n", "").strip()
-        deserialized = TrainerState.model_validate_json(output)
+            self.assertEqual(trainer_state, TrainerState.model_validate_json(expected))
 
-        self.assertEqual(deserialized, TrainerState.model_validate_json(expected))
-        self.assertEqual(output, expected)
+        with open(TESTS_ASSETS / "expected_curriculum_metrics.json", "r", encoding="utf-8") as f:
+            expected = f.read()
+            self.assertEqual(metrics, Metrics.model_validate_json(expected))
 
 
 if __name__ == "__main__":
