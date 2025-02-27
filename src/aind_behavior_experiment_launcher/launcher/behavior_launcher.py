@@ -108,14 +108,13 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
 
         # Else, we check inside the subject folder for an existing task file
         try:
-            task_logic = model_from_json_file(
-                self._subject_dir / self.session_schema.subject / behavior_launcher_helpers.ByAnimalFiles.TASK_LOGIC,
-                self.task_logic_schema_model,
-            )
+            f = self._subject_dir / self.session_schema.subject / behavior_launcher_helpers.ByAnimalFiles.TASK_LOGIC
+            logger.info("Attempting to load task logic from subject folder: %s", f)
+            task_logic = model_from_json_file(f, self.task_logic_schema_model)
         except (ValueError, FileNotFoundError, pydantic.ValidationError) as e:
             logger.warning("Failed to find a valid task logic file. %s", e)
         else:
-            logger.info("Found task logic file in subject folder.")
+            logger.info("Found a valid task logic file in subject folder!")
             _is_manual = self._ui_helper.prompt_yes_no_question("Would you like to use this task logic?")
             if not _is_manual:
                 return task_logic
