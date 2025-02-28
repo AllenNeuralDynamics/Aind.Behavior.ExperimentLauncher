@@ -22,6 +22,7 @@ import requests
 import yaml
 from aind_data_schema.core.session import Session as AdsSession
 from aind_data_schema_models.platforms import Platform
+from aind_data_schema.core.metadata import CORE_FILES
 from aind_watchdog_service.models.manifest_config import BucketType, ManifestConfig
 from aind_watchdog_service.models.watch_config import WatchConfig
 from pydantic import BaseModel
@@ -234,19 +235,6 @@ class WatchdogDataTransferService(DataTransfer):
 
     @staticmethod
     def _find_ads_schemas(source: PathLike) -> List[PathLike]:
-        # TODO as of version aind-data-schema 1.1.1 this list does not seem to exist...
-        # from https://github.com/AllenNeuralDynamics/aind-data-schema/blob/7b2a2a4bf8ed554c56dd33d17cd2f7a0addc1e22/src/aind_data_schema/core/metadata.py#L33
-        CORE_FILES = [
-            "subject",
-            "data_description",
-            "procedures",
-            "session",
-            "rig",
-            "processing",
-            "acquisition",
-            "instrument",
-            "quality_control",
-        ]
         json_files = []
         for core_file in CORE_FILES:
             json_file = Path(source) / f"{core_file}.json"
