@@ -15,15 +15,23 @@ import os
 import subprocess
 from os import PathLike
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
+import aind_behavior_video_transformation as abvt
 import pydantic
 import requests
 import yaml
-from aind_data_schema.core.session import Session as AdsSession
-from aind_data_schema_models.platforms import Platform
 from aind_data_schema.core.metadata import CORE_FILES
-from aind_watchdog_service.models.manifest_config import BucketType, ManifestConfig
+from aind_data_schema.core.session import Session as AdsSession
+from aind_data_schema_models.modalities import Modality
+from aind_data_schema_models.platforms import Platform
+from aind_watchdog_service.models.manifest_config import (
+    BasicUploadJobConfigs,
+    BucketType,
+    ManifestConfig,
+    ModalityConfigs,
+    SubmitJobRequest,
+)
 from aind_watchdog_service.models.watch_config import WatchConfig
 from pydantic import BaseModel
 from requests.exceptions import HTTPError
@@ -33,6 +41,9 @@ from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindD
 from ._base import DataTransfer
 
 logger = logging.getLogger(__name__)
+
+
+ConfigsFactory = Callable[["WatchdogDataTransferService"], ModalityConfigs | BasicUploadJobConfigs]
 
 
 class WatchdogDataTransferService(DataTransfer):
@@ -52,6 +63,7 @@ class WatchdogDataTransferService(DataTransfer):
         transfer_endpoint: str = "http://aind-data-transfer-service/api/v1/submit_jobs",
         validate: bool = True,
         session_name: Optional[str] = None,
+        upload_job_configs: Optional[List[BasicUploadJobConfigs | ModalityConfigs | ConfigsFactory]] = None,
     ) -> None:
         self.source = source
         self.destination = destination
@@ -66,6 +78,7 @@ class WatchdogDataTransferService(DataTransfer):
         self.transfer_endpoint = transfer_endpoint
         self._aind_session_data_mapper = aind_session_data_mapper
         self._session_name = session_name
+        self.upload_job_configs = upload_job_configs or []
 
         _default_exe = os.environ.get("WATCHDOG_EXE", None)
         _default_config = os.environ.get("WATCHDOG_CONFIG", None)
@@ -211,7 +224,7 @@ class WatchdogDataTransferService(DataTransfer):
 
         ads_schemas = self._find_ads_schemas(source) if ads_schemas is None else ads_schemas
 
-        return ManifestConfig(
+        _manifest_config = ManifestConfig(
             name=session_name,
             modalities={
                 str(modality.abbreviation): [str(path.resolve()) for path in [source / str(modality.abbreviation)]]
@@ -232,6 +245,35 @@ class WatchdogDataTransferService(DataTransfer):
             force_cloud_sync=self.force_cloud_sync,
             transfer_endpoint=self.transfer_endpoint,
         )
+
+        def _unwrap_job(
+            manifest: ManifestConfig, job: BasicUploadJobConfigs | ManifestConfig | ConfigsFactory
+        ) -> SubmitJobRequest:
+            if callable(job):
+                job = job(self)
+            if isinstance(job, BasicUploadJobConfigs):
+                return SubmitJobRequest(upload_jobs=[job])
+            if isinstance(job, ModalityConfigs):
+                return SubmitJobRequest(
+                    upload_jobs=[
+                        BasicUploadJobConfigs(
+                            metadata_dir=manifest.destination,
+                            project_name=manifest.project_name,
+                            s3_bucket=manifest.s3_bucket,
+                            platform=manifest.platform,
+                            subject_id=manifest.subject_id,
+                            acq_datetime=manifest.acquisition_datetime,
+                            modalities=[ManifestConfig],
+                        )
+                    ]
+                )
+            else:
+                return job(self) if callable(job) else job
+
+        _manifest_config.transfer_service_args = [
+            _unwrap_job(manifest=_manifest_config, job=job) for job in self.upload_job_configs
+        ]
+        return _manifest_config
 
     @staticmethod
     def _find_ads_schemas(source: PathLike) -> List[PathLike]:
@@ -308,3 +350,19 @@ class WatchdogDataTransferService(DataTransfer):
     def _read_yaml(path: PathLike) -> dict:
         with open(path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f)
+
+
+def video_compression_job(
+    compression_request_settings: Optional[abvt.CompressionRequest] = None,
+) -> Callable[["WatchdogDataTransferService"], ModalityConfigs]:
+    if compression_request_settings is None:
+        compression_request_settings = abvt.CompressionRequest(compression_enum=abvt.CompressionEnum.GAMMA_ENCODING)
+
+    def _video_compression_job_factory(watchdog: WatchdogDataTransferService) -> BasicUploadJobConfigs:
+        return ModalityConfigs(
+            modality=Modality.BEHAVIOR_VIDEOS,
+            source=watchdog.source / Modality.BEHAVIOR_VIDEOS.abbreviation,
+            job_settings=compression_request_settings,
+        )
+
+    return _video_compression_job_factory
