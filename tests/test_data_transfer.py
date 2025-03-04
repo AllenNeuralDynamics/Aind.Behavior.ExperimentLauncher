@@ -4,6 +4,7 @@ from datetime import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from aind_behavior_video_transformation import CompressionEnum, CompressionRequest
 from aind_data_schema_models.modalities import Modality
 from aind_data_schema_models.platforms import Platform
 from aind_watchdog_service.models.manifest_config import BucketType
@@ -11,9 +12,12 @@ from aind_watchdog_service.models.manifest_config import BucketType
 from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
 from aind_behavior_experiment_launcher.data_transfer import RobocopyService
 from aind_behavior_experiment_launcher.data_transfer.aind_watchdog import (
+    BasicUploadJobConfigs,
     ManifestConfig,
+    ModalityConfigs,
     WatchConfig,
     WatchdogDataTransferService,
+    video_compression_job,
 )
 
 
@@ -209,10 +213,6 @@ class TestWatchdogDataTransferService(unittest.TestCase):
 
     def test_dump_manifest_config_no_manifest_config(self):
         self.service._manifest_config = None
-        self.service._watch_config = WatchConfig(
-            flag_dir="flag_dir",
-            manifest_complete="manifest_complete",
-        )
 
         with self.assertRaises(ValueError):
             self.service.dump_manifest_config()
@@ -222,6 +222,32 @@ class TestWatchdogDataTransferService(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             self.service.dump_manifest_config()
+
+    def test_add_transfer_service_args(self):
+        modality_configs_factory = video_compression_job()
+        modality_configs = ModalityConfigs(
+            modality=Modality.BEHAVIOR_VIDEOS,
+            source=(Path(self.service.source) / Modality.BEHAVIOR_VIDEOS.abbreviation).as_posix(),
+            job_settings=CompressionRequest(compression_enum=CompressionEnum.GAMMA_ENCODING).model_dump(
+                mode="json"
+            ),  # needs mode to be json, otherwise parent class will raise an error
+        )
+        basic_upload_job_configs = BasicUploadJobConfigs(
+            metadata_dir=self.service._manifest_config.destination,
+            project_name=self.service._manifest_config.project_name,
+            s3_bucket=self.service._manifest_config.s3_bucket,
+            platform=self.service._manifest_config.platform,
+            subject_id=str(self.service._manifest_config.subject_id),
+            acq_datetime=self.service._manifest_config.acquisition_datetime,
+            modalities=[modality_configs.model_copy(deep=True)],
+        )
+
+        _manifest_config = self.service.add_transfer_service_args(
+            self.service._manifest_config, jobs=[modality_configs_factory, modality_configs, basic_upload_job_configs]
+        )
+        for job in _manifest_config.transfer_service_args.upload_jobs:
+            self.assertEqual(job, _manifest_config.transfer_service_args.upload_jobs[-1])
+
 
 
 class TestRobocopyService(unittest.TestCase):
