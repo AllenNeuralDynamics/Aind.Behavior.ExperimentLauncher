@@ -61,7 +61,7 @@ docs = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.setuptools]
+[tool.setuptools] 
 # FIXME: temporary workaround:
 #   - https://github.com/astral-sh/uv/issues/9513
 #   - https://github.com/pypa/setuptools/issues/4759

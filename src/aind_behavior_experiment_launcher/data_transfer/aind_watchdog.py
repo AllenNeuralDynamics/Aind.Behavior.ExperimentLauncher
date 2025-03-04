@@ -251,10 +251,14 @@ class WatchdogDataTransferService(DataTransfer):
 
     def add_transfer_service_args(
         self,
-        manifest_config: ManifestConfig,
+        manifest_config: Optional[ManifestConfig] = None,
         jobs=Optional[List[_JobConfigs]],
         submit_job_request_kwargs: Optional[dict] = None,
     ) -> ManifestConfig:
+        if manifest_config is None:
+            manifest_config = self._manifest_config
+        if manifest_config is None:
+            raise ValueError("ManifestConfig is not provided.")
 
         def _normalize_job(
             watchdog: WatchdogDataTransferService, manifest: ManifestConfig, job: _JobConfigs
@@ -268,7 +272,7 @@ class WatchdogDataTransferService(DataTransfer):
                     project_name=manifest.project_name,
                     s3_bucket=manifest.s3_bucket,
                     platform=manifest.platform,
-                    subject_id=manifest.subject_id,
+                    subject_id=str(manifest.subject_id),
                     acq_datetime=manifest.acquisition_datetime,
                     modalities=[job],
                 )
@@ -367,8 +371,10 @@ def video_compression_job(
     def _video_compression_job_factory(watchdog: WatchdogDataTransferService) -> BasicUploadJobConfigs:
         return ModalityConfigs(
             modality=Modality.BEHAVIOR_VIDEOS,
-            source=watchdog.source / Modality.BEHAVIOR_VIDEOS.abbreviation,
-            job_settings=compression_request_settings,
+            source=(Path(watchdog.source) / Modality.BEHAVIOR_VIDEOS.abbreviation).as_posix(),
+            job_settings=compression_request_settings.model_dump(
+                mode="json"
+            ),  # needs mode to be json, otherwise parent class will raise an error
         )
 
     return _video_compression_job_factory
