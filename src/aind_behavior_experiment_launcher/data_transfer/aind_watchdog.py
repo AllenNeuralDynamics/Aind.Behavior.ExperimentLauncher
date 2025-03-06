@@ -259,6 +259,8 @@ class WatchdogDataTransferService(DataTransfer):
             manifest_config = self._manifest_config
         if manifest_config is None:
             raise ValueError("ManifestConfig is not provided.")
+        if (jobs is None) or (len(jobs) == 0):
+            return manifest_config
 
         def _normalize_job(
             watchdog: WatchdogDataTransferService, manifest: ManifestConfig, job: _JobConfigs
