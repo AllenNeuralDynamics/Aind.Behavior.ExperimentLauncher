@@ -1,0 +1,6 @@
+aind\_behavior\_experiment\_launcher.logging\_helper.add\_file\_logger
+======================================================================
+
+.. currentmodule:: aind_behavior_experiment_launcher.logging_helper
+
+.. autofunction:: add_file_logger

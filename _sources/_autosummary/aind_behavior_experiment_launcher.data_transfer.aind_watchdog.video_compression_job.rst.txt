@@ -1,0 +1,6 @@
+aind\_behavior\_experiment\_launcher.data\_transfer.aind\_watchdog.video\_compression\_job
+==========================================================================================
+
+.. currentmodule:: aind_behavior_experiment_launcher.data_transfer.aind_watchdog
+
+.. autofunction:: video_compression_job

@@ -1,0 +1,38 @@
+aind\_behavior\_experiment\_launcher.data\_transfer.aind\_watchdog
+==================================================================
+
+.. automodule:: aind_behavior_experiment_launcher.data_transfer.aind_watchdog
+  
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      video_compression_job
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst               
+   
+      WatchdogDataTransferService
+   
+   
+
+   
+   
+   
+
+
+
