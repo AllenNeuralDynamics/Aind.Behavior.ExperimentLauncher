@@ -15,14 +15,23 @@ import os
 import subprocess
 from os import PathLike
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Union
 
+import aind_behavior_video_transformation as abvt
 import pydantic
 import requests
 import yaml
+from aind_data_schema.core.metadata import CORE_FILES
 from aind_data_schema.core.session import Session as AdsSession
+from aind_data_schema_models.modalities import Modality
 from aind_data_schema_models.platforms import Platform
-from aind_watchdog_service.models.manifest_config import BucketType, ManifestConfig
+from aind_watchdog_service.models.manifest_config import (
+    BasicUploadJobConfigs,
+    BucketType,
+    ManifestConfig,
+    ModalityConfigs,
+    SubmitJobRequest,
+)
 from aind_watchdog_service.models.watch_config import WatchConfig
 from pydantic import BaseModel
 from requests.exceptions import HTTPError
@@ -32,6 +41,10 @@ from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindD
 from ._base import DataTransfer
 
 logger = logging.getLogger(__name__)
+
+
+_ConfigsFactory = Callable[["WatchdogDataTransferService"], Union[ModalityConfigs, BasicUploadJobConfigs]]
+_JobConfigs = Union[ModalityConfigs, BasicUploadJobConfigs, _ConfigsFactory]
 
 
 class WatchdogDataTransferService(DataTransfer):
@@ -51,6 +64,7 @@ class WatchdogDataTransferService(DataTransfer):
         transfer_endpoint: str = "http://aind-data-transfer-service/api/v1/submit_jobs",
         validate: bool = True,
         session_name: Optional[str] = None,
+        upload_job_configs: Optional[List[_JobConfigs]] = None,
     ) -> None:
         self.source = source
         self.destination = destination
@@ -65,6 +79,7 @@ class WatchdogDataTransferService(DataTransfer):
         self.transfer_endpoint = transfer_endpoint
         self._aind_session_data_mapper = aind_session_data_mapper
         self._session_name = session_name
+        self.upload_job_configs = upload_job_configs or []
 
         _default_exe = os.environ.get("WATCHDOG_EXE", None)
         _default_config = os.environ.get("WATCHDOG_CONFIG", None)
@@ -210,7 +225,7 @@ class WatchdogDataTransferService(DataTransfer):
 
         ads_schemas = self._find_ads_schemas(source) if ads_schemas is None else ads_schemas
 
-        return ManifestConfig(
+        _manifest_config = ManifestConfig(
             name=session_name,
             modalities={
                 str(modality.abbreviation): [str(path.resolve()) for path in [source / str(modality.abbreviation)]]
@@ -231,22 +246,49 @@ class WatchdogDataTransferService(DataTransfer):
             force_cloud_sync=self.force_cloud_sync,
             transfer_endpoint=self.transfer_endpoint,
         )
+        _manifest_config = self.add_transfer_service_args(_manifest_config, jobs=self.upload_job_configs)
+        return _manifest_config
+
+    def add_transfer_service_args(
+        self,
+        manifest_config: Optional[ManifestConfig] = None,
+        jobs=Optional[List[_JobConfigs]],
+        submit_job_request_kwargs: Optional[dict] = None,
+    ) -> ManifestConfig:
+        if manifest_config is None:
+            manifest_config = self._manifest_config
+        if manifest_config is None:
+            raise ValueError("ManifestConfig is not provided.")
+        if (jobs is None) or (len(jobs) == 0):
+            return manifest_config
+
+        def _normalize_job(
+            watchdog: WatchdogDataTransferService, manifest: ManifestConfig, job: _JobConfigs
+        ) -> BasicUploadJobConfigs:
+            if callable(job):
+                job = job(watchdog)
+
+            if isinstance(job, ModalityConfigs):
+                job = BasicUploadJobConfigs(
+                    metadata_dir=manifest.destination,
+                    project_name=manifest.project_name,
+                    s3_bucket=manifest.s3_bucket,
+                    platform=manifest.platform,
+                    subject_id=str(manifest.subject_id),
+                    acq_datetime=manifest.acquisition_datetime,
+                    modalities=[job],
+                )
+
+            return job
+
+        manifest_config.transfer_service_args = SubmitJobRequest(
+            upload_jobs=[_normalize_job(watchdog=self, manifest=manifest_config, job=job) for job in jobs],
+            **(submit_job_request_kwargs or {}),
+        )
+        return manifest_config
 
     @staticmethod
     def _find_ads_schemas(source: PathLike) -> List[PathLike]:
-        # TODO as of version aind-data-schema 1.1.1 this list does not seem to exist...
-        # from https://github.com/AllenNeuralDynamics/aind-data-schema/blob/7b2a2a4bf8ed554c56dd33d17cd2f7a0addc1e22/src/aind_data_schema/core/metadata.py#L33
-        CORE_FILES = [
-            "subject",
-            "data_description",
-            "procedures",
-            "session",
-            "rig",
-            "processing",
-            "acquisition",
-            "instrument",
-            "quality_control",
-        ]
         json_files = []
         for core_file in CORE_FILES:
             json_file = Path(source) / f"{core_file}.json"
@@ -320,3 +362,21 @@ class WatchdogDataTransferService(DataTransfer):
     def _read_yaml(path: PathLike) -> dict:
         with open(path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f)
+
+
+def video_compression_job(
+    compression_request_settings: Optional[abvt.CompressionRequest] = None,
+) -> Callable[["WatchdogDataTransferService"], ModalityConfigs]:
+    if compression_request_settings is None:
+        compression_request_settings = abvt.CompressionRequest(compression_enum=abvt.CompressionEnum.GAMMA_ENCODING)
+
+    def _video_compression_job_factory(watchdog: WatchdogDataTransferService) -> BasicUploadJobConfigs:
+        return ModalityConfigs(
+            modality=Modality.BEHAVIOR_VIDEOS,
+            source=(Path(watchdog.source) / Modality.BEHAVIOR_VIDEOS.abbreviation).as_posix(),
+            job_settings=compression_request_settings.model_dump(
+                mode="json"
+            ),  # needs mode to be json, otherwise parent class will raise an error
+        )
+
+    return _video_compression_job_factory

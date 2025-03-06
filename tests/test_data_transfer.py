@@ -4,6 +4,7 @@ from datetime import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from aind_behavior_video_transformation import CompressionEnum, CompressionRequest
 from aind_data_schema_models.modalities import Modality
 from aind_data_schema_models.platforms import Platform
 from aind_watchdog_service.models.manifest_config import BucketType
@@ -11,9 +12,12 @@ from aind_watchdog_service.models.manifest_config import BucketType
 from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
 from aind_behavior_experiment_launcher.data_transfer import RobocopyService
 from aind_behavior_experiment_launcher.data_transfer.aind_watchdog import (
+    BasicUploadJobConfigs,
     ManifestConfig,
+    ModalityConfigs,
     WatchConfig,
     WatchdogDataTransferService,
+    video_compression_job,
 )
 
 
@@ -49,6 +53,30 @@ class TestWatchdogDataTransferService(unittest.TestCase):
             force_cloud_sync=self.force_cloud_sync,
             transfer_endpoint=self.transfer_endpoint,
             validate=self.validate,
+        )
+
+        self.service._manifest_config = ManifestConfig(
+            name="test_manifest",
+            modalities={Modality.BEHAVIOR: ["path/to/modality"]},
+            subject_id=1,
+            acquisition_datetime="2023-01-01T00:00:00",
+            schemas=["path/to/schema"],
+            destination="path/to/destination",
+            mount="mount_path",
+            processor_full_name="processor_name",
+            project_name="test_project",
+            schedule_time=self.schedule_time,
+            platform=Platform.BEHAVIOR,
+            capsule_id="capsule_id",
+            s3_bucket=BucketType.PRIVATE,
+            script={"script_key": ["script_value"]},
+            force_cloud_sync=True,
+            transfer_endpoint="http://aind-data-transfer-service/api/v1/submit_jobs",
+        )
+
+        self.service._watch_config = WatchConfig(
+            flag_dir="flag_dir",
+            manifest_complete="manifest_complete",
         )
 
     def test_initialization(self):
@@ -161,29 +189,6 @@ class TestWatchdogDataTransferService(unittest.TestCase):
     @patch("aind_behavior_experiment_launcher.data_transfer.aind_watchdog.Path.mkdir")
     @patch("aind_behavior_experiment_launcher.data_transfer.aind_watchdog.WatchdogDataTransferService._write_yaml")
     def test_dump_manifest_config(self, mock_write_yaml, mock_mkdir):
-        self.service._manifest_config = ManifestConfig(
-            name="test_manifest",
-            modalities={Modality.BEHAVIOR: ["path/to/modality"]},
-            subject_id=1,
-            acquisition_datetime="2023-01-01T00:00:00",
-            schemas=["path/to/schema"],
-            destination="path/to/destination",
-            mount="mount_path",
-            processor_full_name="processor_name",
-            project_name="test_project",
-            schedule_time=self.schedule_time,
-            platform=Platform.BEHAVIOR,
-            capsule_id="capsule_id",
-            s3_bucket=BucketType.PRIVATE,
-            script={"script_key": ["script_value"]},
-            force_cloud_sync=True,
-            transfer_endpoint="http://aind-data-transfer-service/api/v1/submit_jobs",
-        )
-        self.service._watch_config = WatchConfig(
-            flag_dir="flag_dir",
-            manifest_complete="manifest_complete",
-        )
-
         path = Path("flag_dir/manifest_test_manifest.yaml")
         result = self.service.dump_manifest_config()
 
@@ -197,29 +202,6 @@ class TestWatchdogDataTransferService(unittest.TestCase):
     @patch("aind_behavior_experiment_launcher.data_transfer.aind_watchdog.Path.mkdir")
     @patch("aind_behavior_experiment_launcher.data_transfer.aind_watchdog.WatchdogDataTransferService._write_yaml")
     def test_dump_manifest_config_custom_path(self, mock_write_yaml, mock_mkdir):
-        self.service._manifest_config = ManifestConfig(
-            name="test_manifest",
-            modalities={Modality.BEHAVIOR: ["path/to/modality"]},
-            subject_id=1,
-            acquisition_datetime="2023-01-01T00:00:00",
-            schemas=["path/to/schema"],
-            destination="path/to/destination",
-            mount="mount_path",
-            processor_full_name="processor_name",
-            project_name="test_project",
-            schedule_time=self.schedule_time,
-            platform=Platform.BEHAVIOR,
-            capsule_id="capsule_id",
-            s3_bucket=BucketType.PRIVATE,
-            script={"script_key": ["script_value"]},
-            force_cloud_sync=True,
-            transfer_endpoint="http://aind-data-transfer-service/api/v1/submit_jobs",
-        )
-        self.service._watch_config = WatchConfig(
-            flag_dir="flag_dir",
-            manifest_complete="manifest_complete",
-        )
-
         custom_path = Path("custom_path/manifest_test_manifest.yaml")
         result = self.service.dump_manifest_config(path=custom_path)
 
@@ -231,37 +213,40 @@ class TestWatchdogDataTransferService(unittest.TestCase):
 
     def test_dump_manifest_config_no_manifest_config(self):
         self.service._manifest_config = None
-        self.service._watch_config = WatchConfig(
-            flag_dir="flag_dir",
-            manifest_complete="manifest_complete",
-        )
 
         with self.assertRaises(ValueError):
             self.service.dump_manifest_config()
 
     def test_dump_manifest_config_no_watch_config(self):
-        self.service._manifest_config = ManifestConfig(
-            name="test_manifest",
-            modalities={Modality.BEHAVIOR_VIDEOS: ["path/to/modality"]},
-            subject_id=1,
-            acquisition_datetime="2023-01-01T00:00:00",
-            schemas=["path/to/schema"],
-            destination="path/to/destination",
-            mount="mount_path",
-            processor_full_name="processor_name",
-            project_name="test_project",
-            schedule_time=self.schedule_time,
-            platform=Platform.BEHAVIOR,
-            capsule_id="capsule_id",
-            s3_bucket=BucketType.PRIVATE,
-            script={"script_key": ["script_value"]},
-            force_cloud_sync=True,
-            transfer_endpoint="http://aind-data-transfer-service/api/v1/submit_jobs",
-        )
         self.service._watch_config = None
 
         with self.assertRaises(ValueError):
             self.service.dump_manifest_config()
+
+    def test_add_transfer_service_args(self):
+        modality_configs_factory = video_compression_job()
+        modality_configs = ModalityConfigs(
+            modality=Modality.BEHAVIOR_VIDEOS,
+            source=(Path(self.service.source) / Modality.BEHAVIOR_VIDEOS.abbreviation).as_posix(),
+            job_settings=CompressionRequest(compression_enum=CompressionEnum.GAMMA_ENCODING).model_dump(
+                mode="json"
+            ),  # needs mode to be json, otherwise parent class will raise an error
+        )
+        basic_upload_job_configs = BasicUploadJobConfigs(
+            metadata_dir=self.service._manifest_config.destination,
+            project_name=self.service._manifest_config.project_name,
+            s3_bucket=self.service._manifest_config.s3_bucket,
+            platform=self.service._manifest_config.platform,
+            subject_id=str(self.service._manifest_config.subject_id),
+            acq_datetime=self.service._manifest_config.acquisition_datetime,
+            modalities=[modality_configs.model_copy(deep=True)],
+        )
+
+        _manifest_config = self.service.add_transfer_service_args(
+            self.service._manifest_config, jobs=[modality_configs_factory, modality_configs, basic_upload_job_configs]
+        )
+        for job in _manifest_config.transfer_service_args.upload_jobs:
+            self.assertEqual(job, _manifest_config.transfer_service_args.upload_jobs[-1])
 
 
 class TestRobocopyService(unittest.TestCase):
