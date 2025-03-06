@@ -249,7 +249,6 @@ class TestWatchdogDataTransferService(unittest.TestCase):
             self.assertEqual(job, _manifest_config.transfer_service_args.upload_jobs[-1])
 
 
-
 class TestRobocopyService(unittest.TestCase):
     def setUp(self):
         self.source = "source_path"
