@@ -138,6 +138,20 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         if validate:
             self.validate()
 
+    @property
+    def subject(self) -> Optional[str]:
+        return self._subject
+
+    @subject.setter
+    def subject(self, value: str) -> None:
+        if self._subject is not None:
+            raise ValueError("Subject already set.")
+        self._subject = value
+
+    @property
+    def cli_args(self) -> _CliArgs:
+        return self._cli_args
+
     # Public properties / interfaces
     @property
     def rig_schema(self) -> TRig:
@@ -171,6 +185,23 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         if self._services_factory_manager is None:
             raise ValueError("Services instance not set.")
         return self._services_factory_manager
+
+    @property
+    def is_debug_mode(self) -> bool:
+        return self._debug_mode
+
+    @property
+    def rig_dir(self) -> Path:
+        return self._rig_dir
+
+    @property
+    def subject_dir(self) -> Path:
+        return self._subject_dir
+
+    @property
+    def task_logic_dir(self) -> Path:
+        return self._task_logic_dir
+
 
     def main(self) -> None:
         try:
