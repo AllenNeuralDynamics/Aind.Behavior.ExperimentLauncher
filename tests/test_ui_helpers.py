@@ -1,8 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from aind_behavior_services.db_utils import SubjectDataBase
-
 from aind_behavior_experiment_launcher.ui_helper import UIHelper
 
 
@@ -32,10 +30,11 @@ class TestUIHelper(unittest.TestCase):
         result = self.ui_helper.prompt_yes_no_question("Continue?")
         self.assertFalse(result)
 
+    @patch("os.path.isdir", return_value=True)
+    @patch("os.listdir", return_value=["subjects/subject1", "subjects/subject2"])
     @patch("builtins.input", side_effect=["1"])
-    def test_choose_subject(self, mock_input):
-        subject_list = SubjectDataBase(subjects={"subject1": None, "subject2": None})
-        result = self.ui_helper.choose_subject(subject_list)
+    def test_choose_subject(self, mock_input, mock_listdir, mock_isdir):
+        result = self.ui_helper.choose_subject("")
         self.assertEqual(result, "subject1")
 
     @patch("builtins.input", side_effect=["John Doe"])

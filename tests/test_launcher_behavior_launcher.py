@@ -59,19 +59,6 @@ class TestBehaviorLauncher(unittest.TestCase):
             task_logic = self.launcher._prompt_task_logic_input("/path/to/directory")
             self.assertIsNotNone(task_logic)
 
-    @patch("os.path.isfile", return_value=True)
-    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.glob.glob")
-    def test_get_available_batches(self, mock_glob, mock_is_file):
-        mock_glob.return_value = ["/path/to/batch1.json", "/path/to/batch2.json"]
-        available_batches = self.launcher._get_available_batches("/path/to/directory")
-        self.assertEqual(len(available_batches), 2)
-
-    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.glob.glob")
-    def test_get_available_batches_no_files(self, mock_glob):
-        mock_glob.return_value = []
-        with self.assertRaises(FileNotFoundError):
-            self.launcher._get_available_batches("/path/to/directory")
-
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
     def test_save_temp_model(self, mock_makedirs):
         model = MagicMock()
