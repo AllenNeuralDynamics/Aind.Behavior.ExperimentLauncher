@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import enum
 import glob
 import logging
 import os
@@ -13,7 +14,6 @@ import pydantic
 from aind_behavior_services.utils import model_from_json_file
 from typing_extensions import override
 
-import aind_behavior_experiment_launcher.launcher.behavior_launcher_helpers as behavior_launcher_helpers
 from aind_behavior_experiment_launcher import logging_helper
 from aind_behavior_experiment_launcher.apps import BonsaiApp
 from aind_behavior_experiment_launcher.data_mapper import DataMapper
@@ -56,7 +56,7 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
                 logger.warning("Directory for subject %s does not exist. Creating a new one.", subject)
                 os.makedirs(self._subject_dir / subject)
 
-        notes = self._ui_helper.prompt_get_notes()
+        notes = self._ui_helper.prompt_notes()
 
         return self.session_schema_model(
             experiment="",  # Will be set later
@@ -108,7 +108,7 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
 
         # Else, we check inside the subject folder for an existing task file
         try:
-            f = self._subject_dir / self.session_schema.subject / behavior_launcher_helpers.ByAnimalFiles.TASK_LOGIC
+            f = self._subject_dir / self.session_schema.subject / ByAnimalFiles.TASK_LOGIC
             logger.info("Attempting to load task logic from subject folder: %s", f)
             task_logic = model_from_json_file(f, self.task_logic_schema_model)
         except (ValueError, FileNotFoundError, pydantic.ValidationError) as e:
@@ -149,9 +149,7 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
         self.session_schema.experiment_version = self.task_logic_schema.version
 
         if self.services_factory_manager.bonsai_app.layout is None:
-            self.services_factory_manager.bonsai_app.layout = (
-                self.services_factory_manager.bonsai_app.prompt_visualizer_layout_input(self.config_library_dir)
-            )
+            self.services_factory_manager.bonsai_app.layout = self.services_factory_manager.bonsai_app.prompt_input()
         return self
 
     @override
@@ -333,3 +331,7 @@ def _robocopy_data_transfer_factory(
     else:
         dst = Path(destination) / launcher.session_schema.session_name
     return RobocopyService(source=launcher.session_directory, destination=dst, **robocopy_kwargs)
+
+
+class ByAnimalFiles(enum.Enum):
+    TASK_LOGIC = "task_logic"
