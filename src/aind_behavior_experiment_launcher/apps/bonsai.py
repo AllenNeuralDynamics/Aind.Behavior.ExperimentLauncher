@@ -7,7 +7,7 @@ from typing import Dict, Optional, Self
 
 from aind_behavior_services.utils import run_bonsai_process
 
-from aind_behavior_experiment_launcher.ui_helper import UIHelper
+from aind_behavior_experiment_launcher.ui_helper import DefaultUIHelper, UiHelper
 
 from ._base import App
 
@@ -27,6 +27,7 @@ class BonsaiApp(App):
     cwd: Optional[os.PathLike]
     timeout: Optional[float]
     print_cmd: bool
+    ui_helper: UiHelper
     _result: Optional[subprocess.CompletedProcess]
 
     def __init__(
@@ -42,6 +43,7 @@ class BonsaiApp(App):
         cwd: Optional[os.PathLike] = None,
         timeout: Optional[float] = None,
         print_cmd: bool = False,
+        ui_helper: Optional[UiHelper] = None,
         **kwargs,
     ) -> None:
         self.executable = Path(executable).resolve()
@@ -55,6 +57,7 @@ class BonsaiApp(App):
         self.timeout = timeout
         self.print_cmd = print_cmd
         self._result = None
+        self.ui_helper = ui_helper if ui_helper is not None else DefaultUIHelper()
 
     @property
     def result(self) -> subprocess.CompletedProcess:
@@ -108,7 +111,7 @@ class BonsaiApp(App):
             if len(proc.stdout) > 0:
                 logger.error("Bonsai process finished with errors.")
                 if allow_stderr is None:
-                    allow_stderr = UIHelper(print).prompt_yes_no_question("Would you like to see the error message?")
+                    allow_stderr = self.ui_helper.prompt_yes_no_question("Would you like to see the error message?")
                 if allow_stderr is False:
                     raise subprocess.CalledProcessError(1, proc.args)
         return self
@@ -131,18 +134,12 @@ class BonsaiApp(App):
         available_layouts = glob.glob(os.path.join(str(layout_schemas_path), "*.bonsai.layout"))
         picked: Optional[str | os.PathLike] = None
         has_pick = False
-        available_layouts.insert(0, "None")
         while has_pick is False:
             try:
-                picked = UIHelper(print).prompt_pick_file_from_list(
-                    available_layouts,
-                    prompt="Pick a visualizer layout:",
-                    zero_label="Default",
-                    zero_value=None,
-                    zero_as_input=False,
+                picked = self.ui_helper.prompt_pick_from_list(
+                    value=available_layouts, prompt="Pick a visualizer layout:"
                 )
-                if picked == "None":
-                    picked = ""
+                picked = picked if picked else ""
                 has_pick = True
             except ValueError as e:
                 logger.error("Invalid choice. Try again. %s", e)

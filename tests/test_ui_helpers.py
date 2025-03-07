@@ -1,12 +1,12 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from aind_behavior_experiment_launcher.ui_helper import UIHelper
+from aind_behavior_experiment_launcher.ui_helper import DefaultUIHelper
 
 
-class TestUIHelper(unittest.TestCase):
+class TestDefaultUiHelper(unittest.TestCase):
     def setUp(self):
-        self.ui_helper = UIHelper(print_func=MagicMock())
+        self.ui_helper = DefaultUIHelper(print_func=MagicMock())
 
     @patch("builtins.input", side_effect=["1"])
     def test_prompt_pick_file_from_list(self, mock_input):
@@ -44,7 +44,7 @@ class TestUIHelper(unittest.TestCase):
 
     @patch("builtins.input", side_effect=["Some notes"])
     def test_prompt_get_notes(self, mock_input):
-        result = self.ui_helper.prompt_get_notes()
+        result = self.ui_helper.prompt_text("")
         self.assertEqual(result, "Some notes")
 
 

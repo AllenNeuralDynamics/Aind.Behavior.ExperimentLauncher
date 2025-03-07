@@ -1,5 +1,6 @@
 import subprocess
 import unittest
+import unittest.mock
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -62,7 +63,7 @@ class TestBonsaiApp(unittest.TestCase):
         self.app._result = mock_result
         self.assertEqual(self.app.result, mock_result)
 
-    @patch("aind_behavior_experiment_launcher.apps.bonsai.UIHelper.prompt_yes_no_question", return_value=True)
+    @patch("aind_behavior_experiment_launcher.apps.bonsai.DefaultUIHelper.prompt_yes_no_question", return_value=True)
     def test_output_from_result(self, mock_prompt):
         mock_result = MagicMock(spec=subprocess.CompletedProcess)
         mock_result.stdout = "output"
@@ -77,10 +78,10 @@ class TestBonsaiApp(unittest.TestCase):
             self.assertEqual(self.app.output_from_result(allow_stderr=True), self.app)
 
     @patch(
-        "aind_behavior_experiment_launcher.apps.bonsai.UIHelper.prompt_pick_file_from_list",
+        "aind_behavior_experiment_launcher.apps.bonsai.DefaultUIHelper.prompt_pick_from_list",
         return_value="picked_layout.bonsai.layout",
     )
-    def test_prompt_visualizer_layout_input(self, mock_prompt_pick_file_from_list):
+    def test_prompt_visualizer_layout_input(self, mock_ui_helper):
         with patch("glob.glob", return_value=["layout1.bonsai.layout", "layout2.bonsai.layout"]):
             layout = self.app.prompt_visualizer_layout_input()
             self.assertEqual(layout, "picked_layout.bonsai.layout")

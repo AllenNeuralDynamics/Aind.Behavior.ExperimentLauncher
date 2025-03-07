@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any, Callable, List, Optional, TypeVar
+from typing import Any, List, Optional, TypeVar
 
 from aind_behavior_services.rig import AindBehaviorRigModel
 from aind_behavior_services.session import AindBehaviorSessionModel
@@ -9,31 +9,28 @@ from pydantic import BaseModel, TypeAdapter
 
 import aind_behavior_experiment_launcher
 
+from ._base import UiHelperBase
+
 logger = logging.getLogger(__name__)
 
+_T = TypeVar("_T", bound=Any)
 
-class UIHelper:
-    _print: Callable[[str], None]
 
-    def __init__(self, print_func: Callable[[str], None] = print):
-        self._print = print_func
-
-    T = TypeVar("T", bound=Any)
-
+class DefaultUIHelper(UiHelperBase):
     def prompt_pick_file_from_list(
         self,
         available_files: list[str],
         prompt: str = "Choose a file:",
         zero_label: Optional[str] = None,
-        zero_value: Optional[T] = None,
+        zero_value: Optional[_T] = None,
         zero_as_input: bool = True,
         zero_as_input_label: str = "Enter manually",
-    ) -> Optional[str | T]:
-        self._print(prompt)
+    ) -> Optional[str | _T]:
+        self.print(prompt)
         if zero_label is not None:
-            self._print(f"0: {zero_label}")
+            self.print(f"0: {zero_label}")
         for i, file in enumerate(available_files):
-            self._print(f"{i + 1}: {os.path.split(file)[1]}")
+            self.print(f"{i + 1}: {os.path.split(file)[1]}")
         choice = int(input("Choice: "))
         if choice < 0 or choice >= len(available_files) + 1:
             raise ValueError
@@ -48,15 +45,16 @@ class UIHelper:
         else:
             return available_files[choice - 1]
 
-    # todo: refactor this function to merge with the prompt_pick_file_from_list function
-    def prompt_pick_from_list(self, value: List[str], prompt: str, allow_0_as_none: bool = True) -> Optional[str]:
+    def prompt_pick_from_list(
+        self, value: List[str], prompt: str, allow_0_as_none: bool = True, **kwargs
+    ) -> Optional[str]:
         while True:
             try:
-                self._print(prompt)
+                self.print(prompt)
                 if allow_0_as_none:
-                    self._print("0: None")
+                    self.print("0: None")
                 for i, item in enumerate(value):
-                    self._print(f"{i + 1}: {item}")
+                    self.print(f"{i + 1}: {item}")
                 choice = int(input("Choice: "))
                 if choice < 0 or choice >= len(value) + 1:
                     raise ValueError
@@ -77,7 +75,7 @@ class UIHelper:
             elif reply == "N" or reply == "0":
                 return False
             else:
-                self._print("Invalid input. Please enter 'Y' or 'N'.")
+                self.print("Invalid input. Please enter 'Y' or 'N'.")
 
     def choose_subject(self, directory: str | os.PathLike) -> str:
         subject = None
@@ -98,11 +96,10 @@ class UIHelper:
                     subject = None
         return subject
 
-    @staticmethod
-    def prompt_experimenter(strict: bool = True) -> Optional[List[str]]:
+    def prompt_experimenter(self, strict: bool = True) -> Optional[List[str]]:
         experimenter: Optional[List[str]] = None
         while experimenter is None:
-            _user_input = input("Experimenter name: ")
+            _user_input = self.prompt_text("Experimenter name: ")
             experimenter = _user_input.replace(",", " ").split()
             if strict & (len(experimenter) == 0):
                 logger.error("Experimenter name is not valid.")
@@ -111,9 +108,11 @@ class UIHelper:
                 return experimenter
         return experimenter  # This line should be unreachable
 
-    @staticmethod
-    def prompt_get_notes() -> str:
-        notes = str(input("Enter notes:"))
+    def prompt_notes(self) -> str:
+        return self.prompt_text("Enter notes: ")
+
+    def prompt_text(self, prompt: str) -> str:
+        notes = str(input(prompt))
         return notes
 
     def make_header(
@@ -148,15 +147,13 @@ class UIHelper:
         return _str
 
 
-TModel = TypeVar("TModel", bound=BaseModel)
-
-T = TypeVar("T", bound=Any)
+_TModel = TypeVar("TModel", bound=BaseModel)
 
 
-def prompt_field_from_input(model: TModel, field_name: str, default: Optional[T] = None) -> Optional[T]:
+def prompt_field_from_input(model: _TModel, field_name: str, default: Optional[_T] = None) -> Optional[_T]:
     _field = model.model_fields[field_name]
     _type_adaptor: TypeAdapter = TypeAdapter(_field.annotation)
-    value: Optional[T] | str
+    value: Optional[_T] | str
     _in = input(f"Enter {field_name} ({_field.description}): ")
     value = _in if _in != "" else default
     return _type_adaptor.validate_python(value)
