@@ -48,7 +48,7 @@ class DefaultUIHelper(UiHelperBase):
         return notes
 
 
-_TModel = TypeVar("TModel", bound=BaseModel)
+_TModel = TypeVar("_TModel", bound=BaseModel)
 
 
 def prompt_field_from_input(model: _TModel, field_name: str, default: Optional[_T] = None) -> Optional[_T]:
