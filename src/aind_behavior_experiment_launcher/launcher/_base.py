@@ -19,7 +19,7 @@ from aind_behavior_services.utils import format_datetime, model_from_json_file, 
 
 from aind_behavior_experiment_launcher import __version__, logging_helper
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
-from aind_behavior_experiment_launcher.ui_helper import DefaultUIHelper, pickers
+import aind_behavior_experiment_launcher.ui as ui
 
 from .git_manager import GitRepository
 
@@ -35,7 +35,7 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
     RIG_DIR = "Rig"
     SUBJECT_DIR = "Subjects"
     TASK_LOGIC_DIR = "TaskLogic"
-    TPicker = TypeVar("TPicker", bound=pickers.PickerBase[Self])
+    TPicker = TypeVar("TPicker", bound=ui.PickerBase)
 
     def __init__(
         self,
@@ -73,7 +73,7 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
             _logger.setLevel(logging.DEBUG)
 
         self._logger = _logger
-        self._picker = picker if picker is not None else pickers.DefaultPicker(self, DefaultUIHelper())
+        self._picker = picker if picker is not None else ui.DefaultPicker(self, ui.DefaultUIHelper())
 
         # Solve CLI arguments
         self._cli_args: _CliArgs = self._cli_wrapper()

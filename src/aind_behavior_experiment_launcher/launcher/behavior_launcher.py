@@ -23,7 +23,7 @@ from aind_behavior_experiment_launcher.data_transfer.aind_watchdog import Watchd
 from aind_behavior_experiment_launcher.data_transfer.robocopy import RobocopyService
 from aind_behavior_experiment_launcher.resource_monitor import ResourceMonitor
 from aind_behavior_experiment_launcher.services import IService, ServiceFactory, ServicesFactoryManager
-from aind_behavior_experiment_launcher.ui_helper import pickers as pickers
+import aind_behavior_experiment_launcher.ui as ui
 
 from ._base import BaseLauncher, TRig, TSession, TTaskLogic
 
@@ -241,7 +241,7 @@ _BehaviorLauncher = TypeVar("_BehaviorLauncher", bound=BehaviorLauncher)
 _T = TypeVar("_T", bound=Any)
 
 
-class DefaultBehaviorPicker(pickers.PickerBase[_BehaviorLauncher]):
+class DefaultBehaviorPicker(ui.PickerBase[_BehaviorLauncher]):
     def pick_rig(self, directory: Optional[str] = None) -> TRig:
         rig_schemas_path = (
             Path(os.path.join(self.launcher.config_library_dir, directory, self.launcher.computer_name))
