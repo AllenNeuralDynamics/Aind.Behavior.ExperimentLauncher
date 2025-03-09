@@ -1,14 +1,12 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from aind_behavior_services.db_utils import SubjectDataBase
-
-from aind_behavior_experiment_launcher.ui_helper import UIHelper
+from aind_behavior_experiment_launcher.ui_helper import DefaultUIHelper
 
 
-class TestUIHelper(unittest.TestCase):
+class TestDefaultUiHelper(unittest.TestCase):
     def setUp(self):
-        self.ui_helper = UIHelper(print_func=MagicMock())
+        self.ui_helper = DefaultUIHelper(print_func=MagicMock())
 
     @patch("builtins.input", side_effect=["1"])
     def test_prompt_pick_file_from_list(self, mock_input):
@@ -32,10 +30,11 @@ class TestUIHelper(unittest.TestCase):
         result = self.ui_helper.prompt_yes_no_question("Continue?")
         self.assertFalse(result)
 
+    @patch("os.path.isdir", return_value=True)
+    @patch("os.listdir", return_value=["subjects/subject1", "subjects/subject2"])
     @patch("builtins.input", side_effect=["1"])
-    def test_choose_subject(self, mock_input):
-        subject_list = SubjectDataBase(subjects={"subject1": None, "subject2": None})
-        result = self.ui_helper.choose_subject(subject_list)
+    def test_choose_subject(self, mock_input, mock_listdir, mock_isdir):
+        result = self.ui_helper.choose_subject("")
         self.assertEqual(result, "subject1")
 
     @patch("builtins.input", side_effect=["John Doe"])
@@ -45,7 +44,7 @@ class TestUIHelper(unittest.TestCase):
 
     @patch("builtins.input", side_effect=["Some notes"])
     def test_prompt_get_notes(self, mock_input):
-        result = self.ui_helper.prompt_get_notes()
+        result = self.ui_helper.prompt_text("")
         self.assertEqual(result, "Some notes")
 
 

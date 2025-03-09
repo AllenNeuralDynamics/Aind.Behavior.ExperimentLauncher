@@ -74,7 +74,7 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         self._logger = _logger
 
         # Solve UI helper
-        self._ui_helper = ui_helper.UIHelper()
+        self._ui_helper = ui_helper.DefaultUIHelper()
 
         # Solve CLI arguments
         self._cli_args: _CliArgs = self._cli_wrapper()
