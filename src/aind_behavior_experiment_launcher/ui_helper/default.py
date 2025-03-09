@@ -12,33 +12,7 @@ _T = TypeVar("_T", bound=Any)
 
 
 class DefaultUIHelper(UiHelperBase):
-    def prompt_pick_file_from_list(
-        self,
-        available_files: list[str],
-        prompt: str = "Choose a file:",
-        zero_label: Optional[str] = None,
-        zero_value: Optional[_T] = None,
-        zero_as_input: bool = True,
-        zero_as_input_label: str = "Enter manually",
-    ) -> Optional[str | _T]:
-        self.print(prompt)
-        if zero_label is not None:
-            self.print(f"0: {zero_label}")
-        for i, file in enumerate(available_files):
-            self.print(f"{i + 1}: {os.path.split(file)[1]}")
-        choice = int(input("Choice: "))
-        if choice < 0 or choice >= len(available_files) + 1:
-            raise ValueError
-        if choice == 0:
-            if zero_label is None:
-                raise ValueError
-            else:
-                if zero_as_input:
-                    return str(input(zero_as_input_label))
-                else:
-                    return zero_value
-        else:
-            return available_files[choice - 1]
+
 
     def prompt_pick_from_list(
         self, value: List[str], prompt: str, allow_0_as_none: bool = True, **kwargs
@@ -72,44 +46,9 @@ class DefaultUIHelper(UiHelperBase):
             else:
                 self.print("Invalid input. Please enter 'Y' or 'N'.")
 
-    def choose_subject(self, directory: str | os.PathLike) -> str:
-        subject = None
-        while subject is None:
-            subject = self.prompt_pick_from_list(
-                [
-                    os.path.basename(folder)
-                    for folder in os.listdir(directory)
-                    if os.path.isdir(os.path.join(directory, folder))
-                ],
-                prompt="Choose a subject:",
-                allow_0_as_none=True,
-            )
-            if subject is None:
-                subject = input("Enter subject name manually: ")
-                if subject == "":
-                    logger.error("Subject name cannot be empty.")
-                    subject = None
-        return subject
-
-    def prompt_experimenter(self, strict: bool = True) -> Optional[List[str]]:
-        experimenter: Optional[List[str]] = None
-        while experimenter is None:
-            _user_input = self.prompt_text("Experimenter name: ")
-            experimenter = _user_input.replace(",", " ").split()
-            if strict & (len(experimenter) == 0):
-                logger.error("Experimenter name is not valid.")
-                experimenter = None
-            else:
-                return experimenter
-        return experimenter  # This line should be unreachable
-
-    def prompt_notes(self) -> str:
-        return self.prompt_text("Enter notes: ")
-
     def prompt_text(self, prompt: str) -> str:
         notes = str(input(prompt))
         return notes
-
 
 
 _TModel = TypeVar("TModel", bound=BaseModel)
