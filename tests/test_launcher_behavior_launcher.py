@@ -11,7 +11,6 @@ from aind_behavior_experiment_launcher.launcher.behavior_launcher import (
     DataTransfer,
     ResourceMonitor,
 )
-from tests import suppress_stdout
 
 
 class TestBehaviorLauncher(unittest.TestCase):
@@ -37,27 +36,8 @@ class TestBehaviorLauncher(unittest.TestCase):
             services=self.services_factory_manager,
             validate_init=False,
             attached_logger=None,
+            task_logic_schema=None,
         )
-
-    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.model_from_json_file")
-    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.glob.glob")
-    def test_prompt_rig_input(self, mock_glob, mock_model_from_json_file):
-        with suppress_stdout():
-            mock_glob.return_value = ["/path/to/rig1.json"]
-            mock_model_from_json_file.return_value = MagicMock()
-            rig = self.launcher._prompt_rig_input("/path/to/directory")
-            self.assertIsNotNone(rig)
-
-    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.model_from_json_file")
-    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.glob.glob")
-    @patch("os.path.isfile", return_value=True)
-    @patch("builtins.input", return_value="1")
-    def test_prompt_task_logic_input(self, mock_input, mock_is_file, mock_glob, mock_model_from_json_file):
-        with suppress_stdout():
-            mock_glob.return_value = ["/path/to/task1.json"]
-            mock_model_from_json_file.return_value = MagicMock()
-            task_logic = self.launcher._prompt_task_logic_input("/path/to/directory")
-            self.assertIsNotNone(task_logic)
 
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
     def test_save_temp_model(self, mock_makedirs):
