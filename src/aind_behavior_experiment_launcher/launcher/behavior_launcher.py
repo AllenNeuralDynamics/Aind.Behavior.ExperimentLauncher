@@ -14,6 +14,7 @@ import pydantic
 from aind_behavior_services.utils import model_from_json_file
 from typing_extensions import override
 
+import aind_behavior_experiment_launcher.ui as ui
 from aind_behavior_experiment_launcher import logging_helper
 from aind_behavior_experiment_launcher.apps import BonsaiApp
 from aind_behavior_experiment_launcher.data_mapper import DataMapper
@@ -23,7 +24,6 @@ from aind_behavior_experiment_launcher.data_transfer.aind_watchdog import Watchd
 from aind_behavior_experiment_launcher.data_transfer.robocopy import RobocopyService
 from aind_behavior_experiment_launcher.resource_monitor import ResourceMonitor
 from aind_behavior_experiment_launcher.services import IService, ServiceFactory, ServicesFactoryManager
-import aind_behavior_experiment_launcher.ui as ui
 
 from ._base import BaseLauncher, TRig, TSession, TTaskLogic
 
@@ -34,9 +34,6 @@ logger = logging.getLogger(__name__)
 
 class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
     services_factory_manager: BehaviorServicesFactoryManager
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
 
     def _post_init(self, validate: bool = True) -> None:
         super()._post_init(validate=validate)
@@ -237,18 +234,12 @@ class ByAnimalFiles(enum.Enum):
     TASK_LOGIC = "task_logic"
 
 
-_BehaviorLauncher = TypeVar("_BehaviorLauncher", bound=BehaviorLauncher)
 _T = TypeVar("_T", bound=Any)
 
 
-class DefaultBehaviorPicker(ui.PickerBase[_BehaviorLauncher]):
-    def pick_rig(self, directory: Optional[str] = None) -> TRig:
-        rig_schemas_path = (
-            Path(os.path.join(self.launcher.config_library_dir, directory, self.launcher.computer_name))
-            if directory is not None
-            else self.launcher.rig_dir
-        )
-        available_rigs = glob.glob(os.path.join(rig_schemas_path, "*.json"))
+class DefaultBehaviorPicker(ui.PickerBase[BehaviorLauncher[TRig, TSession, TTaskLogic]]):
+    def pick_rig(self) -> TRig:
+        available_rigs = glob.glob(os.path.join(self.launcher.rig_dir, "*.json"))
         if len(available_rigs) == 1:
             logger.info("Found a single rig config file. Using %s.", {available_rigs[0]})
             return model_from_json_file(available_rigs[0], self.launcher.rig_schema_model)
@@ -295,10 +286,13 @@ class DefaultBehaviorPicker(ui.PickerBase[_BehaviorLauncher]):
         )
 
     def pick_task_logic(self) -> TTaskLogic:
-        task_logic: Optional[TTaskLogic] = self.launcher.task_logic_schema
-        # If the task logic is already set (e.g. from CLI), skip the prompt
-        if task_logic is not None:
+        task_logic: Optional[TTaskLogic]
+        try:  # If the task logic is already set (e.g. from CLI), skip the prompt
+            task_logic = self.launcher.task_logic_schema
+            assert task_logic is not None
             return task_logic
+        except ValueError:
+            task_logic = None
 
         # Else, we check inside the subject folder for an existing task file
         try:
@@ -343,11 +337,11 @@ class DefaultBehaviorPicker(ui.PickerBase[_BehaviorLauncher]):
         zero_as_input: bool = True,
         zero_as_input_label: str = "Enter manually",
     ) -> Optional[str | _T]:
-        self.print(prompt)
+        self.ui_helper.print(prompt)
         if zero_label is not None:
-            self.print(f"0: {zero_label}")
+            self.ui_helper.print(f"0: {zero_label}")
         for i, file in enumerate(available_files):
-            self.print(f"{i + 1}: {os.path.split(file)[1]}")
+            self.ui_helper.print(f"{i + 1}: {os.path.split(file)[1]}")
         choice = int(input("Choice: "))
         if choice < 0 or choice >= len(available_files) + 1:
             raise ValueError
@@ -392,6 +386,3 @@ class DefaultBehaviorPicker(ui.PickerBase[_BehaviorLauncher]):
             else:
                 return experimenter
         return experimenter  # This line should be unreachable
-
-    def prompt_notes(self) -> str:
-        return self.ui_helper.prompt_text("Enter notes: ")
