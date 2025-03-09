@@ -1,10 +1,13 @@
 import abc
 import logging
-from typing import Any, Callable, Generic, List, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Generic, List, Optional, TypeVar
 
 from pydantic import BaseModel, TypeAdapter
 
-from aind_behavior_experiment_launcher.launcher import BaseLauncher
+if TYPE_CHECKING:
+    from aind_behavior_experiment_launcher.launcher import BaseLauncher
+else:
+    BaseLauncher = "BaseLauncher"
 
 logger = logging.getLogger(__name__)
 
