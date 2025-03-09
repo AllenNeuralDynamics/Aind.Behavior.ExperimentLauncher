@@ -5,7 +5,7 @@ from aind_slims_api.core import SlimsClient
 from aind_slims_api.models import mouse, waterlog_result
 from pydantic import ValidationError
 
-from aind_behavior_experiment_launcher.ui_helper import prompt_field_from_input
+from aind_behavior_experiment_launcher.ui import prompt_field_from_input
 
 logger = logging.getLogger(__name__)
 

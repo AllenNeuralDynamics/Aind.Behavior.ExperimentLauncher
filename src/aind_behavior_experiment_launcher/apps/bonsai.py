@@ -7,7 +7,7 @@ from typing import Dict, Optional, Self
 
 from aind_behavior_services.utils import run_bonsai_process
 
-from aind_behavior_experiment_launcher.ui_helper import DefaultUIHelper, UiHelper
+from aind_behavior_experiment_launcher.ui import DefaultUIHelper, UiHelper
 
 from ._base import App
 
