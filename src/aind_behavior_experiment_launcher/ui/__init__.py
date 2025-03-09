@@ -1,9 +1,11 @@
 import abc
 import logging
-from typing import Any, Callable, List, Optional, TypeVar
-from typing import Generic, Optional, TypeVar
+from typing import Any, Callable, Generic, List, Optional, TypeVar
+
+from pydantic import BaseModel, TypeAdapter
+
 from aind_behavior_experiment_launcher.launcher import BaseLauncher
-from pydantic import TypeAdapter, BaseModel
+
 logger = logging.getLogger(__name__)
 
 _PrintFunc = Callable[[str], Any]
@@ -44,8 +46,6 @@ class UiHelperBase(abc.ABC):
 UiHelper = UiHelperBase
 
 
-
-
 class PickerBase(abc.ABC, Generic[_L]):
     def __init__(self, launcher: _L, ui_helper: Optional[UiHelperBase] = None) -> None:
         self._launcher = launcher
@@ -83,8 +83,6 @@ class DefaultPicker(PickerBase[_L]):
 
     def pick_task_logic(self):
         raise NotImplementedError("pick_task_logic method is not implemented")
-
-
 
 
 class DefaultUIHelper(UiHelperBase):

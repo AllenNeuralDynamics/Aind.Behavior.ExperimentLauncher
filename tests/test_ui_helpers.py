@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
+
 from aind_behavior_experiment_launcher.ui import DefaultUIHelper
+
 
 class TestDefaultUiHelper(unittest.TestCase):
     def setUp(self):
@@ -15,17 +17,18 @@ class TestDefaultUiHelper(unittest.TestCase):
     def test_prompt_yes_no_question(self, mock_input):
         result = self.ui_helper.prompt_yes_no_question("Continue?")
         self.assertIsInstance(result, bool)
-        
+
     @patch("builtins.input", side_effect=["1"])
     def test_prompt_pick_from_list(self, mock_input):
         result = self.ui_helper.prompt_pick_from_list(["item1", "item2"], "Choose an item")
         self.assertIsInstance(result, str)
         self.assertEqual(result, "item1")
-    
+
     @patch("builtins.input", side_effect=["0"])
     def test_prompt_pick_from_list_none(self, mock_input):
         result = self.ui_helper.prompt_pick_from_list(["item1", "item2"], "Choose an item")
         self.assertIsNone(result)
+
 
 if __name__ == "__main__":
     unittest.main()
