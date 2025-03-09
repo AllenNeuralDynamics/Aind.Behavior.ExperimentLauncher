@@ -6,7 +6,7 @@ from aind_behavior_services.session import AindBehaviorSessionModel
 from aind_behavior_services.task_logic import AindBehaviorTaskLogicModel
 
 from aind_behavior_experiment_launcher.launcher import BaseLauncher
-from aind_behavior_experiment_launcher.ui_helper import DefaultUIHelper, UiHelperBase
+from aind_behavior_experiment_launcher.ui import DefaultUIHelper, UiHelperBase
 
 R = TypeVar("R", bound=AindBehaviorRigModel)
 S = TypeVar("S", bound=AindBehaviorSessionModel)

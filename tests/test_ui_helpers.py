@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
-from aind_behavior_experiment_launcher.ui_helper import DefaultUIHelper
+from aind_behavior_experiment_launcher.ui import DefaultUIHelper
 
 class TestDefaultUiHelper(unittest.TestCase):
     def setUp(self):
