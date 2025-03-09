@@ -31,8 +31,7 @@ TModel = TypeVar("TModel", bound=pydantic.BaseModel)
 logger = logging.getLogger(__name__)
 
 TLauncher = TypeVar("TLauncher", bound="BaseLauncher")
-TPicker = TypeVar("TPicker", bound=ui.PickerBase)
-PickerFactory = Callable[[TLauncher], TPicker]
+PickerFactory = Callable[[TLauncher], ui.PickerBase[TLauncher, TRig, TSession, TTaskLogic]]
 
 
 class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
@@ -48,7 +47,7 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         task_logic_schema_model: Type[TTaskLogic],
         data_dir: os.PathLike,
         config_library_dir: os.PathLike,
-        picker_factory: Optional[PickerFactory[Self, TPicker]] = None,
+        picker_factory: Optional[PickerFactory[Self, TRig, TSession, TTaskLogic]] = None,
         temp_dir: os.PathLike = Path("local/.temp"),
         repository_dir: Optional[os.PathLike] = None,
         allow_dirty: bool = False,
@@ -77,9 +76,7 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
 
         self._logger = _logger
 
-        self._picker = (
-            picker_factory(self) if picker_factory is not None else ui.DefaultPicker(self, ui.DefaultUIHelper())
-        )
+        self._picker = picker_factory(self) if picker_factory is not None else self._make_default_picker()
 
         # Solve CLI arguments
         self._cli_args: _CliArgs = self._cli_wrapper()
@@ -134,6 +131,9 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         self._run_hook_return: Any = None
 
         self._post_init(validate=validate_init)
+
+    def _make_default_picker(self) -> ui.PickerBase[Self, TRig, TSession, TTaskLogic]:
+        return ui.DefaultPicker[Self, TRig, TSession, TTaskLogic](self, ui.DefaultUIHelper())
 
     def _post_init(self, validate: bool = True) -> None:
         """Overridable method that runs at the end of the self.__init__ method"""

@@ -8,7 +8,7 @@ import os
 import subprocess
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Dict, Generic, List, Optional, Self, Type, TypeAlias, TypeVar, Union
+from typing import Any, Callable, Dict, List, Optional, Self, Type, TypeAlias, TypeVar, Union
 
 import pydantic
 from aind_behavior_services.utils import model_from_json_file
@@ -32,7 +32,7 @@ TService = TypeVar("TService", bound=IService)
 logger = logging.getLogger(__name__)
 
 
-class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
+class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
     services_factory_manager: BehaviorServicesFactoryManager
 
     def _post_init(self, validate: bool = True) -> None:
@@ -40,6 +40,10 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
         if validate:
             if self.services_factory_manager.resource_monitor is not None:
                 self.services_factory_manager.resource_monitor.evaluate_constraints()
+
+    @override
+    def _make_default_picker(self) -> DefaultBehaviorPicker[TRig, TSession, TTaskLogic]:
+        return DefaultBehaviorPicker[TRig, TSession, TTaskLogic](self, ui.DefaultUIHelper())
 
     @override
     def _pre_run_hook(self, *args, **kwargs) -> Self:
@@ -236,8 +240,10 @@ class ByAnimalFiles(enum.Enum):
 
 _T = TypeVar("_T", bound=Any)
 
+_BehaviorPickerAlias = ui.PickerBase[BehaviorLauncher[TRig, TSession, TTaskLogic], TRig, TSession, TTaskLogic]
 
-class DefaultBehaviorPicker(ui.PickerBase[BehaviorLauncher[TRig, TSession, TTaskLogic]]):
+
+class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
     def pick_rig(self) -> TRig:
         available_rigs = glob.glob(os.path.join(self.launcher.rig_dir, "*.json"))
         if len(available_rigs) == 1:
