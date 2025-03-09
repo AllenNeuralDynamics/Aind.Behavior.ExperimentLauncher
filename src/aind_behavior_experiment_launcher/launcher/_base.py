@@ -7,7 +7,7 @@ import shutil
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Generic, Optional, Self, Type, TypeVar
+from typing import Any, Callable, Generic, Optional, Self, Type, TypeVar
 
 import pydantic
 from aind_behavior_services import (
@@ -17,9 +17,9 @@ from aind_behavior_services import (
 )
 from aind_behavior_services.utils import format_datetime, model_from_json_file, utcnow
 
+import aind_behavior_experiment_launcher.ui as ui
 from aind_behavior_experiment_launcher import __version__, logging_helper
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
-import aind_behavior_experiment_launcher.ui as ui
 
 from .git_manager import GitRepository
 
@@ -30,12 +30,15 @@ TModel = TypeVar("TModel", bound=pydantic.BaseModel)
 
 logger = logging.getLogger(__name__)
 
+TLauncher = TypeVar("TLauncher", bound="BaseLauncher")
+TPicker = TypeVar("TPicker", bound=ui.PickerBase)
+PickerFactory = Callable[[TLauncher], TPicker]
+
 
 class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
     RIG_DIR = "Rig"
     SUBJECT_DIR = "Subjects"
     TASK_LOGIC_DIR = "TaskLogic"
-    TPicker = TypeVar("TPicker", bound=ui.PickerBase)
 
     def __init__(
         self,
@@ -45,7 +48,7 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         task_logic_schema_model: Type[TTaskLogic],
         data_dir: os.PathLike,
         config_library_dir: os.PathLike,
-        picker: Optional[TPicker] = None,
+        picker_factory: Optional[PickerFactory[Self, TPicker]] = None,
         temp_dir: os.PathLike = Path("local/.temp"),
         repository_dir: Optional[os.PathLike] = None,
         allow_dirty: bool = False,
@@ -73,7 +76,10 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
             _logger.setLevel(logging.DEBUG)
 
         self._logger = _logger
-        self._picker = picker if picker is not None else ui.DefaultPicker(self, ui.DefaultUIHelper())
+
+        self._picker = (
+            picker_factory(self) if picker_factory is not None else ui.DefaultPicker(self, ui.DefaultUIHelper())
+        )
 
         # Solve CLI arguments
         self._cli_args: _CliArgs = self._cli_wrapper()
