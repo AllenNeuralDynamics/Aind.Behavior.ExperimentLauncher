@@ -5,6 +5,7 @@ from typing import List, Self
 from git import Repo
 
 import aind_behavior_experiment_launcher.ui as ui
+
 logger = logging.getLogger(__name__)
 
 
