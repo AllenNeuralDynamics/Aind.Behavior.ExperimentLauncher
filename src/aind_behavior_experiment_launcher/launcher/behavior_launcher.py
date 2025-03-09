@@ -8,7 +8,7 @@ import os
 import subprocess
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Dict, Generic, Optional, Self, Type, TypeVar, Union, List, TypeAlias
+from typing import Any, Callable, Dict, Generic, List, Optional, Self, Type, TypeAlias, TypeVar, Union
 
 import pydantic
 from aind_behavior_services.utils import model_from_json_file
@@ -24,7 +24,6 @@ from aind_behavior_experiment_launcher.data_transfer.robocopy import RobocopySer
 from aind_behavior_experiment_launcher.resource_monitor import ResourceMonitor
 from aind_behavior_experiment_launcher.services import IService, ServiceFactory, ServicesFactoryManager
 from aind_behavior_experiment_launcher.ui_helper import pickers as pickers
-from aind_behavior_experiment_launcher.ui_helper.default import DefaultUIHelper
 
 from ._base import BaseLauncher, TRig, TSession, TTaskLogic
 
@@ -123,7 +122,7 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
         return fpath
 
 
-_ServiceFactoryIsh: TypeAlias = Union[ServiceFactory[TService], Callable[[BaseLauncher], TService], TService])
+_ServiceFactoryIsh: TypeAlias = Union[ServiceFactory[TService], Callable[[BaseLauncher], TService], TService]
 
 
 class BehaviorServicesFactoryManager(ServicesFactoryManager):
@@ -243,7 +242,6 @@ _T = TypeVar("_T", bound=Any)
 
 
 class DefaultBehaviorPicker(pickers.PickerBase[_BehaviorLauncher]):
-
     def pick_rig(self, directory: Optional[str] = None) -> TRig:
         rig_schemas_path = (
             Path(os.path.join(self.launcher.config_library_dir, directory, self.launcher.computer_name))
@@ -257,9 +255,7 @@ class DefaultBehaviorPicker(pickers.PickerBase[_BehaviorLauncher]):
         else:
             while True:
                 try:
-                    path = self.prompt_pick_file_from_list(
-                        available_rigs, prompt="Choose a rig:", zero_label=None
-                    )
+                    path = self.prompt_pick_file_from_list(available_rigs, prompt="Choose a rig:", zero_label=None)
                     if not isinstance(path, str):
                         raise ValueError("Invalid choice.")
                     rig = model_from_json_file(path, self.launcher.rig_schema_model)
@@ -269,7 +265,6 @@ class DefaultBehaviorPicker(pickers.PickerBase[_BehaviorLauncher]):
                     logger.error("Failed to validate pydantic model. Try again. %s", e)
                 except ValueError as e:
                     logger.error("Invalid choice. Try again. %s", e)
-
 
     def pick_session(self) -> TSession:
         experimenter = self.prompt_experimenter(strict=True)
@@ -325,9 +320,7 @@ class DefaultBehaviorPicker(pickers.PickerBase[_BehaviorLauncher]):
             try:
                 _path = Path(os.path.join(self.launcher.config_library_dir, self.launcher.task_logic_dir))
                 available_files = glob.glob(os.path.join(_path, "*.json"))
-                path = self.prompt_pick_file_from_list(
-                    available_files, prompt="Choose a task logic:", zero_label=None
-                )
+                path = self.prompt_pick_file_from_list(available_files, prompt="Choose a task logic:", zero_label=None)
                 if not isinstance(path, str):
                     raise ValueError("Invalid choice.")
                 if not os.path.isfile(path):
@@ -340,7 +333,6 @@ class DefaultBehaviorPicker(pickers.PickerBase[_BehaviorLauncher]):
                 logger.error("Invalid choice. Try again. %s", e)
 
         return task_logic
-
 
     def prompt_pick_file_from_list(
         self,

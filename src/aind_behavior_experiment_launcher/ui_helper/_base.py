@@ -15,13 +15,15 @@ class UiHelperBase(abc.ABC):
     _print: _PrintFunc
     _input: _InputFunc
 
-    def __init__(self, *args, print_func: Optional[_PrintFunc] = None, input_func: Optional[_PrintFunc] = None, **kwargs):
+    def __init__(
+        self, *args, print_func: Optional[_PrintFunc] = None, input_func: Optional[_PrintFunc] = None, **kwargs
+    ):
         self._print = print_func if print_func is not None else _DEFAULT_PRINT_FUNC
         self._input = input_func if input_func is not None else _DEFAULT_INPUT_FUNC
 
     def print(self, message: str) -> Any:
         return self._print(message)
-    
+
     def input(self, prompt: str) -> str:
         return self._input(prompt)
 

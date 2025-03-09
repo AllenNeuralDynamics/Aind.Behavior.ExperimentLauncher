@@ -1,5 +1,4 @@
 import logging
-import os
 from typing import Any, List, Optional, TypeVar
 
 from pydantic import BaseModel, TypeAdapter
@@ -12,8 +11,6 @@ _T = TypeVar("_T", bound=Any)
 
 
 class DefaultUIHelper(UiHelperBase):
-
-
     def prompt_pick_from_list(
         self, value: List[str], prompt: str, allow_0_as_none: bool = True, **kwargs
     ) -> Optional[str]:

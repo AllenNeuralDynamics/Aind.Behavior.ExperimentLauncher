@@ -8,7 +8,6 @@ import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Generic, Optional, Self, Type, TypeVar
-from typing_extensions import Self
 
 import pydantic
 from aind_behavior_services import (
@@ -17,10 +16,11 @@ from aind_behavior_services import (
     AindBehaviorTaskLogicModel,
 )
 from aind_behavior_services.utils import format_datetime, model_from_json_file, utcnow
-from aind_behavior_experiment_launcher import __version__
-from aind_behavior_experiment_launcher import logging_helper
+
+from aind_behavior_experiment_launcher import __version__, logging_helper
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
-from aind_behavior_experiment_launcher.ui_helper import pickers, DefaultUIHelper
+from aind_behavior_experiment_launcher.ui_helper import DefaultUIHelper, pickers
+
 from .git_manager import GitRepository
 
 TRig = TypeVar("TRig", bound=AindBehaviorRigModel)
@@ -173,11 +173,11 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
     @property
     def rig_schema_model(self) -> Type[TRig]:
         return self._rig_schema_model
-    
+
     @property
     def session_schema_model(self) -> Type[TSession]:
         return self._session_schema_model
-    
+
     @property
     def task_logic_schema_model(self) -> Type[TTaskLogic]:
         return self._task_logic_schema_model
