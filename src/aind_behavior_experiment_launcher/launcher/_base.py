@@ -35,7 +35,7 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
     RIG_DIR = "Rig"
     SUBJECT_DIR = "Subjects"
     TASK_LOGIC_DIR = "TaskLogic"
-    TPicker = TypeVar("TPicker", bound=pickers.PickerBase[TRig, TSession, TTaskLogic])
+    TPicker = TypeVar("TPicker", bound=pickers.PickerBase[Self])
 
     def __init__(
         self,
