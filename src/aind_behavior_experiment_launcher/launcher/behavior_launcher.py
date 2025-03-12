@@ -42,10 +42,6 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
                 self.services_factory_manager.resource_monitor.evaluate_constraints()
 
     @override
-    def _make_default_picker(self) -> DefaultBehaviorPicker[TRig, TSession, TTaskLogic]:
-        return DefaultBehaviorPicker[TRig, TSession, TTaskLogic](self, ui.DefaultUIHelper())
-
-    @override
     def _pre_run_hook(self, *args, **kwargs) -> Self:
         logger.info("Pre-run hook started.")
         self.session_schema.experiment = self.task_logic_schema.name
@@ -234,7 +230,7 @@ def _robocopy_data_transfer_factory(
     return RobocopyService(source=launcher.session_directory, destination=dst, **robocopy_kwargs)
 
 
-class ByAnimalFiles(enum.Enum):
+class ByAnimalFiles(enum.StrEnum):
     TASK_LOGIC = "task_logic"
 
 
@@ -244,8 +240,51 @@ _BehaviorPickerAlias = ui.PickerBase[BehaviorLauncher[TRig, TSession, TTaskLogic
 
 
 class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
+    RIG_SUFFIX: str = "Rig"
+    SUBJECT_SUFFIX: str = "Subjects"
+    TASK_LOGIC_SUFFIX: str = "TaskLogic"
+
+    @override
+    def __init__(
+        self,
+        launcher: BehaviorLauncher[TRig, TSession, TTaskLogic],
+        *,
+        ui_helper: Optional[ui.DefaultUIHelper] = None,
+        config_library_dir: os.PathLike,
+        **kwargs,
+    ):
+        super().__init__(launcher, ui_helper=ui_helper, **kwargs)
+        self._config_library_dir = Path(config_library_dir)
+
+    @property
+    def config_library_dir(self) -> Path:
+        return self._config_library_dir
+
+    @property
+    def rig_dir(self) -> Path:
+        return Path(os.path.join(self._config_library_dir, self.RIG_SUFFIX, self.launcher.computer_name))
+
+    @property
+    def subject_dir(self) -> Path:
+        return Path(os.path.join(self._config_library_dir, self.SUBJECT_SUFFIX))
+
+    @property
+    def task_logic_dir(self) -> Path:
+        return Path(os.path.join(self._config_library_dir, self.TASK_LOGIC_SUFFIX))
+
+    @override
+    def initialize(self) -> None:
+        if self.launcher.cli_args.create_directories:
+            self._create_directories()
+
+    def _create_directories(self) -> None:
+        self.launcher.create_directory(self.config_library_dir)
+        self.launcher.create_directory(self.task_logic_dir)
+        self.launcher.create_directory(self.rig_dir)
+        self.launcher.create_directory(self.subject_dir)
+
     def pick_rig(self) -> TRig:
-        available_rigs = glob.glob(os.path.join(self.launcher.rig_dir, "*.json"))
+        available_rigs = glob.glob(os.path.join(self.rig_dir, "*.json"))
         if len(available_rigs) == 1:
             logger.info("Found a single rig config file. Using %s.", {available_rigs[0]})
             return model_from_json_file(available_rigs[0], self.launcher.rig_schema_model)
@@ -269,11 +308,11 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             logging.info("Subject provided via CLABE: %s", self.launcher.cli_args.subject)
             subject = self.launcher.subject
         else:
-            subject = self.choose_subject(self.launcher.subject_dir)
+            subject = self.choose_subject(self.subject_dir)
             self.launcher.subject = subject
-            if not (self.launcher.subject_dir / subject).exists():
+            if not (self.subject_dir / subject).exists():
                 logger.warning("Directory for subject %s does not exist. Creating a new one.", subject)
-                os.makedirs(self.launcher.subject_dir / subject)
+                os.makedirs(self.subject_dir / subject)
 
         notes = self.ui_helper.prompt_text("Enter notes: ")
 
@@ -302,7 +341,7 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
 
         # Else, we check inside the subject folder for an existing task file
         try:
-            f = self.launcher.subject_dir / self.launcher.session_schema.subject / ByAnimalFiles.TASK_LOGIC
+            f = self.subject_dir / self.launcher.session_schema.subject / ByAnimalFiles.TASK_LOGIC.value
             logger.info("Attempting to load task logic from subject folder: %s", f)
             task_logic = model_from_json_file(f, self.launcher.task_logic_schema_model)
         except (ValueError, FileNotFoundError, pydantic.ValidationError) as e:
@@ -318,7 +357,7 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         # If not found, we prompt the user to choose/enter a task logic file
         while task_logic is None:
             try:
-                _path = Path(os.path.join(self.launcher.config_library_dir, self.launcher.task_logic_dir))
+                _path = Path(os.path.join(self.config_library_dir, self.task_logic_dir))
                 available_files = glob.glob(os.path.join(_path, "*.json"))
                 path = self.prompt_pick_file_from_list(available_files, prompt="Choose a task logic:", zero_label=None)
                 if not isinstance(path, str):

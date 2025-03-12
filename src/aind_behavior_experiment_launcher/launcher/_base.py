@@ -7,7 +7,7 @@ import shutil
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Callable, Generic, Optional, Self, Type, TypeVar
+from typing import Any, Generic, Optional, Self, Type, TypeVar
 
 import pydantic
 from aind_behavior_services import (
@@ -31,14 +31,9 @@ TModel = TypeVar("TModel", bound=pydantic.BaseModel)
 logger = logging.getLogger(__name__)
 
 TLauncher = TypeVar("TLauncher", bound="BaseLauncher")
-PickerFactory = Callable[[TLauncher], ui.PickerBase[TLauncher, TRig, TSession, TTaskLogic]]
 
 
 class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
-    RIG_DIR = "Rig"
-    SUBJECT_DIR = "Subjects"
-    TASK_LOGIC_DIR = "TaskLogic"
-
     def __init__(
         self,
         *,
@@ -46,8 +41,7 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         session_schema_model: Type[TSession],
         task_logic_schema_model: Type[TTaskLogic],
         data_dir: os.PathLike,
-        config_library_dir: os.PathLike,
-        picker_factory: Optional[PickerFactory[Self, TRig, TSession, TTaskLogic]] = None,
+        picker: ui.PickerBase[Self, TRig, TSession, TTaskLogic],
         temp_dir: os.PathLike = Path("local/.temp"),
         repository_dir: Optional[os.PathLike] = None,
         allow_dirty: bool = False,
@@ -63,6 +57,7 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
     ) -> None:
         self.temp_dir = self.abspath(temp_dir) / format_datetime(utcnow())
         self.temp_dir.mkdir(parents=True, exist_ok=True)
+        self.computer_name = os.environ["COMPUTERNAME"]
 
         # Solve logger
         if attached_logger:
@@ -75,8 +70,6 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
             _logger.setLevel(logging.DEBUG)
 
         self._logger = _logger
-
-        self._picker = picker_factory(self) if picker_factory is not None else self._make_default_picker()
 
         # Solve CLI arguments
         self._cli_args: _CliArgs = self._cli_wrapper()
@@ -106,18 +99,7 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         # Directories
         self.data_dir = Path(self._cli_args.data_dir) if self._cli_args.data_dir is not None else self.abspath(data_dir)
 
-        # Derived directories
-        self.config_library_dir = (
-            Path(self._cli_args.config_library_dir)
-            if self._cli_args.config_library_dir is not None
-            else self.abspath(Path(config_library_dir))
-        )
-        self.computer_name = os.environ["COMPUTERNAME"]
         self._debug_mode = self._cli_args.debug if self._cli_args.debug else debug_mode
-
-        self._rig_dir = Path(os.path.join(self.config_library_dir, self.RIG_DIR, self.computer_name))
-        self._subject_dir = Path(os.path.join(self.config_library_dir, self.SUBJECT_DIR))
-        self._task_logic_dir = Path(os.path.join(self.config_library_dir, self.TASK_LOGIC_DIR))
 
         # Flags
         self.allow_dirty = self._cli_args.allow_dirty if self._cli_args.allow_dirty else allow_dirty
@@ -130,16 +112,29 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
 
         self._run_hook_return: Any = None
 
+        self._register_picker(picker)
         self._post_init(validate=validate_init)
 
-    def _make_default_picker(self) -> ui.PickerBase[Self, TRig, TSession, TTaskLogic]:
-        return ui.DefaultPicker[Self, TRig, TSession, TTaskLogic](self, ui.DefaultUIHelper())
+    def _register_picker(self, picker: ui.PickerBase[Self, TRig, TSession, TTaskLogic]) -> None:
+        if picker.has_launcher:
+            raise ValueError("Picker already has a launcher registered.")
+        picker.register_launcher(self)
+
+        if not picker.has_ui_helper:
+            picker.register_ui_helper(ui.DefaultUIHelper())
+
+        self._picker = picker
+
+        return
 
     def _post_init(self, validate: bool = True) -> None:
         """Overridable method that runs at the end of the self.__init__ method"""
         cli_args = self._cli_args
+        self.picker.initialize()
+
         if cli_args.create_directories is True:
             self._create_directory_structure()
+
         if validate:
             self.validate()
 
@@ -208,18 +203,6 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         return self._debug_mode
 
     @property
-    def rig_dir(self) -> Path:
-        return self._rig_dir
-
-    @property
-    def subject_dir(self) -> Path:
-        return self._subject_dir
-
-    @property
-    def task_logic_dir(self) -> Path:
-        return self._task_logic_dir
-
-    @property
     def picker(self):
         return self._picker
 
@@ -262,7 +245,7 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
     def _ui_prompt(self) -> Self:
         logger.info(self.make_header())
         if self._debug_mode:
-            self._print_diagnosis()
+            self._print_debug()
 
         self._session_schema = self.picker.pick_session()
         if self._task_logic_schema is None:
@@ -298,7 +281,7 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
             logging_helper.shutdown_logger(logger)
         sys.exit(code)
 
-    def _print_diagnosis(self) -> None:
+    def _print_debug(self) -> None:
         """
         Prints the diagnosis information for the launcher.
 
@@ -320,14 +303,12 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
             "Repository: %s\n"
             "Computer Name: %s\n"
             "Data Directory: %s\n"
-            "Config Library Directory: %s\n"
             "Temporary Directory: %s\n"
             "-------------------------------",
             self._cwd,
             self.repository.working_dir,
             self.computer_name,
             self.data_dir,
-            self.config_library_dir,
             self.temp_dir,
         )
 
@@ -336,14 +317,6 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         Validates the dependencies required for the launcher to run.
         """
         try:
-            if not (os.path.isdir(self.config_library_dir)):
-                raise FileNotFoundError(f"Config library not found! Expected {self.config_library_dir}.")
-            if not (os.path.isdir(os.path.join(self.config_library_dir, "Rig", self.computer_name))):
-                raise FileNotFoundError(
-                    f"Rig configuration not found! \
-                        Expected {os.path.join(self.config_library_dir, self.RIG_DIR, self.computer_name)}."
-                )
-
             if self.repository.is_dirty():
                 logger.warning(
                     "Git repository is dirty. Discard changes before continuing unless you know what you are doing!"
@@ -371,18 +344,15 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
 
     def _create_directory_structure(self) -> None:
         try:
-            self._create_directory(self.data_dir)
-            self._create_directory(self.config_library_dir)
-            self._create_directory(self.temp_dir)
-            self._create_directory(self._task_logic_dir)
-            self._create_directory(self._rig_dir)
-            self._create_directory(self._subject_dir)
+            self.create_directory(self.data_dir)
+            self.create_directory(self.temp_dir)
+
         except OSError as e:
             logger.error("Failed to create directory structure: %s", e)
             self._exit(-1)
 
     @classmethod
-    def _create_directory(cls, directory: os.PathLike) -> None:
+    def create_directory(cls, directory: os.PathLike) -> None:
         if not os.path.exists(cls.abspath(directory)):
             logger.info("Creating  %s", directory)
             try:
