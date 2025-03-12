@@ -5,7 +5,9 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional, Self
+from typing import Any, Optional, Self
+
+from typing_extensions import override
 
 from ._base import App
 
@@ -41,6 +43,7 @@ class PythonScriptApp(App):
             raise RuntimeError("The app has not been run yet.")
         return self._result
 
+    @override
     def run(self) -> subprocess.CompletedProcess:
         logger.info("Starting python script %s...", self._script)
 
@@ -68,6 +71,7 @@ class PythonScriptApp(App):
         logger.info("Python script completed.")
         return proc
 
+    @override
     def output_from_result(self, allow_stderr: Optional[bool] = True) -> Self:
         proc = self.result
         try:
@@ -87,13 +91,10 @@ class PythonScriptApp(App):
         if len(proc.stderr) > 0:
             logger.error("%s full stderr dump: \n%s", process_name, proc.stderr)
 
-    def prompt_input(self, *args, **kwargs) -> Self:
-        raise NotImplementedError("Not implemented yet.")
-
     def _has_venv(self) -> bool:
         return (Path(self._project_directory) / ".venv").exists()
 
-    def create_environment(self, run_kwargs: Optional[dict[str, any]] = None) -> subprocess.CompletedProcess:
+    def create_environment(self, run_kwargs: Optional[dict[str, Any]] = None) -> subprocess.CompletedProcess:
         logger.info("Creating Python environment with uv venv at %s...", self._project_directory)
         run_kwargs = run_kwargs or {}
         try:
