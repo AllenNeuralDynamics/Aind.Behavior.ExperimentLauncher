@@ -18,7 +18,6 @@ class TestDefaultBehaviorPicker(unittest.TestCase):
             task_logic_schema_model=MagicMock(),
             session_schema_model=MagicMock(),
             data_dir="/path/to/data",
-            config_library_dir="/path/to/config",
             temp_dir="/path/to/temp",
             repository_dir=None,
             allow_dirty=False,
@@ -28,8 +27,9 @@ class TestDefaultBehaviorPicker(unittest.TestCase):
             services=self.services_factory_manager,
             validate_init=False,
             attached_logger=None,
-            picker_factory=lambda x: DefaultBehaviorPicker(
-                x, DefaultUIHelper(print_func=MagicMock(), input_func=input)
+            picker=DefaultBehaviorPicker(
+                ui_helper=DefaultUIHelper(print_func=MagicMock(), input_func=input),
+                config_library_dir="/path/to/config",
             ),
         )
         self.picker = self.launcher.picker

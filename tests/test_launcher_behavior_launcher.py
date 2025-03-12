@@ -9,6 +9,7 @@ from aind_behavior_experiment_launcher.launcher.behavior_launcher import (
     BonsaiApp,
     DataMapper,
     DataTransfer,
+    DefaultBehaviorPicker,
     ResourceMonitor,
 )
 
@@ -20,13 +21,12 @@ class TestBehaviorLauncher(unittest.TestCase):
         self.services_factory_manager.bonsai_app = MagicMock()
         self.services_factory_manager.data_mapper = MagicMock()
         self.services_factory_manager.data_transfer = MagicMock()
-
         self.launcher = BehaviorLauncher(
             rig_schema_model=MagicMock(),
             task_logic_schema_model=MagicMock(),
             session_schema_model=MagicMock(),
+            picker=DefaultBehaviorPicker(config_library_dir="/path/to/config"),
             data_dir="/path/to/data",
-            config_library_dir="/path/to/config",
             temp_dir="/path/to/temp",
             repository_dir=None,
             allow_dirty=False,
@@ -125,8 +125,8 @@ class TestBehaviorLauncherSaveTempModel(unittest.TestCase):
             task_logic_schema_model=MagicMock(),
             session_schema_model=MagicMock(),
             data_dir="/path/to/data",
-            config_library_dir="/path/to/config",
             temp_dir="/path/to/temp",
+            picker=DefaultBehaviorPicker(config_library_dir="/path/to/config"),
             repository_dir=None,
             allow_dirty=False,
             skip_hardware_validation=False,

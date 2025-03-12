@@ -5,10 +5,10 @@ from unittest.mock import create_autospec, patch
 
 from aind_behavior_services import AindBehaviorRigModel, AindBehaviorSessionModel, AindBehaviorTaskLogicModel
 
+from aind_behavior_experiment_launcher import ui
 from aind_behavior_experiment_launcher.launcher import BaseLauncher
 from aind_behavior_experiment_launcher.launcher._base import _CliArgs
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
-from aind_behavior_experiment_launcher import ui
 
 
 class BaseLauncherMock(BaseLauncher):
@@ -124,7 +124,7 @@ class TestBaseLauncher(unittest.TestCase):
             task_logic_schema_model=self.task_logic_schema_model,
             data_dir=self.data_dir,
             temp_dir=self.temp_dir,
-            picker=ui.DefaultPicker()
+            picker=ui.DefaultPicker(),
         )
         self.assertTrue(launcher._cli_args.create_directories)
         self.assertTrue(launcher._cli_args.debug)

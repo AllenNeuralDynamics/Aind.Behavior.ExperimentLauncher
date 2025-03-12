@@ -247,7 +247,7 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
     @override
     def __init__(
         self,
-        launcher: BehaviorLauncher[TRig, TSession, TTaskLogic],
+        launcher: Optional[BehaviorLauncher[TRig, TSession, TTaskLogic]] = None,
         *,
         ui_helper: Optional[ui.DefaultUIHelper] = None,
         config_library_dir: os.PathLike,
