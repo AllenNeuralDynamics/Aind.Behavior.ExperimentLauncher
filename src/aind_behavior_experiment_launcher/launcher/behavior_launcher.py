@@ -16,7 +16,7 @@ from typing_extensions import override
 
 import aind_behavior_experiment_launcher.ui as ui
 from aind_behavior_experiment_launcher import logging_helper
-from aind_behavior_experiment_launcher.apps import BonsaiApp
+from aind_behavior_experiment_launcher.apps import App
 from aind_behavior_experiment_launcher.data_mapper import DataMapper
 from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
 from aind_behavior_experiment_launcher.data_transfer import DataTransfer
@@ -46,9 +46,7 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
         logger.info("Pre-run hook started.")
         self.session_schema.experiment = self.task_logic_schema.name
         self.session_schema.experiment_version = self.task_logic_schema.version
-
-        if self.services_factory_manager.bonsai_app.layout is None:
-            self.services_factory_manager.bonsai_app.layout = self.services_factory_manager.bonsai_app.prompt_input()
+        _ = self.services_factory_manager.app.prompt_input()
         return self
 
     @override
@@ -68,14 +66,11 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
             "SessionPath": os.path.abspath(self._save_temp_model(model=self._session_schema, directory=self.temp_dir)),
             "RigPath": os.path.abspath(self._save_temp_model(model=self._rig_schema, directory=self.temp_dir)),
         }
-        if self.services_factory_manager.bonsai_app.additional_properties is not None:
-            self.services_factory_manager.bonsai_app.additional_properties.update(settings)
-        else:
-            self.services_factory_manager.bonsai_app.additional_properties = settings
+        self.services_factory_manager.app.add_app_settings(settings)
 
         try:
-            self.services_factory_manager.bonsai_app.run()
-            _ = self.services_factory_manager.bonsai_app.output_from_result(allow_stderr=True)
+            self.services_factory_manager.app.run()
+            _ = self.services_factory_manager.app.output_from_result(allow_stderr=True)
         except subprocess.CalledProcessError as e:
             logger.error("Bonsai app failed to run. %s", e)
             self._exit(-1)
@@ -125,7 +120,7 @@ _ServiceFactoryIsh: TypeAlias = Union[ServiceFactory[TService], Callable[[BaseLa
 class BehaviorServicesFactoryManager(ServicesFactoryManager):
     def __init__(self, launcher: Optional[BehaviorLauncher] = None, **kwargs) -> None:
         super().__init__(launcher, **kwargs)
-        self._add_to_services("bonsai_app", kwargs)
+        self._add_to_services("app", kwargs)
         self._add_to_services("data_transfer", kwargs)
         self._add_to_services("resource_monitor", kwargs)
         self._add_to_services("data_mapper", kwargs)
@@ -137,15 +132,15 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         return srv
 
     @property
-    def bonsai_app(self) -> BonsaiApp:
-        srv = self.try_get_service("bonsai_app")
-        srv = self._validate_service_type(srv, BonsaiApp)
+    def app(self) -> App:
+        srv = self.try_get_service("app")
+        srv = self._validate_service_type(srv, App)
         if srv is None:
-            raise ValueError("BonsaiApp is not set.")
+            raise ValueError("App is not set.")
         return srv
 
-    def attach_bonsai_app(self, value: _ServiceFactoryIsh[BonsaiApp] | BonsaiApp) -> None:
-        self.attach_service_factory("bonsai_app", value)
+    def attach_app(self, value: _ServiceFactoryIsh[App]) -> None:
+        self.attach_service_factory("app", value)
 
     @property
     def data_mapper(self) -> Optional[DataMapper]:

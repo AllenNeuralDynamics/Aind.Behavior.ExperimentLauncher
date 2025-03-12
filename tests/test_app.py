@@ -145,10 +145,6 @@ class TestPythonScriptApp(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             _ = self.app.result
 
-    def test_prompt_input(self):
-        with self.assertRaises(NotImplementedError):
-            self.app.prompt_input()
-
     def test_add_uv_project_directory(self):
         self.assertEqual(self.app._add_uv_project_directory(), " --directory /test/project")
 

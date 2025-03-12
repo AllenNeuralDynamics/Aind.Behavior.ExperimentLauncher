@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, Optional, Self
 
 from aind_behavior_services.utils import run_bonsai_process
+from typing_extensions import override
 
 from aind_behavior_experiment_launcher.ui import DefaultUIHelper, UiHelper
 
@@ -65,6 +66,19 @@ class BonsaiApp(App):
             raise RuntimeError("The app has not been run yet.")
         return self._result
 
+    @override
+    def add_app_settings(self, *args, **kwargs):
+        settings = {
+            "TaskLogicPath": kwargs.pop("task_logic_path", None),
+            "SessionPath": kwargs.pop("session_path", None),
+            "RigPath": kwargs.pop("rig_path", None),
+        }
+        if self.additional_properties is not None:
+            self.additional_properties.update(settings)
+        else:
+            self.additional_properties = settings
+        return self
+
     def validate(self, *args, **kwargs) -> bool:
         if not Path(self.executable).exists():
             raise FileNotFoundError(f"Executable not found: {self.executable}")
@@ -76,6 +90,7 @@ class BonsaiApp(App):
             raise FileNotFoundError(f"Layout directory not found: {self.layout_directory}")
         return True
 
+    @override
     def run(self) -> subprocess.CompletedProcess:
         self.validate()
 
@@ -97,6 +112,7 @@ class BonsaiApp(App):
         logger.info("Bonsai process completed.")
         return proc
 
+    @override
     def output_from_result(self, allow_stderr: Optional[bool]) -> Self:
         proc = self.result
         try:
@@ -152,6 +168,7 @@ class BonsaiApp(App):
         if len(proc.stderr) > 0:
             logger.error("%s full stderr dump: \n%s", process_name, proc.stderr)
 
+    @override
     def prompt_input(self, *args, **kwargs):
         layout_dir = kwargs.pop("layout_directory", None)
         if self.layout is None:
