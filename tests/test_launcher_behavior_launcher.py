@@ -3,10 +3,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, create_autospec, patch
 
+from aind_behavior_experiment_launcher.apps.bonsai import BonsaiApp
 from aind_behavior_experiment_launcher.launcher.behavior_launcher import (
     BehaviorLauncher,
     BehaviorServicesFactoryManager,
-    BonsaiApp,
     DataMapper,
     DataTransfer,
     DefaultBehaviorPicker,
@@ -18,7 +18,7 @@ class TestBehaviorLauncher(unittest.TestCase):
     def setUp(self):
         self.services_factory_manager = create_autospec(BehaviorServicesFactoryManager)
         self.services_factory_manager.resource_monitor = MagicMock()
-        self.services_factory_manager.bonsai_app = MagicMock()
+        self.services_factory_manager.app = MagicMock()
         self.services_factory_manager.data_mapper = MagicMock()
         self.services_factory_manager.data_transfer = MagicMock()
         self.launcher = BehaviorLauncher(
@@ -69,10 +69,10 @@ class TestBehaviorServicesFactoryManager(unittest.TestCase):
         self.launcher = create_autospec(BehaviorLauncher)
         self.factory_manager = BehaviorServicesFactoryManager(self.launcher)
 
-    def test_attach_bonsai_app(self):
-        bonsai_app = BonsaiApp("test.bonsai")
-        self.factory_manager.attach_bonsai_app(bonsai_app)
-        self.assertEqual(self.factory_manager.bonsai_app, bonsai_app)
+    def test_attach_app(self):
+        app = BonsaiApp("test.bonsai")
+        self.factory_manager.attach_app(app)
+        self.assertEqual(self.factory_manager.app, app)
 
     def test_attach_data_mapper(self):
         class DataMapperServiceConcrete(DataMapper):
