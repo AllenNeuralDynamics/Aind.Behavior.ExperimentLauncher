@@ -4,7 +4,7 @@ from typing import List, Self
 
 from git import Repo
 
-from aind_behavior_experiment_launcher.ui_helper import UiHelper
+import aind_behavior_experiment_launcher.ui as ui
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class GitRepository(Repo):
         _ = [GitRepository(str(sub.abspath)).full_reset() for sub in self.submodules]
         return self
 
-    def try_prompt_full_reset(self, ui_helper: UiHelper, force_reset: bool = False) -> Self:
+    def try_prompt_full_reset(self, ui_helper: ui.UiHelper, force_reset: bool = False) -> Self:
         if force_reset:
             self.full_reset()
             return self

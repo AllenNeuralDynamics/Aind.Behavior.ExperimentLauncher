@@ -8,12 +8,13 @@ import os
 import subprocess
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Dict, Generic, Optional, Self, Type, TypeVar, Union
+from typing import Any, Callable, Dict, List, Optional, Self, Type, TypeAlias, TypeVar, Union
 
 import pydantic
 from aind_behavior_services.utils import model_from_json_file
 from typing_extensions import override
 
+import aind_behavior_experiment_launcher.ui as ui
 from aind_behavior_experiment_launcher import logging_helper
 from aind_behavior_experiment_launcher.apps import BonsaiApp
 from aind_behavior_experiment_launcher.data_mapper import DataMapper
@@ -31,116 +32,14 @@ TService = TypeVar("TService", bound=IService)
 logger = logging.getLogger(__name__)
 
 
-class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
+class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
     services_factory_manager: BehaviorServicesFactoryManager
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
 
     def _post_init(self, validate: bool = True) -> None:
         super()._post_init(validate=validate)
         if validate:
             if self.services_factory_manager.resource_monitor is not None:
                 self.services_factory_manager.resource_monitor.evaluate_constraints()
-
-    @override
-    def _prompt_session_input(self, *args, **kwargs) -> TSession:
-        experimenter = self._ui_helper.prompt_experimenter(strict=True)
-        if self._subject is not None:
-            logging.info("Subject provided via CLABE: %s", self._cli_args.subject)
-            subject = self._subject
-        else:
-            subject = self._ui_helper.choose_subject(self._subject_dir)
-            self._subject = subject
-            if not (self._subject_dir / subject).exists():
-                logger.warning("Directory for subject %s does not exist. Creating a new one.", subject)
-                os.makedirs(self._subject_dir / subject)
-
-        notes = self._ui_helper.prompt_notes()
-
-        return self.session_schema_model(
-            experiment="",  # Will be set later
-            root_path=str(self.data_dir.resolve())
-            if not self.group_by_subject_log
-            else str(self.data_dir.resolve() / subject),
-            subject=subject,
-            notes=notes,
-            experimenter=experimenter if experimenter is not None else [],
-            commit_hash=self.repository.head.commit.hexsha,
-            allow_dirty_repo=self._debug_mode or self.allow_dirty,
-            skip_hardware_validation=self.skip_hardware_validation,
-            experiment_version="",  # Will be set later
-        )
-
-    @override
-    def _prompt_rig_input(self, directory: Optional[str] = None) -> TRig:
-        rig_schemas_path = (
-            Path(os.path.join(self.config_library_dir, directory, self.computer_name))
-            if directory is not None
-            else self._rig_dir
-        )
-        available_rigs = glob.glob(os.path.join(rig_schemas_path, "*.json"))
-        if len(available_rigs) == 1:
-            logger.info("Found a single rig config file. Using %s.", {available_rigs[0]})
-            return model_from_json_file(available_rigs[0], self.rig_schema_model)
-        else:
-            while True:
-                try:
-                    path = self._ui_helper.prompt_pick_file_from_list(
-                        available_rigs, prompt="Choose a rig:", zero_label=None
-                    )
-                    if not isinstance(path, str):
-                        raise ValueError("Invalid choice.")
-                    rig = model_from_json_file(path, self.rig_schema_model)
-                    logger.info("Using %s.", path)
-                    return rig
-                except pydantic.ValidationError as e:
-                    logger.error("Failed to validate pydantic model. Try again. %s", e)
-                except ValueError as e:
-                    logger.error("Invalid choice. Try again. %s", e)
-
-    @override
-    def _prompt_task_logic_input(self, *args, **kwargs) -> TTaskLogic:
-        task_logic: Optional[TTaskLogic] = self._task_logic_schema
-        # If the task logic is already set (e.g. from CLI), skip the prompt
-        if task_logic is not None:
-            return task_logic
-
-        # Else, we check inside the subject folder for an existing task file
-        try:
-            f = self._subject_dir / self.session_schema.subject / ByAnimalFiles.TASK_LOGIC
-            logger.info("Attempting to load task logic from subject folder: %s", f)
-            task_logic = model_from_json_file(f, self.task_logic_schema_model)
-        except (ValueError, FileNotFoundError, pydantic.ValidationError) as e:
-            logger.warning("Failed to find a valid task logic file. %s", e)
-        else:
-            logger.info("Found a valid task logic file in subject folder!")
-            _is_manual = self._ui_helper.prompt_yes_no_question("Would you like to use this task logic?")
-            if not _is_manual:
-                return task_logic
-            else:
-                task_logic = None
-
-        # If not found, we prompt the user to choose/enter a task logic file
-        while task_logic is None:
-            try:
-                _path = Path(os.path.join(self.config_library_dir, self._task_logic_dir))
-                available_files = glob.glob(os.path.join(_path, "*.json"))
-                path = self._ui_helper.prompt_pick_file_from_list(
-                    available_files, prompt="Choose a task logic:", zero_label=None
-                )
-                if not isinstance(path, str):
-                    raise ValueError("Invalid choice.")
-                if not os.path.isfile(path):
-                    raise FileNotFoundError(f"File not found: {path}")
-                task_logic = model_from_json_file(path, self.task_logic_schema_model)
-                logger.info("User entered: %s.", path)
-            except pydantic.ValidationError as e:
-                logger.error("Failed to validate pydantic model. Try again. %s", e)
-            except (ValueError, FileNotFoundError) as e:
-                logger.error("Invalid choice. Try again. %s", e)
-
-        return task_logic
 
     @override
     def _pre_run_hook(self, *args, **kwargs) -> Self:
@@ -220,9 +119,7 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
         return fpath
 
 
-_TServiceFactory = TypeVar(
-    "_TServiceFactory", bound=ServiceFactory[TService] | Callable[[BaseLauncher], TService] | TService
-)
+_ServiceFactoryIsh: TypeAlias = Union[ServiceFactory[TService], Callable[[BaseLauncher], TService], TService]
 
 
 class BehaviorServicesFactoryManager(ServicesFactoryManager):
@@ -247,7 +144,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
             raise ValueError("BonsaiApp is not set.")
         return srv
 
-    def attach_bonsai_app(self, value: _TServiceFactory[BonsaiApp] | BonsaiApp) -> None:
+    def attach_bonsai_app(self, value: _ServiceFactoryIsh[BonsaiApp] | BonsaiApp) -> None:
         self.attach_service_factory("bonsai_app", value)
 
     @property
@@ -255,7 +152,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         srv = self.try_get_service("data_mapper")
         return self._validate_service_type(srv, DataMapper)
 
-    def attach_data_mapper(self, value: _TServiceFactory[DataMapper]) -> None:
+    def attach_data_mapper(self, value: _ServiceFactoryIsh[DataMapper]) -> None:
         self.attach_service_factory("data_mapper", value)
 
     @property
@@ -263,7 +160,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         srv = self.try_get_service("resource_monitor")
         return self._validate_service_type(srv, ResourceMonitor)
 
-    def attach_resource_monitor(self, value: _TServiceFactory[ResourceMonitor]) -> None:
+    def attach_resource_monitor(self, value: _ServiceFactoryIsh[ResourceMonitor]) -> None:
         self.attach_service_factory("resource_monitor", value)
 
     @property
@@ -271,7 +168,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         srv = self.try_get_service("data_transfer")
         return self._validate_service_type(srv, DataTransfer)
 
-    def attach_data_transfer(self, value: _TServiceFactory[DataTransfer]) -> None:
+    def attach_data_transfer(self, value: _ServiceFactoryIsh[DataTransfer]) -> None:
         self.attach_service_factory("data_transfer", value)
 
     @staticmethod
@@ -333,5 +230,204 @@ def _robocopy_data_transfer_factory(
     return RobocopyService(source=launcher.session_directory, destination=dst, **robocopy_kwargs)
 
 
-class ByAnimalFiles(enum.Enum):
+class ByAnimalFiles(enum.StrEnum):
     TASK_LOGIC = "task_logic"
+
+
+_T = TypeVar("_T", bound=Any)
+
+_BehaviorPickerAlias = ui.PickerBase[BehaviorLauncher[TRig, TSession, TTaskLogic], TRig, TSession, TTaskLogic]
+
+
+class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
+    RIG_SUFFIX: str = "Rig"
+    SUBJECT_SUFFIX: str = "Subjects"
+    TASK_LOGIC_SUFFIX: str = "TaskLogic"
+
+    @override
+    def __init__(
+        self,
+        launcher: Optional[BehaviorLauncher[TRig, TSession, TTaskLogic]] = None,
+        *,
+        ui_helper: Optional[ui.DefaultUIHelper] = None,
+        config_library_dir: os.PathLike,
+        **kwargs,
+    ):
+        super().__init__(launcher, ui_helper=ui_helper, **kwargs)
+        self._config_library_dir = Path(config_library_dir)
+
+    @property
+    def config_library_dir(self) -> Path:
+        return self._config_library_dir
+
+    @property
+    def rig_dir(self) -> Path:
+        return Path(os.path.join(self._config_library_dir, self.RIG_SUFFIX, self.launcher.computer_name))
+
+    @property
+    def subject_dir(self) -> Path:
+        return Path(os.path.join(self._config_library_dir, self.SUBJECT_SUFFIX))
+
+    @property
+    def task_logic_dir(self) -> Path:
+        return Path(os.path.join(self._config_library_dir, self.TASK_LOGIC_SUFFIX))
+
+    @override
+    def initialize(self) -> None:
+        if self.launcher.cli_args.create_directories:
+            self._create_directories()
+
+    def _create_directories(self) -> None:
+        self.launcher.create_directory(self.config_library_dir)
+        self.launcher.create_directory(self.task_logic_dir)
+        self.launcher.create_directory(self.rig_dir)
+        self.launcher.create_directory(self.subject_dir)
+
+    def pick_rig(self) -> TRig:
+        available_rigs = glob.glob(os.path.join(self.rig_dir, "*.json"))
+        if len(available_rigs) == 1:
+            logger.info("Found a single rig config file. Using %s.", {available_rigs[0]})
+            return model_from_json_file(available_rigs[0], self.launcher.rig_schema_model)
+        else:
+            while True:
+                try:
+                    path = self.prompt_pick_file_from_list(available_rigs, prompt="Choose a rig:", zero_label=None)
+                    if not isinstance(path, str):
+                        raise ValueError("Invalid choice.")
+                    rig = model_from_json_file(path, self.launcher.rig_schema_model)
+                    logger.info("Using %s.", path)
+                    return rig
+                except pydantic.ValidationError as e:
+                    logger.error("Failed to validate pydantic model. Try again. %s", e)
+                except ValueError as e:
+                    logger.error("Invalid choice. Try again. %s", e)
+
+    def pick_session(self) -> TSession:
+        experimenter = self.prompt_experimenter(strict=True)
+        if self.launcher.subject is not None:
+            logging.info("Subject provided via CLABE: %s", self.launcher.cli_args.subject)
+            subject = self.launcher.subject
+        else:
+            subject = self.choose_subject(self.subject_dir)
+            self.launcher.subject = subject
+            if not (self.subject_dir / subject).exists():
+                logger.warning("Directory for subject %s does not exist. Creating a new one.", subject)
+                os.makedirs(self.subject_dir / subject)
+
+        notes = self.ui_helper.prompt_text("Enter notes: ")
+
+        return self.launcher.session_schema_model(
+            experiment="",  # Will be set later
+            root_path=str(self.launcher.data_dir.resolve())
+            if not self.launcher.group_by_subject_log
+            else str(self.launcher.data_dir.resolve() / subject),
+            subject=subject,
+            notes=notes,
+            experimenter=experimenter if experimenter is not None else [],
+            commit_hash=self.launcher.repository.head.commit.hexsha,
+            allow_dirty_repo=self.launcher.is_debug_mode or self.launcher.allow_dirty,
+            skip_hardware_validation=self.launcher.skip_hardware_validation,
+            experiment_version="",  # Will be set later
+        )
+
+    def pick_task_logic(self) -> TTaskLogic:
+        task_logic: Optional[TTaskLogic]
+        try:  # If the task logic is already set (e.g. from CLI), skip the prompt
+            task_logic = self.launcher.task_logic_schema
+            assert task_logic is not None
+            return task_logic
+        except ValueError:
+            task_logic = None
+
+        # Else, we check inside the subject folder for an existing task file
+        try:
+            f = self.subject_dir / self.launcher.session_schema.subject / ByAnimalFiles.TASK_LOGIC.value
+            logger.info("Attempting to load task logic from subject folder: %s", f)
+            task_logic = model_from_json_file(f, self.launcher.task_logic_schema_model)
+        except (ValueError, FileNotFoundError, pydantic.ValidationError) as e:
+            logger.warning("Failed to find a valid task logic file. %s", e)
+        else:
+            logger.info("Found a valid task logic file in subject folder!")
+            _is_manual = self.ui_helper.prompt_yes_no_question("Would you like to use this task logic?")
+            if not _is_manual:
+                return task_logic
+            else:
+                task_logic = None
+
+        # If not found, we prompt the user to choose/enter a task logic file
+        while task_logic is None:
+            try:
+                _path = Path(os.path.join(self.config_library_dir, self.task_logic_dir))
+                available_files = glob.glob(os.path.join(_path, "*.json"))
+                path = self.prompt_pick_file_from_list(available_files, prompt="Choose a task logic:", zero_label=None)
+                if not isinstance(path, str):
+                    raise ValueError("Invalid choice.")
+                if not os.path.isfile(path):
+                    raise FileNotFoundError(f"File not found: {path}")
+                task_logic = model_from_json_file(path, self.launcher.task_logic_schema_model)
+                logger.info("User entered: %s.", path)
+            except pydantic.ValidationError as e:
+                logger.error("Failed to validate pydantic model. Try again. %s", e)
+            except (ValueError, FileNotFoundError) as e:
+                logger.error("Invalid choice. Try again. %s", e)
+
+        return task_logic
+
+    def prompt_pick_file_from_list(
+        self,
+        available_files: list[str],
+        prompt: str = "Choose a file:",
+        zero_label: Optional[str] = None,
+        zero_value: Optional[_T] = None,
+        zero_as_input: bool = True,
+        zero_as_input_label: str = "Enter manually",
+    ) -> Optional[str | _T]:
+        self.ui_helper.print(prompt)
+        if zero_label is not None:
+            self.ui_helper.print(f"0: {zero_label}")
+        for i, file in enumerate(available_files):
+            self.ui_helper.print(f"{i + 1}: {os.path.split(file)[1]}")
+        choice = int(input("Choice: "))
+        if choice < 0 or choice >= len(available_files) + 1:
+            raise ValueError
+        if choice == 0:
+            if zero_label is None:
+                raise ValueError
+            else:
+                if zero_as_input:
+                    return str(input(zero_as_input_label))
+                else:
+                    return zero_value
+        else:
+            return available_files[choice - 1]
+
+    def choose_subject(self, directory: str | os.PathLike) -> str:
+        subject = None
+        while subject is None:
+            subject = self.ui_helper.prompt_pick_from_list(
+                [
+                    os.path.basename(folder)
+                    for folder in os.listdir(directory)
+                    if os.path.isdir(os.path.join(directory, folder))
+                ],
+                prompt="Choose a subject:",
+                allow_0_as_none=True,
+            )
+            if subject is None:
+                subject = self.ui_helper.input("Enter subject name manually: ")
+                if subject == "":
+                    logger.error("Subject name cannot be empty.")
+                    subject = None
+        return subject
+
+    def prompt_experimenter(self, strict: bool = True) -> Optional[List[str]]:
+        experimenter: Optional[List[str]] = None
+        while experimenter is None:
+            _user_input = self.ui_helper.prompt_text("Experimenter name: ")
+            experimenter = _user_input.replace(",", " ").split()
+            if strict & (len(experimenter) == 0):
+                logger.error("Experimenter name is not valid.")
+                experimenter = None
+            else:
+                return experimenter
+        return experimenter  # This line should be unreachable
