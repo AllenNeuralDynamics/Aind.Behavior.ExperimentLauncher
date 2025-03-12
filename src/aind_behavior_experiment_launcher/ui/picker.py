@@ -19,7 +19,6 @@ _T = TypeVar("_T", bound=AindBehaviorTaskLogicModel)
 
 
 class PickerBase(abc.ABC, Generic[_L, _R, _S, _T]):
-    @abc.abstractmethod
     def __init__(self, launcher: Optional[_L] = None, *, ui_helper: Optional[_UiHelperBase] = None, **kwargs) -> None:
         self._launcher = launcher
         self._ui_helper = ui_helper
