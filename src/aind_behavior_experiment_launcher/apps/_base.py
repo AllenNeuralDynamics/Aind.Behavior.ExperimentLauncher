@@ -15,9 +15,12 @@ class App(IService, abc.ABC):
     @abc.abstractmethod
     def output_from_result(self, allow_stderr: Optional[bool]) -> Self: ...
 
-    @abc.abstractmethod
-    def prompt_input(self, *args, **kwargs) -> Self: ...
-
     @property
     @abc.abstractmethod
     def result(self) -> subprocess.CompletedProcess: ...
+
+    def add_app_settings(self, *args, **kwargs) -> Self:
+        return self
+
+    def prompt_input(self, *args, **kwargs) -> Self:
+        return self
