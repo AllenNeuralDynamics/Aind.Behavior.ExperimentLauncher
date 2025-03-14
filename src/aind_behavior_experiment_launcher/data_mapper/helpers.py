@@ -24,6 +24,16 @@ T = TypeVar("T")
 def get_cameras(
     rig_instance: AindBehaviorRigModel, exclude_without_video_writer: bool = True
 ) -> Dict[str, CameraTypes]:
+    """
+    Retrieves a dictionary of cameras from the given rig instance.
+
+    Args:
+        rig_instance (AindBehaviorRigModel): The rig model instance containing camera controllers.
+        exclude_without_video_writer (bool): If True, exclude cameras without a video writer.
+
+    Returns:
+        Dict[str, CameraTypes]: A dictionary mapping camera names to their types.
+    """
     cameras: dict[str, CameraTypes] = {}
     camera_controllers = [x[1] for x in get_fields_of_type(rig_instance, CameraController)]
 
@@ -39,18 +49,29 @@ def get_cameras(
 ISearchable = Union[pydantic.BaseModel, Dict, List]
 
 
-def _sanitize_snapshot_keys(snapshot: Dict[str, str]) -> Dict[str, str]:
-    # Sanitize the key names https://github.com/AllenNeuralDynamics/Aind.Behavior.ExperimentLauncher/issues/18
-    return {re.sub(r"[.$]", "_", k): v for k, v in snapshot.items()}
-
 
 def snapshot_python_environment() -> Dict[str, str]:
+    """
+    Captures a snapshot of the current Python environment, including installed packages.
+
+    Returns:
+        Dict[str, str]: A dictionary of package names and their versions.
+    """
     return {dist.name: dist.version for dist in metadata.distributions()}
 
 
 def snapshot_bonsai_environment(
     config_file: os.PathLike = Path("./bonsai/bonsai.config"),
 ) -> Dict[str, str]:
+    """
+    Captures a snapshot of the Bonsai environment from the given configuration file.
+
+    Args:
+        config_file (os.PathLike): Path to the Bonsai configuration file.
+
+    Returns:
+        Dict[str, str]: A dictionary of package IDs and their versions.
+    """
     tree = ET.parse(Path(config_file))
     root = tree.getroot()
     packages = root.findall("Packages/Package")

@@ -24,12 +24,24 @@ _TAdsObject = TypeVar("_TAdsObject", bound=Union[ads_session.Session, ads_rig.Ri
 
 
 class AindDataSchemaDataMapper(_base.DataMapper[_TAdsObject], abc.ABC, Generic[_TAdsObject]):
+    """
+    Abstract base class for mapping data to aind-data-schema objects.
+
+    Attributes:
+        session_name (str): The name of the session associated with the data.
+    """
     @property
     @abc.abstractmethod
     def session_name(self) -> str: ...
 
 
-class AindDataSchemaSessionDataMapper(AindDataSchemaDataMapper[ads_session.Session], abc.ABC): ...
+class AindDataSchemaSessionDataMapper(AindDataSchemaDataMapper[ads_session.Session], abc.ABC):
+    """
+    Abstract base class for mapping session.
+    """
 
 
-class AindDataSchemaRigDataMapper(AindDataSchemaDataMapper[ads_rig.Rig], abc.ABC): ...
+class AindDataSchemaRigDataMapper(AindDataSchemaDataMapper[ads_rig.Rig], abc.ABC):
+    """
+    Abstract base class for mapping rig.
+    """
