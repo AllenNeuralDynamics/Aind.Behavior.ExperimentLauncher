@@ -93,6 +93,7 @@ class BonsaiApp(App):
     @override
     def run(self) -> subprocess.CompletedProcess:
         self.validate()
+        self.prompt_input()
 
         if self.is_editor_mode:
             logger.warning("Bonsai is running in editor mode. Cannot assert successful completion.")

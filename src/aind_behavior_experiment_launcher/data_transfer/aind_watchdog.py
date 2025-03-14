@@ -36,6 +36,7 @@ from aind_watchdog_service.models.watch_config import WatchConfig
 from pydantic import BaseModel
 from requests.exceptions import HTTPError
 
+from aind_behavior_experiment_launcher import ui
 from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
 
 from ._base import DataTransfer
@@ -65,6 +66,7 @@ class WatchdogDataTransferService(DataTransfer):
         validate: bool = True,
         session_name: Optional[str] = None,
         upload_job_configs: Optional[List[_JobConfigs]] = None,
+        ui_helper: Optional[ui.UiHelper] = None,
     ) -> None:
         self.source = source
         self.destination = destination
@@ -94,6 +96,7 @@ class WatchdogDataTransferService(DataTransfer):
         self._manifest_config: Optional[ManifestConfig] = None
 
         self.validate_project_name = validate
+        self._ui_helper = ui_helper or ui.DefaultUIHelper()
 
     @property
     def aind_session_data_mapper(self) -> AindDataSchemaSessionDataMapper:
@@ -108,6 +111,9 @@ class WatchdogDataTransferService(DataTransfer):
         self._aind_session_data_mapper = value
 
     def transfer(self) -> None:
+        if not self.prompt_input():
+            logger.info("User chose not to generate a watchdog manifest.")
+            return
         try:
             if not self.is_running():
                 logger.warning("Watchdog service is not running. Attempting to start it.")
@@ -362,6 +368,9 @@ class WatchdogDataTransferService(DataTransfer):
     def _read_yaml(path: PathLike) -> dict:
         with open(path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f)
+
+    def prompt_input(self) -> bool:
+        return self._ui_helper.prompt_yes_no_question("Would you like to generate a watchdog manifest (Y/N)?")
 
 
 def video_compression_job(

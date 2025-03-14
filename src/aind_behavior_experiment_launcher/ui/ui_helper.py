@@ -1,6 +1,6 @@
 import abc
 import logging
-from typing import Any, Callable, List, Optional, TypeVar
+from typing import Any, Callable, List, Optional, TypeAlias, TypeVar
 
 from pydantic import BaseModel, TypeAdapter
 
@@ -40,7 +40,7 @@ class _UiHelperBase(abc.ABC):
     def prompt_text(self, prompt: str) -> str: ...
 
 
-UiHelper = _UiHelperBase
+UiHelper: TypeAlias = _UiHelperBase
 
 
 class DefaultUIHelper(_UiHelperBase):

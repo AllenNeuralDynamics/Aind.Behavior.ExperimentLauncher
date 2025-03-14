@@ -21,6 +21,3 @@ class App(IService, abc.ABC):
 
     def add_app_settings(self, *args, **kwargs) -> Self:
         return self
-
-    def prompt_input(self, *args, **kwargs) -> Self:
-        return self
