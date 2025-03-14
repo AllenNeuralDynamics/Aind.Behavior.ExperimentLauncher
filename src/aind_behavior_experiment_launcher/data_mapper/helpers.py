@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import os
-import re
 import xml.etree.ElementTree as ET
 from importlib import metadata
 from pathlib import Path
@@ -47,7 +46,6 @@ def get_cameras(
 
 
 ISearchable = Union[pydantic.BaseModel, Dict, List]
-
 
 
 def snapshot_python_environment() -> Dict[str, str]:

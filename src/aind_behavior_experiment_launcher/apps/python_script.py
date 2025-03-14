@@ -18,8 +18,8 @@ _HAS_UV = shutil.which("uv") is not None
 
 class PythonScriptApp(App):
     """
-    PythonScriptApp is a class that facilitates running Python scripts within a managed environment. 
-    It ensures the presence of a virtual environment, handles dependencies, and executes the script 
+    PythonScriptApp is a class that facilitates running Python scripts within a managed environment.
+    It ensures the presence of a virtual environment, handles dependencies, and executes the script
     with specified arguments.
     Attributes:
         _script (str): The Python script to be executed.
@@ -51,6 +51,7 @@ class PythonScriptApp(App):
         _validate_uv():
             Validates the presence of the `uv` executable. Raises an error if it is not installed.
     """
+
     def __init__(
         self,
         /,
@@ -222,7 +223,7 @@ class PythonScriptApp(App):
         """
         return f" --directory {self._project_directory}"
 
-    def _add_uv_optional_toml_dependencies() -> str:
+    def _add_uv_optional_toml_dependencies(self) -> str:
         """
         Constructs the `--extra` arguments for the `uv` command based on optional TOML dependencies.
 

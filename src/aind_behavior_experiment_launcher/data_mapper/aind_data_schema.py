@@ -30,6 +30,7 @@ class AindDataSchemaDataMapper(_base.DataMapper[_TAdsObject], abc.ABC, Generic[_
     Attributes:
         session_name (str): The name of the session associated with the data.
     """
+
     @property
     @abc.abstractmethod
     def session_name(self) -> str: ...

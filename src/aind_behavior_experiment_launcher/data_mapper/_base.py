@@ -21,6 +21,7 @@ class DataMapper(IService, abc.ABC, Generic[TMapTo]):
     Attributes:
         _mapped (Optional[TMapTo]): The mapped data object.
     """
+
     _mapped: Optional[TMapTo]
 
     @abc.abstractmethod

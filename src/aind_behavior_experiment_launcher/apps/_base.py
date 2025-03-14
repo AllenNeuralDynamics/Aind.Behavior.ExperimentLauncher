@@ -58,7 +58,7 @@ class App(IService, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def result(self) -> subprocess.CompletedProcess:...
+    def result(self) -> subprocess.CompletedProcess:
         """
         Retrieves the result of the application's execution.
 
