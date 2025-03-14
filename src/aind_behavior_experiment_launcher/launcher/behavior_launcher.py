@@ -37,6 +37,7 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
     A launcher for behavior experiments that manages services, experiment configuration, and
     execution hooks.
     """
+
     services_factory_manager: BehaviorServicesFactoryManager
 
     def _post_init(self, validate: bool = True) -> None:
@@ -401,6 +402,7 @@ class ByAnimalFiles(enum.StrEnum):
     """
     Enum for file types associated with animals in the experiment.
     """
+
     TASK_LOGIC = "task_logic"
 
 

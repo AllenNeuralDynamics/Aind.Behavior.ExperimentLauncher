@@ -18,6 +18,7 @@ class _UiHelperBase(abc.ABC):
     """
     Abstract base class for UI helpers that provide methods for user interaction.
     """
+
     _print: _PrintFunc
     _input: _InputFunc
 
@@ -103,6 +104,7 @@ class DefaultUIHelper(_UiHelperBase):
     """
     Default implementation of the UI helper for user interaction.
     """
+
     def prompt_pick_from_list(
         self, value: List[str], prompt: str, allow_0_as_none: bool = True, **kwargs
     ) -> Optional[str]:
