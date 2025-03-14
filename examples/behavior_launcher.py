@@ -119,13 +119,14 @@ def create_fake_subjects():
     subjects = ["00000", "123456"]
     for subject in subjects:
         os.makedirs(f"{LIB_CONFIG}/Subjects/{subject}", exist_ok=True)
-        with open(f"{LIB_CONFIG}/Subjects/{subject}/tasklogic.json", "w", encoding="utf-8") as f:
+        with open(f"{LIB_CONFIG}/Subjects/{subject}/task_logic.json", "w", encoding="utf-8") as f:
             f.write(TaskLogicModel(task_parameters={"subject": subject}).model_dump_json(indent=2))
 
 
 def create_fake_rig():
     computer_name = os.getenv("COMPUTERNAME")
-    with open(f"{LIB_CONFIG}/Rig/{computer_name}/rig1.json", "w", encoding="utf-8") as f:
+    os.makedirs(_dir := f"{LIB_CONFIG}/Rig/{computer_name}", exist_ok=True)
+    with open(f"{_dir}/rig1.json", "w", encoding="utf-8") as f:
         f.write(RigModel().model_dump_json(indent=2))
 
 
