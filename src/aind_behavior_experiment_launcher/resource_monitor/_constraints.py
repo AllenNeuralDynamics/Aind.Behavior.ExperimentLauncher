@@ -1,10 +1,11 @@
 import os
 import shutil
+from pathlib import Path
 
 from ._base import Constraint
 
 
-def available_storage_constraint_factory(drive: str = "C:\\", min_bytes: float = 2e11) -> Constraint:
+def available_storage_constraint_factory(drive: os.PathLike = Path(r"C:\\"), min_bytes: float = 2e11) -> Constraint:
     if not os.path.ismount(drive):
         drive = os.path.splitdrive(drive)[0] + "\\"
     if drive is None:
