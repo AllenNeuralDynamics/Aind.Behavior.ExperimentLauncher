@@ -4,14 +4,29 @@ import unittest.mock
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from aind_behavior_experiment_launcher import ui
 from aind_behavior_experiment_launcher.apps import BonsaiApp, PythonScriptApp
+
+
+class MockUiHelper(ui.UiHelper):
+    def __init__(self):
+        super().__init__(print_func=lambda x: None, input_func=lambda x: "1")
+
+    def prompt_pick_from_list(self, *args, **kwargs):
+        return ""
+
+    def prompt_yes_no_question(self, prompt: str) -> bool:
+        return True
+
+    def prompt_text(self, prompt: str) -> str:
+        return ""
 
 
 class TestBonsaiApp(unittest.TestCase):
     def setUp(self):
         self.workflow = Path("test_workflow.bonsai")
         self.executable = Path("bonsai/bonsai.exe")
-        self.app = BonsaiApp(workflow=self.workflow, executable=self.executable)
+        self.app = BonsaiApp(workflow=self.workflow, executable=self.executable, ui_helper=MockUiHelper())
 
     @patch("aind_behavior_experiment_launcher.apps.bonsai.run_bonsai_process")
     @patch("pathlib.Path.exists", return_value=True)
@@ -63,7 +78,7 @@ class TestBonsaiApp(unittest.TestCase):
         self.app._result = mock_result
         self.assertEqual(self.app.result, mock_result)
 
-    @patch("aind_behavior_experiment_launcher.apps.bonsai.DefaultUIHelper.prompt_yes_no_question", return_value=True)
+    @patch.object(MockUiHelper, "prompt_yes_no_question", return_value=True)
     def test_output_from_result(self, mock_prompt):
         mock_result = MagicMock(spec=subprocess.CompletedProcess)
         mock_result.stdout = "output"
@@ -77,10 +92,7 @@ class TestBonsaiApp(unittest.TestCase):
         with patch.object(mock_result, "check_returncode", return_value=None):
             self.assertEqual(self.app.output_from_result(allow_stderr=True), self.app)
 
-    @patch(
-        "aind_behavior_experiment_launcher.apps.bonsai.DefaultUIHelper.prompt_pick_from_list",
-        return_value="picked_layout.bonsai.layout",
-    )
+    @patch.object(MockUiHelper, "prompt_pick_from_list", return_value="picked_layout.bonsai.layout")
     def test_prompt_visualizer_layout_input(self, mock_ui_helper):
         with patch("glob.glob", return_value=["layout1.bonsai.layout", "layout2.bonsai.layout"]):
             layout = self.app.prompt_visualizer_layout_input()

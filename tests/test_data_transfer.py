@@ -9,6 +9,7 @@ from aind_data_schema_models.modalities import Modality
 from aind_data_schema_models.platforms import Platform
 from aind_watchdog_service.models.manifest_config import BucketType
 
+from aind_behavior_experiment_launcher import ui
 from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
 from aind_behavior_experiment_launcher.data_transfer import RobocopyService
 from aind_behavior_experiment_launcher.data_transfer.aind_watchdog import (
@@ -19,6 +20,20 @@ from aind_behavior_experiment_launcher.data_transfer.aind_watchdog import (
     WatchdogDataTransferService,
     video_compression_job,
 )
+
+
+class MockUiHelper(ui.UiHelper):
+    def __init__(self):
+        super().__init__(print_func=lambda x: None, input_func=lambda x: "1")
+
+    def prompt_pick_from_list(self, *args, **kwargs):
+        return ""
+
+    def prompt_yes_no_question(self, prompt: str) -> bool:
+        return True
+
+    def prompt_text(self, prompt: str) -> str:
+        return ""
 
 
 class TestWatchdogDataTransferService(unittest.TestCase):
@@ -53,6 +68,7 @@ class TestWatchdogDataTransferService(unittest.TestCase):
             force_cloud_sync=self.force_cloud_sync,
             transfer_endpoint=self.transfer_endpoint,
             validate=self.validate,
+            ui_helper=MockUiHelper(),
         )
 
         self.service._manifest_config = ManifestConfig(
@@ -263,6 +279,7 @@ class TestRobocopyService(unittest.TestCase):
             delete_src=True,
             overwrite=True,
             force_dir=False,
+            ui_helper=MockUiHelper(),
         )
 
     def test_initialization(self):
@@ -275,7 +292,8 @@ class TestRobocopyService(unittest.TestCase):
         self.assertFalse(self.service.force_dir)
 
     @patch("src.aind_behavior_experiment_launcher.data_transfer.robocopy.subprocess.Popen")
-    def test_transfer(self, mock_popen):
+    @patch.object(MockUiHelper, "prompt_yes_no_question", return_value=True)
+    def test_transfer(self, mock_ui_helper, mock_popen):
         mock_process = MagicMock()
         mock_process.wait.return_value = 0
         mock_popen.return_value = mock_process
