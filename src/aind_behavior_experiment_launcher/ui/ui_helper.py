@@ -1,6 +1,6 @@
 import abc
 import logging
-from typing import Any, Callable, List, Optional, TypeAlias, TypeVar
+from typing import Any, Callable, List, Optional, Type, TypeAlias, TypeVar
 
 from pydantic import BaseModel, TypeAdapter
 
@@ -171,7 +171,7 @@ class DefaultUIHelper(_UiHelperBase):
         return notes
 
 
-def prompt_field_from_input(model: _TModel, field_name: str, default: Optional[_T] = None) -> Optional[_T]:
+def prompt_field_from_input(model: Type[_TModel], field_name: str, default: Optional[_T] = None) -> Optional[_T]:
     """
     Prompts the user to input a value for a specific field in a model.
 
