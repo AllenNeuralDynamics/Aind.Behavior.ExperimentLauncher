@@ -280,7 +280,10 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
 
     def pick_rig(self) -> TRig:
         available_rigs = glob.glob(os.path.join(self.rig_dir, "*.json"))
-        if len(available_rigs) == 1:
+        if len(available_rigs) == 0:
+            logger.error("No rig config files found.")
+            raise ValueError("No rig config files found.")
+        elif len(available_rigs) == 1:
             logger.info("Found a single rig config file. Using %s.", {available_rigs[0]})
             return model_from_json_file(available_rigs[0], self.launcher.rig_schema_model)
         else:
@@ -336,14 +339,14 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
 
         # Else, we check inside the subject folder for an existing task file
         try:
-            f = self.subject_dir / self.launcher.session_schema.subject / ByAnimalFiles.TASK_LOGIC.value
+            f = self.subject_dir / self.launcher.session_schema.subject / (ByAnimalFiles.TASK_LOGIC.value + ".json")
             logger.info("Attempting to load task logic from subject folder: %s", f)
             task_logic = model_from_json_file(f, self.launcher.task_logic_schema_model)
         except (ValueError, FileNotFoundError, pydantic.ValidationError) as e:
             logger.warning("Failed to find a valid task logic file. %s", e)
         else:
             logger.info("Found a valid task logic file in subject folder!")
-            _is_manual = self.ui_helper.prompt_yes_no_question("Would you like to use this task logic?")
+            _is_manual = not self.ui_helper.prompt_yes_no_question("Would you like to use this task logic?")
             if not _is_manual:
                 return task_logic
             else:
@@ -354,6 +357,8 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             try:
                 _path = Path(os.path.join(self.config_library_dir, self.task_logic_dir))
                 available_files = glob.glob(os.path.join(_path, "*.json"))
+                if len(available_files) == 0:
+                    break
                 path = self.prompt_pick_file_from_list(available_files, prompt="Choose a task logic:", zero_label=None)
                 if not isinstance(path, str):
                     raise ValueError("Invalid choice.")
@@ -365,7 +370,9 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
                 logger.error("Failed to validate pydantic model. Try again. %s", e)
             except (ValueError, FileNotFoundError) as e:
                 logger.error("Invalid choice. Try again. %s", e)
-
+        if task_logic is None:
+            logger.error("No task logic file found.")
+            raise ValueError("No task logic file found.")
         return task_logic
 
     def prompt_pick_file_from_list(
