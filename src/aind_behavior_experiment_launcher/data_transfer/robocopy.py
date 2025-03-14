@@ -5,6 +5,8 @@ from os import PathLike, makedirs
 from pathlib import Path
 from typing import Dict, Optional
 
+from aind_behavior_experiment_launcher import ui
+
 from ._base import DataTransfer
 
 logger = logging.getLogger(__name__)
@@ -24,6 +26,7 @@ class RobocopyService(DataTransfer):
         delete_src: bool = False,
         overwrite: bool = False,
         force_dir: bool = True,
+        ui_helper: Optional[ui.UiHelper] = None,
     ):
         self.source = source
         self.destination = destination
@@ -32,10 +35,15 @@ class RobocopyService(DataTransfer):
         self.force_dir = force_dir
         self.log = log
         self.extra_args = extra_args if extra_args else DEFAULT_EXTRA_ARGS
+        self._ui_helper = ui_helper or ui.DefaultUIHelper()
 
     def transfer(
         self,
     ) -> None:
+        if not self.prompt_input():
+            logger.info("User skipped data transfer.")
+            return
+
         # Loop through each source-destination pair and call robocopy'
         logger.info("Starting robocopy transfer service.")
         src_dist = self._solve_src_dst_mapping(self.source, self.destination)
@@ -88,3 +96,6 @@ class RobocopyService(DataTransfer):
             logger.error("Robocopy command is not available on this system.")
             return False
         return True
+
+    def prompt_input(self) -> bool:
+        return self._ui_helper.prompt_yes_no_question("Would you like to trigger robocopy (Y/N)?")
