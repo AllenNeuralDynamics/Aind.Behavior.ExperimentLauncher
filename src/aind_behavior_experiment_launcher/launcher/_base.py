@@ -34,6 +34,11 @@ TLauncher = TypeVar("TLauncher", bound="BaseLauncher")
 
 
 class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
+    """
+    Abstract base class for experiment launchers. Provides common functionality
+    for managing configuration files, directories, and execution hooks.
+    """
+
     def __init__(
         self,
         *,
@@ -55,6 +60,28 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         task_logic_schema: Optional[os.PathLike] = None,
         subject: Optional[str] = None,
     ) -> None:
+        """
+        Initializes the BaseLauncher instance.
+
+        Args:
+            rig_schema_model (Type[TRig]): The model class for the rig schema.
+            session_schema_model (Type[TSession]): The model class for the session schema.
+            task_logic_schema_model (Type[TTaskLogic]): The model class for the task logic schema.
+            data_dir (os.PathLike): The directory for storing data.
+            picker (ui.PickerBase): The picker instance for selecting schemas.
+            temp_dir (os.PathLike, optional): The temporary directory. Defaults to Path("local/.temp").
+            repository_dir (Optional[os.PathLike], optional): The repository directory. Defaults to None.
+            allow_dirty (bool, optional): Whether to allow a dirty repository. Defaults to False.
+            skip_hardware_validation (bool, optional): Whether to skip hardware validation. Defaults to False.
+            debug_mode (bool, optional): Whether to run in debug mode. Defaults to False.
+            group_by_subject_log (bool, optional): Whether to group logs by subject. Defaults to False.
+            services (Optional[ServicesFactoryManager], optional): The services factory manager. Defaults to None.
+            validate_init (bool, optional): Whether to validate the launcher state during initialization. Defaults to True.
+            attached_logger (Optional[logging.Logger], optional): An attached logger instance. Defaults to None.
+            rig_schema_path (Optional[os.PathLike], optional): The path to the rig schema file. Defaults to None.
+            task_logic_schema (Optional[os.PathLike], optional): The path to the task logic schema file. Defaults to None.
+            subject (Optional[str], optional): The subject name. Defaults to None.
+        """
         self.temp_dir = self.abspath(temp_dir) / format_datetime(utcnow())
         self.temp_dir.mkdir(parents=True, exist_ok=True)
         self.computer_name = os.environ["COMPUTERNAME"]
@@ -116,6 +143,12 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         self._post_init(validate=validate_init)
 
     def _register_picker(self, picker: ui.PickerBase[Self, TRig, TSession, TTaskLogic]) -> None:
+        """
+        Registers a picker for selecting schemas.
+
+        Args:
+            picker (ui.PickerBase): The picker instance to register.
+        """
         if picker.has_launcher:
             raise ValueError("Picker already has a launcher registered.")
         picker.register_launcher(self)
@@ -128,7 +161,12 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         return
 
     def _post_init(self, validate: bool = True) -> None:
-        """Overridable method that runs at the end of the self.__init__ method"""
+        """
+        Overridable method that runs at the end of the constructor.
+
+        Args:
+            validate (bool): Whether to validate the launcher state.
+        """
         cli_args = self._cli_args
         self.picker.initialize()
 
@@ -265,14 +303,32 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
 
     @abstractmethod
     def _pre_run_hook(self, *args, **kwargs) -> Self:
+        """
+        Abstract method for pre-run logic. Must be implemented by subclasses.
+
+        Returns:
+            Self: The current instance for method chaining.
+        """
         raise NotImplementedError("Method not implemented.")
 
     @abstractmethod
     def _run_hook(self, *args, **kwargs) -> Self:
+        """
+        Abstract method for main run logic. Must be implemented by subclasses.
+
+        Returns:
+            Self: The current instance for method chaining.
+        """
         raise NotImplementedError("Method not implemented.")
 
     @abstractmethod
     def _post_run_hook(self, *args, **kwargs) -> Self:
+        """
+        Abstract method for post-run logic. Must be implemented by subclasses.
+
+        Returns:
+            Self: The current instance for method chaining.
+        """
         raise NotImplementedError("Method not implemented.")
 
     def _exit(self, code: int = 0) -> None:
@@ -335,6 +391,9 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
             raise e
 
     def dispose(self) -> None:
+        """
+        Cleans up resources and exits the launcher.
+        """
         logger.info("Disposing...")
         self._exit(0)
 

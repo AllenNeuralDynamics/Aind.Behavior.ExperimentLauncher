@@ -33,9 +33,19 @@ logger = logging.getLogger(__name__)
 
 
 class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
+    """
+    A launcher for behavior experiments that manages services, experiment configuration, and
+    execution hooks.
+    """
     services_factory_manager: BehaviorServicesFactoryManager
 
     def _post_init(self, validate: bool = True) -> None:
+        """
+        Performs additional initialization after the constructor.
+
+        Args:
+            validate (bool): Whether to validate the launcher state.
+        """
         super()._post_init(validate=validate)
         if validate:
             if self.services_factory_manager.resource_monitor is not None:
@@ -43,6 +53,12 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
 
     @override
     def _pre_run_hook(self, *args, **kwargs) -> Self:
+        """
+        Hook executed before the main run logic.
+
+        Returns:
+            Self: The current instance for method chaining.
+        """
         logger.info("Pre-run hook started.")
         self.session_schema.experiment = self.task_logic_schema.name
         self.session_schema.experiment_version = self.task_logic_schema.version
@@ -50,6 +66,12 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
 
     @override
     def _run_hook(self, *args, **kwargs) -> Self:
+        """
+        Hook executed during the main run logic.
+
+        Returns:
+            Self: The current instance for method chaining.
+        """
         logger.info("Running hook started.")
         if self._session_schema is None:
             raise ValueError("Session schema instance not set.")
@@ -77,6 +99,12 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
 
     @override
     def _post_run_hook(self, *args, **kwargs) -> Self:
+        """
+        Hook executed after the main run logic.
+
+        Returns:
+            Self: The current instance for method chaining.
+        """
         logger.info("Post-run hook started.")
 
         if self.services_factory_manager.data_mapper is not None:
@@ -104,6 +132,16 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
         return self
 
     def _save_temp_model(self, model: Union[TRig, TSession, TTaskLogic], directory: Optional[os.PathLike]) -> str:
+        """
+        Saves a temporary JSON representation of a schema model.
+
+        Args:
+            model (Union[TRig, TSession, TTaskLogic]): The schema model to save.
+            directory (Optional[os.PathLike]): The directory to save the file in.
+
+        Returns:
+            str: The path to the saved file.
+        """
         directory = Path(directory) if directory is not None else Path(self.temp_dir)
         os.makedirs(directory, exist_ok=True)
         fname = model.__class__.__name__ + ".json"
@@ -117,7 +155,22 @@ _ServiceFactoryIsh: TypeAlias = Union[ServiceFactory[TService], Callable[[BaseLa
 
 
 class BehaviorServicesFactoryManager(ServicesFactoryManager):
+    """
+    Manages the creation and attachment of services for the BehaviorLauncher.
+
+    This class provides methods to attach and retrieve various services such as
+    app, data transfer, resource monitor, and data mapper. It ensures that the
+    services are of the correct type and properly initialized.
+    """
+
     def __init__(self, launcher: Optional[BehaviorLauncher] = None, **kwargs) -> None:
+        """
+        Initializes the BehaviorServicesFactoryManager.
+
+        Args:
+            launcher (Optional[BehaviorLauncher]): The launcher instance to associate with the services.
+            **kwargs: Additional keyword arguments for service initialization.
+        """
         super().__init__(launcher, **kwargs)
         self._add_to_services("app", kwargs)
         self._add_to_services("data_transfer", kwargs)
@@ -125,6 +178,16 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         self._add_to_services("data_mapper", kwargs)
 
     def _add_to_services(self, name: str, input_kwargs: Dict[str, Any]) -> Optional[ServiceFactory]:
+        """
+        Adds a service to the manager by attaching it to the appropriate factory.
+
+        Args:
+            name (str): The name of the service to add.
+            input_kwargs (Dict[str, Any]): The keyword arguments containing the service instance or factory.
+
+        Returns:
+            Optional[ServiceFactory]: The attached service factory, if any.
+        """
         srv = input_kwargs.pop(name, None)
         if srv is not None:
             self.attach_service_factory(name, srv)
@@ -132,6 +195,15 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
 
     @property
     def app(self) -> App:
+        """
+        Retrieves the app service.
+
+        Returns:
+            App: The app service instance.
+
+        Raises:
+            ValueError: If the app service is not set.
+        """
         srv = self.try_get_service("app")
         srv = self._validate_service_type(srv, App)
         if srv is None:
@@ -139,34 +211,89 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         return srv
 
     def attach_app(self, value: _ServiceFactoryIsh[App]) -> None:
+        """
+        Attaches an app service factory.
+
+        Args:
+            value (_ServiceFactoryIsh[App]): The app service factory or instance.
+        """
         self.attach_service_factory("app", value)
 
     @property
     def data_mapper(self) -> Optional[DataMapper]:
+        """
+        Retrieves the data mapper service.
+
+        Returns:
+            Optional[DataMapper]: The data mapper service instance.
+        """
         srv = self.try_get_service("data_mapper")
         return self._validate_service_type(srv, DataMapper)
 
     def attach_data_mapper(self, value: _ServiceFactoryIsh[DataMapper]) -> None:
+        """
+        Attaches a data mapper service factory.
+
+        Args:
+            value (_ServiceFactoryIsh[DataMapper]): The data mapper service factory or instance.
+        """
         self.attach_service_factory("data_mapper", value)
 
     @property
     def resource_monitor(self) -> Optional[ResourceMonitor]:
+        """
+        Retrieves the resource monitor service.
+
+        Returns:
+            Optional[ResourceMonitor]: The resource monitor service instance.
+        """
         srv = self.try_get_service("resource_monitor")
         return self._validate_service_type(srv, ResourceMonitor)
 
     def attach_resource_monitor(self, value: _ServiceFactoryIsh[ResourceMonitor]) -> None:
+        """
+        Attaches a resource monitor service factory.
+
+        Args:
+            value (_ServiceFactoryIsh[ResourceMonitor]): The resource monitor service factory or instance.
+        """
         self.attach_service_factory("resource_monitor", value)
 
     @property
     def data_transfer(self) -> Optional[DataTransfer]:
+        """
+        Retrieves the data transfer service.
+
+        Returns:
+            Optional[DataTransfer]: The data transfer service instance.
+        """
         srv = self.try_get_service("data_transfer")
         return self._validate_service_type(srv, DataTransfer)
 
     def attach_data_transfer(self, value: _ServiceFactoryIsh[DataTransfer]) -> None:
+        """
+        Attaches a data transfer service factory.
+
+        Args:
+            value (_ServiceFactoryIsh[DataTransfer]): The data transfer service factory or instance.
+        """
         self.attach_service_factory("data_transfer", value)
 
     @staticmethod
     def _validate_service_type(value: Any, type_of: Type) -> Optional[TService]:
+        """
+        Validates the type of a service.
+
+        Args:
+            value (Any): The service instance to validate.
+            type_of (Type): The expected type of the service.
+
+        Returns:
+            Optional[TService]: The validated service instance.
+
+        Raises:
+            ValueError: If the service is not of the expected type.
+        """
         if value is None:
             return None
         if not isinstance(value, type_of):
@@ -181,6 +308,18 @@ def watchdog_data_transfer_factory(
     project_name: Optional[str] = None,
     **watchdog_kwargs,
 ) -> Callable[[BehaviorLauncher], WatchdogDataTransferService]:
+    """
+    Creates a factory for the WatchdogDataTransferService.
+
+    Args:
+        destination (os.PathLike): The destination path for data transfer.
+        schedule_time (Optional[datetime.time]): The scheduled time for data transfer.
+        project_name (Optional[str]): The project name.
+        **watchdog_kwargs: Additional keyword arguments for the watchdog service.
+
+    Returns:
+        Callable[[BehaviorLauncher], WatchdogDataTransferService]: A callable factory for the watchdog service.
+    """
     return partial(
         _watchdog_data_transfer_factory,
         destination=destination,
@@ -191,6 +330,19 @@ def watchdog_data_transfer_factory(
 
 
 def _watchdog_data_transfer_factory(launcher: BehaviorLauncher, **watchdog_kwargs) -> WatchdogDataTransferService:
+    """
+    Internal factory function for creating a WatchdogDataTransferService.
+
+    Args:
+        launcher (BehaviorLauncher): The launcher instance.
+        **watchdog_kwargs: Additional keyword arguments for the watchdog service.
+
+    Returns:
+        WatchdogDataTransferService: The created watchdog service.
+
+    Raises:
+        ValueError: If the data mapper service is not set or is of the wrong type.
+    """
     if launcher.services_factory_manager.data_mapper is None:
         raise ValueError("Data mapper service is not set. Cannot create watchdog.")
     if not isinstance(launcher.services_factory_manager.data_mapper, AindDataSchemaSessionDataMapper):
@@ -211,12 +363,33 @@ def robocopy_data_transfer_factory(
     destination: os.PathLike,
     **robocopy_kwargs,
 ) -> Callable[[BehaviorLauncher], RobocopyService]:
+    """
+    Creates a factory for the RobocopyService.
+
+    Args:
+        destination (os.PathLike): The destination path for data transfer.
+        **robocopy_kwargs: Additional keyword arguments for the robocopy service.
+
+    Returns:
+        Callable[[BehaviorLauncher], RobocopyService]: A callable factory for the robocopy service.
+    """
     return partial(_robocopy_data_transfer_factory, destination=destination, **robocopy_kwargs)
 
 
 def _robocopy_data_transfer_factory(
     launcher: BehaviorLauncher, destination: os.PathLike, **robocopy_kwargs
 ) -> RobocopyService:
+    """
+    Internal factory function for creating a RobocopyService.
+
+    Args:
+        launcher (BehaviorLauncher): The launcher instance.
+        destination (os.PathLike): The destination path for data transfer.
+        **robocopy_kwargs: Additional keyword arguments for the robocopy service.
+
+    Returns:
+        RobocopyService: The created robocopy service.
+    """
     if launcher.group_by_subject_log:
         dst = Path(destination) / launcher.session_schema.subject / launcher.session_schema.session_name
     else:
@@ -225,6 +398,9 @@ def _robocopy_data_transfer_factory(
 
 
 class ByAnimalFiles(enum.StrEnum):
+    """
+    Enum for file types associated with animals in the experiment.
+    """
     TASK_LOGIC = "task_logic"
 
 
@@ -234,6 +410,13 @@ _BehaviorPickerAlias = ui.PickerBase[BehaviorLauncher[TRig, TSession, TTaskLogic
 
 
 class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
+    """
+    A picker class for selecting rig, session, and task logic configurations for behavior experiments.
+
+    This class provides methods to initialize directories, pick configurations, and prompt user inputs
+    for various components of the experiment setup.
+    """
+
     RIG_SUFFIX: str = "Rig"
     SUBJECT_SUFFIX: str = "Subjects"
     TASK_LOGIC_SUFFIX: str = "TaskLogic"
@@ -247,37 +430,85 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         config_library_dir: os.PathLike,
         **kwargs,
     ):
+        """
+        Initializes the DefaultBehaviorPicker.
+
+        Args:
+            launcher (Optional[BehaviorLauncher]): The launcher instance associated with the picker.
+            ui_helper (Optional[ui.DefaultUIHelper]): Helper for user interface interactions.
+            config_library_dir (os.PathLike): Path to the configuration library directory.
+            **kwargs: Additional keyword arguments.
+        """
         super().__init__(launcher, ui_helper=ui_helper, **kwargs)
         self._config_library_dir = Path(config_library_dir)
 
     @property
     def config_library_dir(self) -> Path:
+        """
+        Returns the path to the configuration library directory.
+
+        Returns:
+            Path: The configuration library directory.
+        """
         return self._config_library_dir
 
     @property
     def rig_dir(self) -> Path:
+        """
+        Returns the path to the rig configuration directory.
+
+        Returns:
+            Path: The rig configuration directory.
+        """
         return Path(os.path.join(self._config_library_dir, self.RIG_SUFFIX, self.launcher.computer_name))
 
     @property
     def subject_dir(self) -> Path:
+        """
+        Returns the path to the subject configuration directory.
+
+        Returns:
+            Path: The subject configuration directory.
+        """
         return Path(os.path.join(self._config_library_dir, self.SUBJECT_SUFFIX))
 
     @property
     def task_logic_dir(self) -> Path:
+        """
+        Returns the path to the task logic configuration directory.
+
+        Returns:
+            Path: The task logic configuration directory.
+        """
         return Path(os.path.join(self._config_library_dir, self.TASK_LOGIC_SUFFIX))
 
     @override
     def initialize(self) -> None:
+        """
+        Initializes the picker
+        """
         if self.launcher.cli_args.create_directories:
             self._create_directories()
 
     def _create_directories(self) -> None:
+        """
+        Creates the required directories for configuration files.
+        """
         self.launcher.create_directory(self.config_library_dir)
         self.launcher.create_directory(self.task_logic_dir)
         self.launcher.create_directory(self.rig_dir)
         self.launcher.create_directory(self.subject_dir)
 
     def pick_rig(self) -> TRig:
+        """
+        Prompts the user to select a rig configuration file.
+
+        Returns:
+            TRig: The selected rig configuration.
+
+        Raises:
+            ValueError: If no rig configuration files are found or an invalid choice is made.
+        """
         available_rigs = glob.glob(os.path.join(self.rig_dir, "*.json"))
         if len(available_rigs) == 0:
             logger.error("No rig config files found.")
@@ -300,6 +531,12 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
                     logger.error("Invalid choice. Try again. %s", e)
 
     def pick_session(self) -> TSession:
+        """
+        Prompts the user to select or create a session configuration.
+
+        Returns:
+            TSession: The created or selected session configuration.
+        """
         experimenter = self.prompt_experimenter(strict=True)
         if self.launcher.subject is not None:
             logging.info("Subject provided via CLABE: %s", self.launcher.cli_args.subject)
@@ -328,6 +565,15 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         )
 
     def pick_task_logic(self) -> TTaskLogic:
+        """
+        Prompts the user to select or create a task logic configuration.
+
+        Returns:
+            TTaskLogic: The created or selected task logic configuration.
+
+        Raises:
+            ValueError: If no valid task logic file is found.
+        """
         task_logic: Optional[TTaskLogic]
         try:  # If the task logic is already set (e.g. from CLI), skip the prompt
             task_logic = self.launcher.task_logic_schema
@@ -383,6 +629,23 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         zero_as_input: bool = True,
         zero_as_input_label: str = "Enter manually",
     ) -> Optional[str | _T]:
+        """
+        Prompts the user to pick a file from a list of available files.
+
+        Args:
+            available_files (list[str]): List of file paths to choose from.
+            prompt (str): The prompt message to display.
+            zero_label (Optional[str]): Label for the "zero" option.
+            zero_value (Optional[_T]): Value to return for the "zero" option.
+            zero_as_input (bool): Whether to allow manual input for the "zero" option.
+            zero_as_input_label (str): Label for manual input prompt.
+
+        Returns:
+            Optional[str | _T]: The selected file path or the zero value.
+
+        Raises:
+            ValueError: If an invalid choice is made.
+        """
         self.ui_helper.print(prompt)
         if zero_label is not None:
             self.ui_helper.print(f"0: {zero_label}")
@@ -403,6 +666,15 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             return available_files[choice - 1]
 
     def choose_subject(self, directory: str | os.PathLike) -> str:
+        """
+        Prompts the user to select or manually enter a subject name.
+
+        Args:
+            directory (str | os.PathLike): Path to the directory containing subject folders.
+
+        Returns:
+            str: The selected or entered subject name.
+        """
         subject = None
         while subject is None:
             subject = self.ui_helper.prompt_pick_from_list(
@@ -422,6 +694,15 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         return subject
 
     def prompt_experimenter(self, strict: bool = True) -> Optional[List[str]]:
+        """
+        Prompts the user to enter the experimenter's name(s).
+
+        Args:
+            strict (bool): Whether to enforce non-empty input.
+
+        Returns:
+            Optional[List[str]]: List of experimenter names.
+        """
         experimenter: Optional[List[str]] = None
         while experimenter is None:
             _user_input = self.ui_helper.prompt_text("Experimenter name: ")
