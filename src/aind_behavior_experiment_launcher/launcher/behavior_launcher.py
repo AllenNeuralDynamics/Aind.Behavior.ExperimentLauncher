@@ -1,21 +1,22 @@
 from __future__ import annotations
 
 import datetime
+import enum
 import glob
 import logging
 import os
 import subprocess
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Dict, Generic, List, Optional, Self, Type, TypeVar, Union
+from typing import Any, Callable, Dict, List, Optional, Self, Type, TypeAlias, TypeVar, Union
 
 import pydantic
-from aind_behavior_services.db_utils import SubjectDataBase, SubjectEntry
 from aind_behavior_services.utils import model_from_json_file
 from typing_extensions import override
 
+import aind_behavior_experiment_launcher.ui as ui
 from aind_behavior_experiment_launcher import logging_helper
-from aind_behavior_experiment_launcher.apps import BonsaiApp
+from aind_behavior_experiment_launcher.apps import App
 from aind_behavior_experiment_launcher.data_mapper import DataMapper
 from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
 from aind_behavior_experiment_launcher.data_transfer import DataTransfer
@@ -31,174 +32,47 @@ TService = TypeVar("TService", bound=IService)
 logger = logging.getLogger(__name__)
 
 
-class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
+class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
+    """
+    A launcher for behavior experiments that manages services, experiment configuration, and
+    execution hooks.
+    """
+
     services_factory_manager: BehaviorServicesFactoryManager
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self._subject_db_data: Optional[SubjectEntry] = None
-
     def _post_init(self, validate: bool = True) -> None:
+        """
+        Performs additional initialization after the constructor.
+
+        Args:
+            validate (bool): Whether to validate the launcher state.
+        """
         super()._post_init(validate=validate)
         if validate:
             if self.services_factory_manager.resource_monitor is not None:
                 self.services_factory_manager.resource_monitor.evaluate_constraints()
 
     @override
-    def _prompt_session_input(self, directory: Optional[str] = None) -> TSession:
-        experimenter = self._ui_helper.prompt_experimenter(strict=True)
-        if self._subject is not None:
-            logging.info("Subject provided via CLABE: %s", self._cli_args.subject)
-            subject = self._subject
-        else:
-            _local_config_directory = (
-                Path(os.path.join(self.config_library_dir, directory)) if directory is not None else self._subject_dir
-            )
-            available_batches = self._get_available_batches(_local_config_directory)
-            subject_list = self._get_subject_list(available_batches)
-            subject = self._ui_helper.choose_subject(subject_list)
-            self._subject = subject
-            self._subject_db_data = subject_list.get_subject(subject)
-
-        notes = self._ui_helper.prompt_get_notes()
-
-        return self.session_schema_model(
-            experiment="",  # Will be set later
-            root_path=str(self.data_dir.resolve())
-            if not self.group_by_subject_log
-            else str(self.data_dir.resolve() / subject),
-            subject=subject,
-            notes=notes,
-            experimenter=experimenter if experimenter is not None else [],
-            commit_hash=self.repository.head.commit.hexsha,
-            allow_dirty_repo=self._debug_mode or self.allow_dirty,
-            skip_hardware_validation=self.skip_hardware_validation,
-            experiment_version="",  # Will be set later
-        )
-
-    @staticmethod
-    def _get_available_batches(directory: os.PathLike) -> List[str]:
-        available_batches = glob.glob(os.path.join(directory, "*.json"))
-        available_batches = [batch for batch in available_batches if os.path.isfile(batch)]
-        if len(available_batches) == 0:
-            raise FileNotFoundError(f"No batch files found in {directory}")
-        return available_batches
-
-    def _get_subject_list(self, available_batches: List[str]) -> SubjectDataBase:
-        subject_list = None
-        while subject_list is None:
-            try:
-                if len(available_batches) == 1:
-                    batch_file = available_batches[0]
-                    print(f"Found a single session config file. Using {batch_file}.")
-                else:
-                    pick = self._ui_helper.prompt_pick_file_from_list(
-                        available_batches, prompt="Choose a batch:", zero_label=None
-                    )
-                    if not isinstance(pick, str):
-                        raise ValueError("Invalid choice.")
-                    batch_file = pick
-                    if not os.path.isfile(batch_file):
-                        raise FileNotFoundError(f"File not found: {batch_file}")
-                    print(f"Using {batch_file}.")
-                with open(batch_file, "r", encoding="utf-8") as file:
-                    subject_list = SubjectDataBase.model_validate_json(file.read())
-                if len(subject_list.subjects) == 0:
-                    raise ValueError("No subjects found in the batch file.")
-            except (ValueError, FileNotFoundError, IOError, pydantic.ValidationError) as e:
-                logger.error("Invalid choice. Try again. %s", e)
-                if len(available_batches) == 1:
-                    logger.error("No valid subject batch files found. Exiting.")
-                    self._exit(-1)
-            else:
-                return subject_list
-
-    @override
-    def _prompt_rig_input(self, directory: Optional[str] = None) -> TRig:
-        rig_schemas_path = (
-            Path(os.path.join(self.config_library_dir, directory, self.computer_name))
-            if directory is not None
-            else self._rig_dir
-        )
-        available_rigs = glob.glob(os.path.join(rig_schemas_path, "*.json"))
-        if len(available_rigs) == 1:
-            print(f"Found a single rig config file. Using {available_rigs[0]}.")
-            return model_from_json_file(available_rigs[0], self.rig_schema_model)
-        else:
-            while True:
-                try:
-                    path = self._ui_helper.prompt_pick_file_from_list(
-                        available_rigs, prompt="Choose a rig:", zero_label=None
-                    )
-                    if not isinstance(path, str):
-                        raise ValueError("Invalid choice.")
-                    rig = model_from_json_file(path, self.rig_schema_model)
-                    print(f"Using {path}.")
-                    return rig
-                except pydantic.ValidationError as e:
-                    logger.error("Failed to validate pydantic model. Try again. %s", e)
-                except ValueError as e:
-                    logger.error("Invalid choice. Try again. %s", e)
-
-    @override
-    def _prompt_task_logic_input(
-        self,
-        directory: Optional[str] = None,
-    ) -> TTaskLogic:
-        _path = (
-            Path(os.path.join(self.config_library_dir, directory)) if directory is not None else self._task_logic_dir
-        )
-        hint_input: Optional[SubjectEntry] = self._subject_db_data
-        task_logic: Optional[TTaskLogic] = self._task_logic_schema
-        # If the task logic is already set (e.g. from CLI), skip the prompt
-        while task_logic is None:
-            try:
-                if hint_input is None:
-                    available_files = glob.glob(os.path.join(_path, "*.json"))
-                    path = self._ui_helper.prompt_pick_file_from_list(
-                        available_files, prompt="Choose a task logic:", zero_label=None
-                    )
-                    if not isinstance(path, str):
-                        raise ValueError("Invalid choice.")
-                    if not os.path.isfile(path):
-                        raise FileNotFoundError(f"File not found: {path}")
-                    task_logic = model_from_json_file(path, self.task_logic_schema_model)
-                    print(f"Using {path}.")
-
-                else:
-                    hinted_path = os.path.join(_path, hint_input.task_logic_target + ".json")
-                    if not os.path.isfile(hinted_path):
-                        hint_input = None
-                        raise FileNotFoundError(f"Hinted file not found: {hinted_path}. Try entering manually.")
-                    use_hint = self._ui_helper.prompt_yes_no_question(
-                        f"Would you like to go with the task file: {hinted_path}?"
-                    )
-                    if use_hint:
-                        task_logic = model_from_json_file(hinted_path, self.task_logic_schema_model)
-                    else:
-                        hint_input = None
-
-            except pydantic.ValidationError as e:
-                logger.error("Failed to validate pydantic model. Try again. %s", e)
-            except (ValueError, FileNotFoundError) as e:
-                logger.error("Invalid choice. Try again. %s", e)
-
-        return task_logic
-
-    @override
     def _pre_run_hook(self, *args, **kwargs) -> Self:
+        """
+        Hook executed before the main run logic.
+
+        Returns:
+            Self: The current instance for method chaining.
+        """
         logger.info("Pre-run hook started.")
         self.session_schema.experiment = self.task_logic_schema.name
         self.session_schema.experiment_version = self.task_logic_schema.version
-
-        if self.services_factory_manager.bonsai_app.layout is None:
-            self.services_factory_manager.bonsai_app.layout = (
-                self.services_factory_manager.bonsai_app.prompt_visualizer_layout_input(self.config_library_dir)
-            )
         return self
 
     @override
     def _run_hook(self, *args, **kwargs) -> Self:
+        """
+        Hook executed during the main run logic.
+
+        Returns:
+            Self: The current instance for method chaining.
+        """
         logger.info("Running hook started.")
         if self._session_schema is None:
             raise ValueError("Session schema instance not set.")
@@ -214,14 +88,11 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
             "SessionPath": os.path.abspath(self._save_temp_model(model=self._session_schema, directory=self.temp_dir)),
             "RigPath": os.path.abspath(self._save_temp_model(model=self._rig_schema, directory=self.temp_dir)),
         }
-        if self.services_factory_manager.bonsai_app.additional_properties is not None:
-            self.services_factory_manager.bonsai_app.additional_properties.update(settings)
-        else:
-            self.services_factory_manager.bonsai_app.additional_properties = settings
+        self.services_factory_manager.app.add_app_settings(settings)
 
         try:
-            self.services_factory_manager.bonsai_app.run()
-            _ = self.services_factory_manager.bonsai_app.output_from_result(allow_stderr=True)
+            self.services_factory_manager.app.run()
+            _ = self.services_factory_manager.app.output_from_result(allow_stderr=True)
         except subprocess.CalledProcessError as e:
             logger.error("Bonsai app failed to run. %s", e)
             self._exit(-1)
@@ -229,6 +100,12 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
 
     @override
     def _post_run_hook(self, *args, **kwargs) -> Self:
+        """
+        Hook executed after the main run logic.
+
+        Returns:
+            Self: The current instance for method chaining.
+        """
         logger.info("Post-run hook started.")
 
         if self.services_factory_manager.data_mapper is not None:
@@ -256,6 +133,16 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
         return self
 
     def _save_temp_model(self, model: Union[TRig, TSession, TTaskLogic], directory: Optional[os.PathLike]) -> str:
+        """
+        Saves a temporary JSON representation of a schema model.
+
+        Args:
+            model (Union[TRig, TSession, TTaskLogic]): The schema model to save.
+            directory (Optional[os.PathLike]): The directory to save the file in.
+
+        Returns:
+            str: The path to the saved file.
+        """
         directory = Path(directory) if directory is not None else Path(self.temp_dir)
         os.makedirs(directory, exist_ok=True)
         fname = model.__class__.__name__ + ".json"
@@ -265,62 +152,149 @@ class BehaviorLauncher(BaseLauncher, Generic[TRig, TSession, TTaskLogic]):
         return fpath
 
 
-_TServiceFactory = TypeVar(
-    "_TServiceFactory", bound=ServiceFactory[TService] | Callable[[BaseLauncher], TService] | TService
-)
+_ServiceFactoryIsh: TypeAlias = Union[ServiceFactory[TService], Callable[[BaseLauncher], TService], TService]
 
 
 class BehaviorServicesFactoryManager(ServicesFactoryManager):
+    """
+    Manages the creation and attachment of services for the BehaviorLauncher.
+
+    This class provides methods to attach and retrieve various services such as
+    app, data transfer, resource monitor, and data mapper. It ensures that the
+    services are of the correct type and properly initialized.
+    """
+
     def __init__(self, launcher: Optional[BehaviorLauncher] = None, **kwargs) -> None:
+        """
+        Initializes the BehaviorServicesFactoryManager.
+
+        Args:
+            launcher (Optional[BehaviorLauncher]): The launcher instance to associate with the services.
+            **kwargs: Additional keyword arguments for service initialization.
+        """
         super().__init__(launcher, **kwargs)
-        self._add_to_services("bonsai_app", kwargs)
+        self._add_to_services("app", kwargs)
         self._add_to_services("data_transfer", kwargs)
         self._add_to_services("resource_monitor", kwargs)
         self._add_to_services("data_mapper", kwargs)
 
     def _add_to_services(self, name: str, input_kwargs: Dict[str, Any]) -> Optional[ServiceFactory]:
+        """
+        Adds a service to the manager by attaching it to the appropriate factory.
+
+        Args:
+            name (str): The name of the service to add.
+            input_kwargs (Dict[str, Any]): The keyword arguments containing the service instance or factory.
+
+        Returns:
+            Optional[ServiceFactory]: The attached service factory, if any.
+        """
         srv = input_kwargs.pop(name, None)
         if srv is not None:
             self.attach_service_factory(name, srv)
         return srv
 
     @property
-    def bonsai_app(self) -> BonsaiApp:
-        srv = self.try_get_service("bonsai_app")
-        srv = self._validate_service_type(srv, BonsaiApp)
+    def app(self) -> App:
+        """
+        Retrieves the app service.
+
+        Returns:
+            App: The app service instance.
+
+        Raises:
+            ValueError: If the app service is not set.
+        """
+        srv = self.try_get_service("app")
+        srv = self._validate_service_type(srv, App)
         if srv is None:
-            raise ValueError("BonsaiApp is not set.")
+            raise ValueError("App is not set.")
         return srv
 
-    def attach_bonsai_app(self, value: _TServiceFactory[BonsaiApp] | BonsaiApp) -> None:
-        self.attach_service_factory("bonsai_app", value)
+    def attach_app(self, value: _ServiceFactoryIsh[App]) -> None:
+        """
+        Attaches an app service factory.
+
+        Args:
+            value (_ServiceFactoryIsh[App]): The app service factory or instance.
+        """
+        self.attach_service_factory("app", value)
 
     @property
     def data_mapper(self) -> Optional[DataMapper]:
+        """
+        Retrieves the data mapper service.
+
+        Returns:
+            Optional[DataMapper]: The data mapper service instance.
+        """
         srv = self.try_get_service("data_mapper")
         return self._validate_service_type(srv, DataMapper)
 
-    def attach_data_mapper(self, value: _TServiceFactory[DataMapper]) -> None:
+    def attach_data_mapper(self, value: _ServiceFactoryIsh[DataMapper]) -> None:
+        """
+        Attaches a data mapper service factory.
+
+        Args:
+            value (_ServiceFactoryIsh[DataMapper]): The data mapper service factory or instance.
+        """
         self.attach_service_factory("data_mapper", value)
 
     @property
     def resource_monitor(self) -> Optional[ResourceMonitor]:
+        """
+        Retrieves the resource monitor service.
+
+        Returns:
+            Optional[ResourceMonitor]: The resource monitor service instance.
+        """
         srv = self.try_get_service("resource_monitor")
         return self._validate_service_type(srv, ResourceMonitor)
 
-    def attach_resource_monitor(self, value: _TServiceFactory[ResourceMonitor]) -> None:
+    def attach_resource_monitor(self, value: _ServiceFactoryIsh[ResourceMonitor]) -> None:
+        """
+        Attaches a resource monitor service factory.
+
+        Args:
+            value (_ServiceFactoryIsh[ResourceMonitor]): The resource monitor service factory or instance.
+        """
         self.attach_service_factory("resource_monitor", value)
 
     @property
     def data_transfer(self) -> Optional[DataTransfer]:
+        """
+        Retrieves the data transfer service.
+
+        Returns:
+            Optional[DataTransfer]: The data transfer service instance.
+        """
         srv = self.try_get_service("data_transfer")
         return self._validate_service_type(srv, DataTransfer)
 
-    def attach_data_transfer(self, value: _TServiceFactory[DataTransfer]) -> None:
+    def attach_data_transfer(self, value: _ServiceFactoryIsh[DataTransfer]) -> None:
+        """
+        Attaches a data transfer service factory.
+
+        Args:
+            value (_ServiceFactoryIsh[DataTransfer]): The data transfer service factory or instance.
+        """
         self.attach_service_factory("data_transfer", value)
 
     @staticmethod
     def _validate_service_type(value: Any, type_of: Type) -> Optional[TService]:
+        """
+        Validates the type of a service.
+
+        Args:
+            value (Any): The service instance to validate.
+            type_of (Type): The expected type of the service.
+
+        Returns:
+            Optional[TService]: The validated service instance.
+
+        Raises:
+            ValueError: If the service is not of the expected type.
+        """
         if value is None:
             return None
         if not isinstance(value, type_of):
@@ -335,6 +309,18 @@ def watchdog_data_transfer_factory(
     project_name: Optional[str] = None,
     **watchdog_kwargs,
 ) -> Callable[[BehaviorLauncher], WatchdogDataTransferService]:
+    """
+    Creates a factory for the WatchdogDataTransferService.
+
+    Args:
+        destination (os.PathLike): The destination path for data transfer.
+        schedule_time (Optional[datetime.time]): The scheduled time for data transfer.
+        project_name (Optional[str]): The project name.
+        **watchdog_kwargs: Additional keyword arguments for the watchdog service.
+
+    Returns:
+        Callable[[BehaviorLauncher], WatchdogDataTransferService]: A callable factory for the watchdog service.
+    """
     return partial(
         _watchdog_data_transfer_factory,
         destination=destination,
@@ -345,6 +331,19 @@ def watchdog_data_transfer_factory(
 
 
 def _watchdog_data_transfer_factory(launcher: BehaviorLauncher, **watchdog_kwargs) -> WatchdogDataTransferService:
+    """
+    Internal factory function for creating a WatchdogDataTransferService.
+
+    Args:
+        launcher (BehaviorLauncher): The launcher instance.
+        **watchdog_kwargs: Additional keyword arguments for the watchdog service.
+
+    Returns:
+        WatchdogDataTransferService: The created watchdog service.
+
+    Raises:
+        ValueError: If the data mapper service is not set or is of the wrong type.
+    """
     if launcher.services_factory_manager.data_mapper is None:
         raise ValueError("Data mapper service is not set. Cannot create watchdog.")
     if not isinstance(launcher.services_factory_manager.data_mapper, AindDataSchemaSessionDataMapper):
@@ -365,14 +364,354 @@ def robocopy_data_transfer_factory(
     destination: os.PathLike,
     **robocopy_kwargs,
 ) -> Callable[[BehaviorLauncher], RobocopyService]:
+    """
+    Creates a factory for the RobocopyService.
+
+    Args:
+        destination (os.PathLike): The destination path for data transfer.
+        **robocopy_kwargs: Additional keyword arguments for the robocopy service.
+
+    Returns:
+        Callable[[BehaviorLauncher], RobocopyService]: A callable factory for the robocopy service.
+    """
     return partial(_robocopy_data_transfer_factory, destination=destination, **robocopy_kwargs)
 
 
 def _robocopy_data_transfer_factory(
     launcher: BehaviorLauncher, destination: os.PathLike, **robocopy_kwargs
 ) -> RobocopyService:
+    """
+    Internal factory function for creating a RobocopyService.
+
+    Args:
+        launcher (BehaviorLauncher): The launcher instance.
+        destination (os.PathLike): The destination path for data transfer.
+        **robocopy_kwargs: Additional keyword arguments for the robocopy service.
+
+    Returns:
+        RobocopyService: The created robocopy service.
+    """
     if launcher.group_by_subject_log:
         dst = Path(destination) / launcher.session_schema.subject / launcher.session_schema.session_name
     else:
         dst = Path(destination) / launcher.session_schema.session_name
     return RobocopyService(source=launcher.session_directory, destination=dst, **robocopy_kwargs)
+
+
+class ByAnimalFiles(enum.StrEnum):
+    """
+    Enum for file types associated with animals in the experiment.
+    """
+
+    TASK_LOGIC = "task_logic"
+
+
+_T = TypeVar("_T", bound=Any)
+
+_BehaviorPickerAlias = ui.PickerBase[BehaviorLauncher[TRig, TSession, TTaskLogic], TRig, TSession, TTaskLogic]
+
+
+class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
+    """
+    A picker class for selecting rig, session, and task logic configurations for behavior experiments.
+
+    This class provides methods to initialize directories, pick configurations, and prompt user inputs
+    for various components of the experiment setup.
+    """
+
+    RIG_SUFFIX: str = "Rig"
+    SUBJECT_SUFFIX: str = "Subjects"
+    TASK_LOGIC_SUFFIX: str = "TaskLogic"
+
+    @override
+    def __init__(
+        self,
+        launcher: Optional[BehaviorLauncher[TRig, TSession, TTaskLogic]] = None,
+        *,
+        ui_helper: Optional[ui.DefaultUIHelper] = None,
+        config_library_dir: os.PathLike,
+        **kwargs,
+    ):
+        """
+        Initializes the DefaultBehaviorPicker.
+
+        Args:
+            launcher (Optional[BehaviorLauncher]): The launcher instance associated with the picker.
+            ui_helper (Optional[ui.DefaultUIHelper]): Helper for user interface interactions.
+            config_library_dir (os.PathLike): Path to the configuration library directory.
+            **kwargs: Additional keyword arguments.
+        """
+        super().__init__(launcher, ui_helper=ui_helper, **kwargs)
+        self._config_library_dir = Path(config_library_dir)
+
+    @property
+    def config_library_dir(self) -> Path:
+        """
+        Returns the path to the configuration library directory.
+
+        Returns:
+            Path: The configuration library directory.
+        """
+        return self._config_library_dir
+
+    @property
+    def rig_dir(self) -> Path:
+        """
+        Returns the path to the rig configuration directory.
+
+        Returns:
+            Path: The rig configuration directory.
+        """
+        return Path(os.path.join(self._config_library_dir, self.RIG_SUFFIX, self.launcher.computer_name))
+
+    @property
+    def subject_dir(self) -> Path:
+        """
+        Returns the path to the subject configuration directory.
+
+        Returns:
+            Path: The subject configuration directory.
+        """
+        return Path(os.path.join(self._config_library_dir, self.SUBJECT_SUFFIX))
+
+    @property
+    def task_logic_dir(self) -> Path:
+        """
+        Returns the path to the task logic configuration directory.
+
+        Returns:
+            Path: The task logic configuration directory.
+        """
+        return Path(os.path.join(self._config_library_dir, self.TASK_LOGIC_SUFFIX))
+
+    @override
+    def initialize(self) -> None:
+        """
+        Initializes the picker
+        """
+        if self.launcher.cli_args.create_directories:
+            self._create_directories()
+
+    def _create_directories(self) -> None:
+        """
+        Creates the required directories for configuration files.
+        """
+        self.launcher.create_directory(self.config_library_dir)
+        self.launcher.create_directory(self.task_logic_dir)
+        self.launcher.create_directory(self.rig_dir)
+        self.launcher.create_directory(self.subject_dir)
+
+    def pick_rig(self) -> TRig:
+        """
+        Prompts the user to select a rig configuration file.
+
+        Returns:
+            TRig: The selected rig configuration.
+
+        Raises:
+            ValueError: If no rig configuration files are found or an invalid choice is made.
+        """
+        available_rigs = glob.glob(os.path.join(self.rig_dir, "*.json"))
+        if len(available_rigs) == 0:
+            logger.error("No rig config files found.")
+            raise ValueError("No rig config files found.")
+        elif len(available_rigs) == 1:
+            logger.info("Found a single rig config file. Using %s.", {available_rigs[0]})
+            return model_from_json_file(available_rigs[0], self.launcher.rig_schema_model)
+        else:
+            while True:
+                try:
+                    path = self.prompt_pick_file_from_list(available_rigs, prompt="Choose a rig:", zero_label=None)
+                    if not isinstance(path, str):
+                        raise ValueError("Invalid choice.")
+                    rig = model_from_json_file(path, self.launcher.rig_schema_model)
+                    logger.info("Using %s.", path)
+                    return rig
+                except pydantic.ValidationError as e:
+                    logger.error("Failed to validate pydantic model. Try again. %s", e)
+                except ValueError as e:
+                    logger.error("Invalid choice. Try again. %s", e)
+
+    def pick_session(self) -> TSession:
+        """
+        Prompts the user to select or create a session configuration.
+
+        Returns:
+            TSession: The created or selected session configuration.
+        """
+        experimenter = self.prompt_experimenter(strict=True)
+        if self.launcher.subject is not None:
+            logging.info("Subject provided via CLABE: %s", self.launcher.cli_args.subject)
+            subject = self.launcher.subject
+        else:
+            subject = self.choose_subject(self.subject_dir)
+            self.launcher.subject = subject
+            if not (self.subject_dir / subject).exists():
+                logger.warning("Directory for subject %s does not exist. Creating a new one.", subject)
+                os.makedirs(self.subject_dir / subject)
+
+        notes = self.ui_helper.prompt_text("Enter notes: ")
+
+        return self.launcher.session_schema_model(
+            experiment="",  # Will be set later
+            root_path=str(self.launcher.data_dir.resolve())
+            if not self.launcher.group_by_subject_log
+            else str(self.launcher.data_dir.resolve() / subject),
+            subject=subject,
+            notes=notes,
+            experimenter=experimenter if experimenter is not None else [],
+            commit_hash=self.launcher.repository.head.commit.hexsha,
+            allow_dirty_repo=self.launcher.is_debug_mode or self.launcher.allow_dirty,
+            skip_hardware_validation=self.launcher.skip_hardware_validation,
+            experiment_version="",  # Will be set later
+        )
+
+    def pick_task_logic(self) -> TTaskLogic:
+        """
+        Prompts the user to select or create a task logic configuration.
+
+        Returns:
+            TTaskLogic: The created or selected task logic configuration.
+
+        Raises:
+            ValueError: If no valid task logic file is found.
+        """
+        task_logic: Optional[TTaskLogic]
+        try:  # If the task logic is already set (e.g. from CLI), skip the prompt
+            task_logic = self.launcher.task_logic_schema
+            assert task_logic is not None
+            return task_logic
+        except ValueError:
+            task_logic = None
+
+        # Else, we check inside the subject folder for an existing task file
+        try:
+            f = self.subject_dir / self.launcher.session_schema.subject / (ByAnimalFiles.TASK_LOGIC.value + ".json")
+            logger.info("Attempting to load task logic from subject folder: %s", f)
+            task_logic = model_from_json_file(f, self.launcher.task_logic_schema_model)
+        except (ValueError, FileNotFoundError, pydantic.ValidationError) as e:
+            logger.warning("Failed to find a valid task logic file. %s", e)
+        else:
+            logger.info("Found a valid task logic file in subject folder!")
+            _is_manual = not self.ui_helper.prompt_yes_no_question("Would you like to use this task logic?")
+            if not _is_manual:
+                return task_logic
+            else:
+                task_logic = None
+
+        # If not found, we prompt the user to choose/enter a task logic file
+        while task_logic is None:
+            try:
+                _path = Path(os.path.join(self.config_library_dir, self.task_logic_dir))
+                available_files = glob.glob(os.path.join(_path, "*.json"))
+                if len(available_files) == 0:
+                    break
+                path = self.prompt_pick_file_from_list(available_files, prompt="Choose a task logic:", zero_label=None)
+                if not isinstance(path, str):
+                    raise ValueError("Invalid choice.")
+                if not os.path.isfile(path):
+                    raise FileNotFoundError(f"File not found: {path}")
+                task_logic = model_from_json_file(path, self.launcher.task_logic_schema_model)
+                logger.info("User entered: %s.", path)
+            except pydantic.ValidationError as e:
+                logger.error("Failed to validate pydantic model. Try again. %s", e)
+            except (ValueError, FileNotFoundError) as e:
+                logger.error("Invalid choice. Try again. %s", e)
+        if task_logic is None:
+            logger.error("No task logic file found.")
+            raise ValueError("No task logic file found.")
+        return task_logic
+
+    def prompt_pick_file_from_list(
+        self,
+        available_files: list[str],
+        prompt: str = "Choose a file:",
+        zero_label: Optional[str] = None,
+        zero_value: Optional[_T] = None,
+        zero_as_input: bool = True,
+        zero_as_input_label: str = "Enter manually",
+    ) -> Optional[str | _T]:
+        """
+        Prompts the user to pick a file from a list of available files.
+
+        Args:
+            available_files (list[str]): List of file paths to choose from.
+            prompt (str): The prompt message to display.
+            zero_label (Optional[str]): Label for the "zero" option.
+            zero_value (Optional[_T]): Value to return for the "zero" option.
+            zero_as_input (bool): Whether to allow manual input for the "zero" option.
+            zero_as_input_label (str): Label for manual input prompt.
+
+        Returns:
+            Optional[str | _T]: The selected file path or the zero value.
+
+        Raises:
+            ValueError: If an invalid choice is made.
+        """
+        self.ui_helper.print(prompt)
+        if zero_label is not None:
+            self.ui_helper.print(f"0: {zero_label}")
+        for i, file in enumerate(available_files):
+            self.ui_helper.print(f"{i + 1}: {os.path.split(file)[1]}")
+        choice = int(input("Choice: "))
+        if choice < 0 or choice >= len(available_files) + 1:
+            raise ValueError
+        if choice == 0:
+            if zero_label is None:
+                raise ValueError
+            else:
+                if zero_as_input:
+                    return str(input(zero_as_input_label))
+                else:
+                    return zero_value
+        else:
+            return available_files[choice - 1]
+
+    def choose_subject(self, directory: str | os.PathLike) -> str:
+        """
+        Prompts the user to select or manually enter a subject name.
+
+        Args:
+            directory (str | os.PathLike): Path to the directory containing subject folders.
+
+        Returns:
+            str: The selected or entered subject name.
+        """
+        subject = None
+        while subject is None:
+            subject = self.ui_helper.prompt_pick_from_list(
+                [
+                    os.path.basename(folder)
+                    for folder in os.listdir(directory)
+                    if os.path.isdir(os.path.join(directory, folder))
+                ],
+                prompt="Choose a subject:",
+                allow_0_as_none=True,
+            )
+            if subject is None:
+                subject = self.ui_helper.input("Enter subject name manually: ")
+                if subject == "":
+                    logger.error("Subject name cannot be empty.")
+                    subject = None
+        return subject
+
+    def prompt_experimenter(self, strict: bool = True) -> Optional[List[str]]:
+        """
+        Prompts the user to enter the experimenter's name(s).
+
+        Args:
+            strict (bool): Whether to enforce non-empty input.
+
+        Returns:
+            Optional[List[str]]: List of experimenter names.
+        """
+        experimenter: Optional[List[str]] = None
+        while experimenter is None:
+            _user_input = self.ui_helper.prompt_text("Experimenter name: ")
+            experimenter = _user_input.replace(",", " ").split()
+            if strict & (len(experimenter) == 0):
+                logger.error("Experimenter name is not valid.")
+                experimenter = None
+            else:
+                return experimenter
+        return experimenter  # This line should be unreachable

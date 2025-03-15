@@ -1,60 +1,26 @@
-name: CI
+name: ci/cd
 
 on:
+  workflow_dispatch:
   pull_request:
     branches:
       - main
+      - dev
   push:
     branches:
       - main
+      - dev
 
 jobs:
-  linters:
-    runs-on: windows-latest
-    name: Lint ${{ matrix.python-version }}
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ['3.11', '3.12', '3.13']
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: true
+  python-linting:
+    uses: AllenNeuralDynamics/Aind.Behavior.GitHubActions/.github/workflows/python-linting.yml@main
+    with:
+        runs-on: ubuntu-latest
 
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
-      - name: Check if uv.lock is up-to-date
-        run: uv lock --check
-      - name: Install dependencies
-        run: uv sync --extra dev
-      - name: Run ruff format
-        run: uv run ruff format .
-      - name: Run ruff check
-        run: uv run ruff check .
-      - name: Run codespell
-        run : uv run codespell .
-  tests:
-    runs-on: windows-latest
-    name: Testing ${{ matrix.python-version }}
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ['3.11', '3.12', '3.13']
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: true
-
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
-
-      - name: Install dependencies
-        run: uv sync --extra dev
-      - name: Run tests & coverage
-        run: |
-          uv run coverage run -m unittest discover
-          uv run coverage report
+  aind-behavior-framework-testing:
+    uses: AllenNeuralDynamics/Aind.Behavior.GitHubActions/.github/workflows/python-unit-test.yml@main
+    with:
+        python-version-path: .python-version
+        runs-on: windows-latest
+        run-coverage: true

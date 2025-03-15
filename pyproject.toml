@@ -22,7 +22,8 @@ dependencies = [
     "pydantic>=2.7, <3.0",
     "gitpython",
     "semver",
-    "aind_behavior_services>=0.8.0, <0.9.0",
+    "rich",
+    "aind_behavior_services<1",
     "aind-slims-api<0.2",
 ]
 
@@ -34,8 +35,9 @@ Changelog = "https://github.com/AllenNeuralDynamics/Aind.Behavior.ExperimentLaun
 
 [project.optional-dependencies]
 aind-services = [
-    "aind-watchdog-service>=0.1.0, <0.2.0",
-    "aind-data-schema<=1.2"
+    "aind-watchdog-service",
+    "aind-behavior-video-transformation",
+    "aind-data-schema<2"
 ]
 
 magicgui = [
@@ -64,6 +66,12 @@ docs = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools] 
+# FIXME: temporary workaround:
+#   - https://github.com/astral-sh/uv/issues/9513
+#   - https://github.com/pypa/setuptools/issues/4759
+license-files = []
 
 [tool.setuptools.package-data]
 aind_behavior_task_launcher = ["py.typed"]
@@ -97,4 +105,4 @@ exclude_lines = [
     "import",
     "pragma: no cover"
 ]
-fail_under = 70
+fail_under = 75
