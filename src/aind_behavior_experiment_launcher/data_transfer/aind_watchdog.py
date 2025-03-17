@@ -1,12 +1,11 @@
-try:
-    import aind_watchdog_service  # noqa: F401
-except ImportError as e:
-    e.add_note(
-        "The 'aind-watchdog-service' package is required to use this module. \
+import importlib.util
+
+if importlib.util.find_spec("aind_watchdog_service") is None:
+    raise ImportError(
+        "The 'aind_watchdog_service' package is required to use this module. \
             Install the optional dependencies defined in `project.toml' \
                 by running `pip install .[aind-services]`"
     )
-    raise
 
 import datetime
 import json
