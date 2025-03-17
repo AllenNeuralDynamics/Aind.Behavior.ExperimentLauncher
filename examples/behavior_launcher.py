@@ -17,6 +17,7 @@ from aind_behavior_experiment_launcher.launcher.behavior_launcher import (
     BehaviorServicesFactoryManager,
     DefaultBehaviorPicker,
 )
+from aind_behavior_experiment_launcher.ui import gui_helper
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,7 @@ def make_launcher():
         session_schema_model=AindBehaviorSessionModel,
         task_logic_schema_model=TaskLogicModel,
         data_dir=data_dir,
-        picker=DefaultBehaviorPicker(config_library_dir=Path(LIB_CONFIG)),
+        picker=DefaultBehaviorPicker(config_library_dir=Path(LIB_CONFIG), ui_helper=gui_helper.GuiHelper()),
         temp_dir=Path(r"./local/.temp"),
         allow_dirty=True,
         skip_hardware_validation=True,
