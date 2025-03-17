@@ -40,11 +40,17 @@ aind-services = [
     "aind-data-schema<2"
 ]
 
+magicgui = [
+    "magicgui[pyqt6]"
+]
+
 dev = [
     "ruff",
     "codespell",
     "coverage",
     "aind-behavior-experiment-launcher[aind-services]",
+    "aind-behavior-experiment-launcher[magicgui]",
+
 ]
 
 docs = [

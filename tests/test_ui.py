@@ -34,18 +34,6 @@ class TestDefaultBehaviorPicker(unittest.TestCase):
         )
         self.picker = self.launcher.picker
 
-    @patch("builtins.input", side_effect=["1"])
-    def test_prompt_pick_file_from_list(self, mock_input):
-        files = ["file1.txt", "file2.txt"]
-        result = self.picker.prompt_pick_file_from_list(files)
-        self.assertEqual(result, "file1.txt")
-
-    @patch("builtins.input", side_effect=["0", "manual_entry"])
-    def test_prompt_pick_file_from_list_manual_entry(self, mock_input):
-        files = ["file1.txt", "file2.txt"]
-        result = self.picker.prompt_pick_file_from_list(files, zero_label="Manual Entry", zero_as_input=True)
-        self.assertEqual(result, "manual_entry")
-
     @patch("os.path.isdir", return_value=True)
     @patch("os.listdir", return_value=["subjects/subject1", "subjects/subject2"])
     @patch("builtins.input", side_effect=["1"])

@@ -521,7 +521,7 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         else:
             while True:
                 try:
-                    path = self.prompt_pick_file_from_list(available_rigs, prompt="Choose a rig:", zero_label=None)
+                    path = self.ui_helper.prompt_pick_from_list(available_rigs, prompt="Choose a rig:")
                     if not isinstance(path, str):
                         raise ValueError("Invalid choice.")
                     rig = model_from_json_file(path, self.launcher.rig_schema_model)
@@ -606,7 +606,7 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
                 available_files = glob.glob(os.path.join(_path, "*.json"))
                 if len(available_files) == 0:
                     break
-                path = self.prompt_pick_file_from_list(available_files, prompt="Choose a task logic:", zero_label=None)
+                path = self.ui_helper.prompt_pick_from_list(available_files, prompt="Choose a task logic:")
                 if not isinstance(path, str):
                     raise ValueError("Invalid choice.")
                 if not os.path.isfile(path):
@@ -621,51 +621,6 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             logger.error("No task logic file found.")
             raise ValueError("No task logic file found.")
         return task_logic
-
-    def prompt_pick_file_from_list(
-        self,
-        available_files: list[str],
-        prompt: str = "Choose a file:",
-        zero_label: Optional[str] = None,
-        zero_value: Optional[_T] = None,
-        zero_as_input: bool = True,
-        zero_as_input_label: str = "Enter manually",
-    ) -> Optional[str | _T]:
-        """
-        Prompts the user to pick a file from a list of available files.
-
-        Args:
-            available_files (list[str]): List of file paths to choose from.
-            prompt (str): The prompt message to display.
-            zero_label (Optional[str]): Label for the "zero" option.
-            zero_value (Optional[_T]): Value to return for the "zero" option.
-            zero_as_input (bool): Whether to allow manual input for the "zero" option.
-            zero_as_input_label (str): Label for manual input prompt.
-
-        Returns:
-            Optional[str | _T]: The selected file path or the zero value.
-
-        Raises:
-            ValueError: If an invalid choice is made.
-        """
-        self.ui_helper.print(prompt)
-        if zero_label is not None:
-            self.ui_helper.print(f"0: {zero_label}")
-        for i, file in enumerate(available_files):
-            self.ui_helper.print(f"{i + 1}: {os.path.split(file)[1]}")
-        choice = int(input("Choice: "))
-        if choice < 0 or choice >= len(available_files) + 1:
-            raise ValueError
-        if choice == 0:
-            if zero_label is None:
-                raise ValueError
-            else:
-                if zero_as_input:
-                    return str(input(zero_as_input_label))
-                else:
-                    return zero_value
-        else:
-            return available_files[choice - 1]
 
     def choose_subject(self, directory: str | os.PathLike) -> str:
         """
