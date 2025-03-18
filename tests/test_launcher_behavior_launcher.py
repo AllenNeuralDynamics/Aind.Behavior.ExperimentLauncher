@@ -12,6 +12,7 @@ from aind_behavior_experiment_launcher.launcher.behavior_launcher import (
     DefaultBehaviorPicker,
     ResourceMonitor,
 )
+from aind_behavior_experiment_launcher.launcher.cli import _BaseCliArgsForUnitTests as BaseCliArgs
 
 
 class TestBehaviorLauncher(unittest.TestCase):
@@ -21,11 +22,7 @@ class TestBehaviorLauncher(unittest.TestCase):
         self.services_factory_manager.app = MagicMock()
         self.services_factory_manager.data_mapper = MagicMock()
         self.services_factory_manager.data_transfer = MagicMock()
-        self.launcher = BehaviorLauncher(
-            rig_schema_model=MagicMock(),
-            task_logic_schema_model=MagicMock(),
-            session_schema_model=MagicMock(),
-            picker=DefaultBehaviorPicker(config_library_dir="/path/to/config"),
+        self.args = BaseCliArgs(
             data_dir="/path/to/data",
             temp_dir="/path/to/temp",
             repository_dir=None,
@@ -33,10 +30,16 @@ class TestBehaviorLauncher(unittest.TestCase):
             skip_hardware_validation=False,
             debug_mode=False,
             group_by_subject_log=False,
-            services=self.services_factory_manager,
             validate_init=False,
+        )
+        self.launcher = BehaviorLauncher(
+            rig_schema_model=MagicMock(),
+            task_logic_schema_model=MagicMock(),
+            session_schema_model=MagicMock(),
+            picker=DefaultBehaviorPicker(config_library_dir="/path/to/config"),
+            settings=self.args,
+            services=self.services_factory_manager,
             attached_logger=None,
-            task_logic_schema=None,
         )
 
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
@@ -120,21 +123,24 @@ class TestBehaviorServicesFactoryManager(unittest.TestCase):
 class TestBehaviorLauncherSaveTempModel(unittest.TestCase):
     def setUp(self):
         self.services_factory_manager = create_autospec(BehaviorServicesFactoryManager)
-        self.launcher = BehaviorLauncher(
-            rig_schema_model=MagicMock(),
-            task_logic_schema_model=MagicMock(),
-            session_schema_model=MagicMock(),
+        self.args = BaseCliArgs(
             data_dir="/path/to/data",
             temp_dir="/path/to/temp",
-            picker=DefaultBehaviorPicker(config_library_dir="/path/to/config"),
             repository_dir=None,
             allow_dirty=False,
             skip_hardware_validation=False,
             debug_mode=False,
             group_by_subject_log=False,
-            services=self.services_factory_manager,
             validate_init=False,
+        )
+        self.launcher = BehaviorLauncher(
+            rig_schema_model=MagicMock(),
+            task_logic_schema_model=MagicMock(),
+            session_schema_model=MagicMock(),
+            picker=DefaultBehaviorPicker(config_library_dir="/path/to/config"),
+            services=self.services_factory_manager,
             attached_logger=None,
+            settings=self.args,
         )
 
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
