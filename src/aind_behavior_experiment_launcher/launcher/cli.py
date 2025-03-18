@@ -7,6 +7,7 @@ from pydantic import Field
 from pydantic_settings import (
     BaseSettings,
     CliApp,
+    CliExplicitFlag,
     CliImplicitFlag,
     CliSettingsSource,
     PydanticBaseSettingsSource,
@@ -39,13 +40,13 @@ class BaseCliArgs(BaseSettings, cli_parse_args=True, cli_prog_name="clabe", cli_
     rig_path: Optional[os.PathLike] = Field(
         default=None, description="The path to the rig schema. If None, will be prompted later"
     )
-    validate_init: CliImplicitFlag[bool] = Field(
+    validate_init: CliExplicitFlag[bool] = Field(
         default=True, description="Whether to validate the launcher state during initialization"
     )
     temp_dir: os.PathLike = Field(
         default=Path("local/.temp"), description="The directory used for the launcher temp files"
     )
-    group_by_subject_log: CliImplicitFlag[bool] = Field(
+    group_by_subject_log: CliExplicitFlag[bool] = Field(
         default=True, description="Whether to group data logging by subject"
     )
 
