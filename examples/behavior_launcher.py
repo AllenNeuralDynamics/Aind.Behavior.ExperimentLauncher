@@ -12,6 +12,7 @@ from typing_extensions import override
 
 from aind_behavior_experiment_launcher import resource_monitor
 from aind_behavior_experiment_launcher.apps import App
+from aind_behavior_experiment_launcher.launcher import BaseCliArgs
 from aind_behavior_experiment_launcher.launcher.behavior_launcher import (
     BehaviorLauncher,
     BehaviorServicesFactoryManager,
@@ -103,15 +104,17 @@ def make_launcher():
         rig_schema_model=RigModel,
         session_schema_model=AindBehaviorSessionModel,
         task_logic_schema_model=TaskLogicModel,
-        data_dir=data_dir,
         picker=DefaultBehaviorPicker(config_library_dir=Path(LIB_CONFIG)),
-        temp_dir=Path(r"./local/.temp"),
-        allow_dirty=True,
-        skip_hardware_validation=True,
-        debug_mode=True,
-        group_by_subject_log=True,
         services=srv,
-        validate_init=True,
+        settings=BaseCliArgs(
+            data_dir=data_dir,
+            temp_dir=Path(r"./local/.temp"),
+            allow_dirty=True,
+            skip_hardware_validation=True,
+            debug_mode=True,
+            group_by_subject_log=True,
+            validate_init=True,
+        ),
     )
 
 

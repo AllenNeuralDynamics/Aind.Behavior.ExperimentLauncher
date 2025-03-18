@@ -6,6 +6,7 @@ from aind_behavior_experiment_launcher.launcher.behavior_launcher import (
     BehaviorServicesFactoryManager,
     DefaultBehaviorPicker,
 )
+from aind_behavior_experiment_launcher.launcher.cli import _BaseCliArgsForUnitTests as BaseCliArgs
 from aind_behavior_experiment_launcher.ui import DefaultUIHelper
 from tests import suppress_stdout
 
@@ -17,15 +18,17 @@ class TestDefaultBehaviorPicker(unittest.TestCase):
             rig_schema_model=MagicMock(),
             task_logic_schema_model=MagicMock(),
             session_schema_model=MagicMock(),
-            data_dir="/path/to/data",
-            temp_dir="/path/to/temp",
-            repository_dir=None,
-            allow_dirty=False,
-            skip_hardware_validation=False,
-            debug_mode=False,
-            group_by_subject_log=False,
             services=self.services_factory_manager,
-            validate_init=False,
+            settings=BaseCliArgs(
+                data_dir="/path/to/data",
+                temp_dir="/path/to/temp",
+                repository_dir=None,
+                allow_dirty=False,
+                skip_hardware_validation=False,
+                debug_mode=False,
+                group_by_subject_log=False,
+                validate_init=False,
+            ),
             attached_logger=None,
             picker=DefaultBehaviorPicker(
                 ui_helper=DefaultUIHelper(print_func=MagicMock(), input_func=input),
