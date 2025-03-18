@@ -39,6 +39,8 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
     for managing configuration files, directories, and execution hooks.
     """
 
+    settings: BaseCliArgs
+
     def __init__(
         self,
         *,

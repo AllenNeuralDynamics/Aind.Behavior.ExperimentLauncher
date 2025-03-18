@@ -12,6 +12,7 @@ from typing import Any, Callable, Dict, List, Optional, Self, Type, TypeAlias, T
 
 import pydantic
 from aind_behavior_services.utils import model_from_json_file
+from pydantic_settings import CliImplicitFlag
 from typing_extensions import override
 
 import aind_behavior_experiment_launcher.ui as ui
@@ -26,10 +27,22 @@ from aind_behavior_experiment_launcher.resource_monitor import ResourceMonitor
 from aind_behavior_experiment_launcher.services import IService, ServiceFactory, ServicesFactoryManager
 
 from ._base import BaseLauncher, TRig, TSession, TTaskLogic
+from .cli import BaseCliArgs
 
 TService = TypeVar("TService", bound=IService)
 
 logger = logging.getLogger(__name__)
+
+
+class BehaviorCliArgs(BaseCliArgs):
+    """Extends the base"""
+
+    skip_data_transfer: CliImplicitFlag[bool] = pydantic.Field(
+        default=False, description="Whether to skip data transfer after the experiment"
+    )
+    skip_data_mapping: CliImplicitFlag[bool] = pydantic.Field(
+        default=False, description="Whether to skip data mapping after the experiment"
+    )
 
 
 class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
@@ -38,7 +51,31 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
     execution hooks.
     """
 
+    settings: BehaviorCliArgs
     services_factory_manager: BehaviorServicesFactoryManager
+
+    def __init__(  # pylint: disable=useless-parent-delegation
+        self,
+        *,
+        settings: BehaviorCliArgs,
+        rig_schema_model,
+        session_schema_model,
+        task_logic_schema_model,
+        picker,
+        services=None,
+        attached_logger=None,
+        **kwargs,
+    ):
+        super().__init__(
+            settings=settings,
+            rig_schema_model=rig_schema_model,
+            session_schema_model=session_schema_model,
+            task_logic_schema_model=task_logic_schema_model,
+            picker=picker,
+            services=services,
+            attached_logger=attached_logger,
+            **kwargs,
+        )
 
     def _post_init(self, validate: bool = True) -> None:
         """
@@ -108,7 +145,7 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
         """
         logger.info("Post-run hook started.")
 
-        if self.services_factory_manager.data_mapper is not None:
+        if (self.services_factory_manager.data_mapper is not None) and (not self.settings.skip_data_mapping):
             try:
                 self.services_factory_manager.data_mapper.map()
                 logger.info("Mapping successful.")
@@ -122,7 +159,7 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
         except ValueError:
             logger.error("Failed to copy temporary logs directory to session directory.")
 
-        if self.services_factory_manager.data_transfer is not None:
+        if (self.services_factory_manager.data_transfer is not None) and (not self.settings.skip_data_transfer):
             try:
                 if not self.services_factory_manager.data_transfer.validate():
                     raise ValueError("Data transfer service failed validation.")
