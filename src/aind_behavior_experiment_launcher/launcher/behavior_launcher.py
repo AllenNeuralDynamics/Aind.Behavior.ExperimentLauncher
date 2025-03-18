@@ -489,7 +489,7 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         """
         Initializes the picker
         """
-        if self.launcher.cli_args.create_directories:
+        if self.launcher.settings.create_directories:
             self._create_directories()
 
     def _create_directories(self) -> None:
@@ -541,7 +541,7 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         """
         experimenter = self.prompt_experimenter(strict=True)
         if self.launcher.subject is not None:
-            logging.info("Subject provided via CLABE: %s", self.launcher.cli_args.subject)
+            logging.info("Subject provided via CLABE: %s", self.launcher.settings.subject)
             subject = self.launcher.subject
         else:
             subject = self.choose_subject(self.subject_dir)
