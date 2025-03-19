@@ -308,9 +308,6 @@ class WatchdogDataTransferService(DataTransfer):
         destination = Path(self.destination).resolve()
         source = Path(self.source).resolve()
 
-        if session_name is None:
-            session_name = self._session_name
-
         if self.validate_project_name:
             project_names = self._get_project_names()
             if self.project_name not in project_names:
@@ -384,6 +381,8 @@ class WatchdogDataTransferService(DataTransfer):
         for c in modality_configs:
             for m in manifest_config.transfer_service_args.upload_jobs[0].modalities:
                 if c.modality == m.modality:
+                    # We need to let the watchdog api handle this or we are screwed...
+                    c.source = m.source
                     manifest_config.transfer_service_args.upload_jobs[0].modalities.remove(m)
                     manifest_config.transfer_service_args.upload_jobs[0].modalities.append(c)
                     break
@@ -575,10 +574,11 @@ def video_compression_job(
     def _video_compression_job_factory(watchdog: WatchdogDataTransferService) -> BasicUploadJobConfigs:
         return ModalityConfigs(
             modality=Modality.BEHAVIOR_VIDEOS,
-            source=(Path(watchdog.source) / Modality.BEHAVIOR_VIDEOS.abbreviation).as_posix(),
+            source="THIS WILL BE IGNORED",
             job_settings=compression_request_settings.model_dump(
                 mode="json"
             ),  # needs mode to be json, otherwise parent class will raise an error
+            compress_raw_data=True,
         )
 
     return _video_compression_job_factory
