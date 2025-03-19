@@ -4,7 +4,6 @@ from datetime import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from aind_behavior_video_transformation import CompressionEnum, CompressionRequest
 from aind_data_schema.core.metadata import CORE_FILES
 from aind_data_schema_models.modalities import Modality
 from aind_data_schema_models.platforms import Platform
@@ -18,7 +17,6 @@ from aind_behavior_experiment_launcher.data_transfer.aind_watchdog import (
     ModalityConfigs,
     WatchConfig,
     WatchdogDataTransferService,
-    video_compression_job,
 )
 
 
@@ -229,7 +227,13 @@ class TestWatchdogDataTransferService(unittest.TestCase):
             self.service.dump_manifest_config()
 
     def test_add_transfer_service_args_from_factory(self):
-        modality_configs_factory = video_compression_job()
+        def modality_configs_factory(watchdog_service: WatchdogDataTransferService):
+            return ModalityConfigs(
+                modality=Modality.BEHAVIOR_VIDEOS,
+                source=(Path(watchdog_service.source) / Modality.BEHAVIOR_VIDEOS.abbreviation).as_posix(),
+                compress_raw_data=True,
+                job_settings={"key": "value"},
+            )
 
         _manifest_config = self.service.add_transfer_service_args(
             self.service._manifest_config, jobs=[modality_configs_factory]
@@ -243,9 +247,7 @@ class TestWatchdogDataTransferService(unittest.TestCase):
             modality=Modality.BEHAVIOR_VIDEOS,
             source=(Path(self.service.source) / Modality.BEHAVIOR_VIDEOS.abbreviation).as_posix(),
             compress_raw_data=True,
-            job_settings=CompressionRequest(compression_enum=CompressionEnum.GAMMA_ENCODING).model_dump(
-                mode="json"
-            ),  # needs mode to be json, otherwise parent class will raise an error
+            job_settings={"key": "value"},  # needs mode to be json, otherwise parent class will raise an error
         )
 
         _manifest_config = self.service.add_transfer_service_args(
@@ -256,13 +258,18 @@ class TestWatchdogDataTransferService(unittest.TestCase):
             self.assertEqual(job, _manifest_config.transfer_service_args.upload_jobs[-1])
 
     def test_add_transfer_service_args_fail_on_duplicate_modality(self):
-        modality_configs_factory = video_compression_job()
+        def modality_configs_factory(watchdog_service: WatchdogDataTransferService):
+            return ModalityConfigs(
+                modality=Modality.BEHAVIOR_VIDEOS,
+                source=(Path(watchdog_service.source) / Modality.BEHAVIOR_VIDEOS.abbreviation).as_posix(),
+                compress_raw_data=True,
+                job_settings={"key": "value"},
+            )
+
         modality_configs = ModalityConfigs(
             modality=Modality.BEHAVIOR_VIDEOS,
             source=(Path(self.service.source) / Modality.BEHAVIOR_VIDEOS.abbreviation).as_posix(),
-            job_settings=CompressionRequest(compression_enum=CompressionEnum.GAMMA_ENCODING).model_dump(
-                mode="json"
-            ),  # needs mode to be json, otherwise parent class will raise an error
+            job_settings={"key": "value"},  # needs mode to be json, otherwise parent class will raise an error
         )
 
         with self.assertRaises(ValueError):

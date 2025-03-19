@@ -16,17 +16,14 @@ from os import PathLike
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Union
 
-import aind_behavior_video_transformation as abvt
 import aind_watchdog_service.models
 import pydantic
 import requests
 import yaml
 from aind_data_schema.core.metadata import CORE_FILES
 from aind_data_schema.core.session import Session as AdsSession
-from aind_data_schema_models.modalities import Modality
 from aind_data_schema_models.platforms import Platform
 from aind_watchdog_service.models.manifest_config import (
-    BasicUploadJobConfigs,
     BucketType,
     ManifestConfig,
     ModalityConfigs,
@@ -549,36 +546,3 @@ class WatchdogDataTransferService(DataTransfer):
             True if the user confirms, False otherwise.
         """
         return self._ui_helper.prompt_yes_no_question("Would you like to generate a watchdog manifest (Y/N)?")
-
-
-def video_compression_job(
-    compression_request_settings: Optional[abvt.CompressionRequest] = None,
-) -> Callable[["WatchdogDataTransferService"], ModalityConfigs]:
-    """
-    Creates a factory function for configuring video compression jobs.
-    This function generates a callable that, when provided with a
-    `WatchdogDataTransferService` instance, returns a `ModalityConfigs` object
-    configured for compressing behavior video data.
-    Args:
-        compression_request_settings (Optional[CompressionRequest]):
-            An optional compression request configuration. If not provided,
-            a default configuration with `GAMMA_ENCODING` compression is used.
-    Returns:
-        Callable[["WatchdogDataTransferService"], ModalityConfigs]:
-            A factory function that accepts a `WatchdogDataTransferService`
-            instance and returns a `ModalityConfigs` object for video compression.
-    """
-    if compression_request_settings is None:
-        compression_request_settings = abvt.CompressionRequest(compression_enum=abvt.CompressionEnum.GAMMA_ENCODING)
-
-    def _video_compression_job_factory(watchdog: WatchdogDataTransferService) -> BasicUploadJobConfigs:
-        return ModalityConfigs(
-            modality=Modality.BEHAVIOR_VIDEOS,
-            source="THIS WILL BE IGNORED",
-            job_settings=compression_request_settings.model_dump(
-                mode="json"
-            ),  # needs mode to be json, otherwise parent class will raise an error
-            compress_raw_data=True,
-        )
-
-    return _video_compression_job_factory
