@@ -11,7 +11,7 @@ if importlib.util.find_spec("aind_data_schema") is None:
 
 import abc
 import logging
-from typing import Generic, TypeVar, Union
+from typing import TypeVar, Union
 
 from aind_data_schema.core import rig as ads_rig
 from aind_data_schema.core import session as ads_session
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 _TAdsObject = TypeVar("_TAdsObject", bound=Union[ads_session.Session, ads_rig.Rig])
 
 
-class AindDataSchemaDataMapper(_base.DataMapper[_TAdsObject], abc.ABC, Generic[_TAdsObject]):
+class AindDataSchemaDataMapper(_base.DataMapper[_TAdsObject], abc.ABC):
     """
     Abstract base class for mapping data to aind-data-schema objects.
 
