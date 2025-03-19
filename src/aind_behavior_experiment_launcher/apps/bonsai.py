@@ -3,7 +3,7 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import Dict, Optional, Self
+from typing import Dict, Optional, Self, TypedDict
 
 from aind_behavior_services.utils import run_bonsai_process
 from typing_extensions import override
@@ -74,11 +74,11 @@ class BonsaiApp(App):
         self.is_start_flag = is_start_flag if not self.is_editor_mode else True
         self.layout = layout
         self.layout_directory = layout_dir
-        self.additional_properties = additional_properties or {}
+        self.additional_properties = dict(additional_properties) if additional_properties else {}
         self.cwd = cwd
         self.timeout = timeout
         self.print_cmd = print_cmd
-        self._result = None
+        self._result: Optional[subprocess.CompletedProcess] = None
         self.ui_helper = ui_helper if ui_helper is not None else DefaultUIHelper()
 
     @property
@@ -108,15 +108,11 @@ class BonsaiApp(App):
         Returns:
             Self: The updated instance of BonsaiApp.
         """
-        settings = {
-            "TaskLogicPath": kwargs.pop("task_logic_path", None),
-            "SessionPath": kwargs.pop("session_path", None),
-            "RigPath": kwargs.pop("rig_path", None),
-        }
+
         if self.additional_properties is not None:
-            self.additional_properties.update(settings)
+            self.additional_properties.update(**kwargs)
         else:
-            self.additional_properties = settings
+            self.additional_properties = kwargs
         return self
 
     def validate(self, *args, **kwargs) -> bool:
@@ -238,7 +234,7 @@ class BonsaiApp(App):
                 has_pick = True
             except ValueError as e:
                 logger.error("Invalid choice. Try again. %s", e)
-        self.layout = picked
+        self.layout = Path(picked) if picked else None
         return self.layout
 
     def _log_process_std_output(self, process_name: str, proc: subprocess.CompletedProcess) -> None:
@@ -270,3 +266,9 @@ class BonsaiApp(App):
         if self.layout is None:
             self.layout = self.prompt_visualizer_layout_input(layout_dir if layout_dir else self.layout_directory)
         return self
+
+
+class AindBehaviorServicesBonsaiAppSettings(TypedDict):
+    task_logic_path: str
+    rig_path: str
+    session_path: str
