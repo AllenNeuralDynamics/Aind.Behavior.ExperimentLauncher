@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from aind_behavior_video_transformation import CompressionEnum, CompressionRequest
+from aind_data_schema.core.metadata import CORE_FILES
 from aind_data_schema_models.modalities import Modality
 from aind_data_schema_models.platforms import Platform
 from aind_watchdog_service.models.manifest_config import BucketType
@@ -184,19 +185,8 @@ class TestWatchdogDataTransferService(unittest.TestCase):
 
     @patch("aind_behavior_experiment_launcher.data_transfer.aind_watchdog.Path.exists", return_value=True)
     def test_find_ads_schemas(self, mock_exists):
-        # TODO this test should be updated once the corresponding tested method is also updated
         source = "mock_source_path"
-        expected_files = [
-            Path(source) / "subject.json",
-            Path(source) / "data_description.json",
-            Path(source) / "procedures.json",
-            Path(source) / "session.json",
-            Path(source) / "rig.json",
-            Path(source) / "processing.json",
-            Path(source) / "acquisition.json",
-            Path(source) / "instrument.json",
-            Path(source) / "quality_control.json",
-        ]
+        expected_files = [Path(source) / f"{file}.json" for file in CORE_FILES]
 
         result = WatchdogDataTransferService._find_ads_schemas(source)
         self.assertEqual(result, expected_files)
@@ -252,6 +242,7 @@ class TestWatchdogDataTransferService(unittest.TestCase):
         modality_configs = ModalityConfigs(
             modality=Modality.BEHAVIOR_VIDEOS,
             source=(Path(self.service.source) / Modality.BEHAVIOR_VIDEOS.abbreviation).as_posix(),
+            compress_raw_data=True,
             job_settings=CompressionRequest(compression_enum=CompressionEnum.GAMMA_ENCODING).model_dump(
                 mode="json"
             ),  # needs mode to be json, otherwise parent class will raise an error
