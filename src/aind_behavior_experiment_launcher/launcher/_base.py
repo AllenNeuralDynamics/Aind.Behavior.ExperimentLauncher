@@ -402,6 +402,15 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
 
     @classmethod
     def create_directory(cls, directory: os.PathLike) -> None:
+        """
+        Creates a directory at the specified path if it does not already exist.
+
+        Args:
+            directory (os.PathLike): The path of the directory to create.
+
+        Raises:
+            OSError: If the directory creation fails, an OSError is raised and logged.
+        """
         if not os.path.exists(cls.abspath(directory)):
             logger.info("Creating  %s", directory)
             try:
@@ -417,6 +426,19 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
     def _bind_launcher_services(
         self, services_factory_manager: Optional[ServicesFactoryManager]
     ) -> Optional[ServicesFactoryManager]:
+        """
+        Binds a ServicesFactoryManager instance to the launcher and registers the
+        launcher with the provided ServicesFactoryManager.
+
+        Args:
+            services_factory_manager (Optional[ServicesFactoryManager]):
+                An instance of ServicesFactoryManager to be bound to the launcher.
+                If None, no binding or registration will occur.
+
+        Returns:
+            Optional[ServicesFactoryManager]: The bound ServicesFactoryManager
+            instance, or None if no instance was provided.
+        """
         self._services_factory_manager = services_factory_manager
         if self._services_factory_manager is not None:
             self._services_factory_manager.register_launcher(self)
@@ -425,6 +447,23 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
     def _solve_schema_instances(
         self, rig_path_path: Optional[os.PathLike] = None, task_logic_path: Optional[os.PathLike] = None
     ) -> None:
+        """
+        Resolves and loads schema instances for the rig and task logic.
+
+        This method loads schema definitions from JSON files and assigns them to
+        the corresponding attributes if file paths are provided.
+
+        Args:
+            rig_path_path (Optional[os.PathLike]): Path to the JSON file containing
+                the rig schema. If provided, the rig schema will be loaded and
+                assigned to `_rig_schema`.
+            task_logic_path (Optional[os.PathLike]): Path to the JSON file containing
+                the task logic schema. If provided, the task logic schema will be
+                loaded and assigned to `_task_logic_schema`.
+
+        Returns:
+            None
+        """
         if rig_path_path is not None:
             logging.info("Loading rig schema from %s", self.settings.rig_path)
             self._rig_schema = model_from_json_file(rig_path_path, self.rig_schema_model)

@@ -1,5 +1,5 @@
 from ._base import BaseLauncher, TModel, TRig, TSession, TTaskLogic
-from .cli import BaseCliArgs, run_clabe_cli
+from .cli import BaseCliArgs
 
 __all__ = [
     "BaseLauncher",
@@ -8,5 +8,4 @@ __all__ = [
     "TSession",
     "TTaskLogic",
     "BaseCliArgs",
-    "run_clabe_cli",
 ]

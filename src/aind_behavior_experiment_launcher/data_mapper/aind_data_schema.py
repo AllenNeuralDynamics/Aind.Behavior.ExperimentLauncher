@@ -33,7 +33,13 @@ class AindDataSchemaDataMapper(_base.DataMapper[_TAdsObject], abc.ABC):
 
     @property
     @abc.abstractmethod
-    def session_name(self) -> str: ...
+    def session_name(self) -> str:
+        """
+        Abstract property that must be implemented to return the session name.
+
+        Returns:
+            str: The name of the session.
+        """
 
 
 class AindDataSchemaSessionDataMapper(AindDataSchemaDataMapper[ads_session.Session], abc.ABC):

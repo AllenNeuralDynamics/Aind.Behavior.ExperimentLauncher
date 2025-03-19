@@ -1,15 +1,12 @@
-import argparse
 import os
 from pathlib import Path
-from typing import Optional, Tuple, Type, TypeVar
+from typing import Optional, Tuple, Type
 
 from pydantic import Field
 from pydantic_settings import (
     BaseSettings,
-    CliApp,
     CliExplicitFlag,
     CliImplicitFlag,
-    CliSettingsSource,
     PydanticBaseSettingsSource,
     SettingsConfigDict,
     YamlConfigSettingsSource,
@@ -17,6 +14,24 @@ from pydantic_settings import (
 
 
 class BaseCliArgs(BaseSettings, cli_parse_args=True, cli_prog_name="clabe", cli_kebab_case=True):
+    """
+    Base class for CLI arguments using Pydantic for validation and configuration.
+
+    Attributes:
+        data_dir (os.PathLike): The data directory where to save the data.
+        repository_dir (Optional[os.PathLike]): The repository root directory.
+        create_directories (CliImplicitFlag[bool]): Whether to create necessary directory structure.
+        debug_mode (CliImplicitFlag[bool]): Whether to run in debug mode.
+        allow_dirty (CliImplicitFlag[bool]): Whether to allow running with a dirty repository.
+        skip_hardware_validation (CliImplicitFlag[bool]): Whether to skip hardware validation.
+        subject (Optional[str]): The name of the subject. If None, will be prompted later.
+        task_logic_path (Optional[os.PathLike]): Path to the task logic schema. If None, will be prompted later.
+        rig_path (Optional[os.PathLike]): Path to the rig schema. If None, will be prompted later.
+        validate_init (CliExplicitFlag[bool]): Whether to validate the launcher state during initialization.
+        temp_dir (os.PathLike): Directory used for launcher temp files.
+        group_by_subject_log (CliExplicitFlag[bool]): Whether to group data logging by subject.
+    """
+
     model_config = SettingsConfigDict(
         env_prefix="CLABE_", yaml_file=["./clabe_default.yml", "./local/clabe_custom.yml"]
     )
@@ -59,6 +74,19 @@ class BaseCliArgs(BaseSettings, cli_parse_args=True, cli_prog_name="clabe", cli_
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> Tuple[PydanticBaseSettingsSource, ...]:
+        """
+        Customizes the order of settings sources for the CLI.
+
+        Args:
+            settings_cls (Type[BaseSettings]): The settings class.
+            init_settings (PydanticBaseSettingsSource): Initial settings source.
+            env_settings (PydanticBaseSettingsSource): Environment variable settings source.
+            dotenv_settings (PydanticBaseSettingsSource): Dotenv settings source.
+            file_secret_settings (PydanticBaseSettingsSource): File secret settings source.
+
+        Returns:
+            Tuple[PydanticBaseSettingsSource, ...]: Ordered tuple of settings sources.
+        """
         return (
             init_settings,
             YamlConfigSettingsSource(settings_cls),
@@ -68,18 +96,13 @@ class BaseCliArgs(BaseSettings, cli_parse_args=True, cli_prog_name="clabe", cli_
         )
 
 
-_TCliArgs = TypeVar("_TCliArgs", bound=BaseCliArgs)
-
-
-def run_clabe_cli(cli_args_cls: Type[_TCliArgs], root_parser: Optional[argparse.ArgumentParser] = None) -> _TCliArgs:
-    if root_parser is None:
-        root_parser = argparse.ArgumentParser()
-    cli_settings: CliSettingsSource[_TCliArgs] = CliSettingsSource(
-        cli_args_cls, root_parser=root_parser, cli_prog_name="clabe"
-    )
-    _s = CliApp.run(cli_args_cls, cli_settings_source=cli_settings, cli_cmd_method_name="clabe")
-    return _s
-
-
 class _BaseCliArgsForUnitTests(BaseCliArgs):
+    """
+    A subclass of BaseCliArgs for unit testing purposes only.
+    It disables CLI argument parsing to avoid conflicts with the testing suite.
+
+    Overrides:
+        model_config: Disables CLI argument parsing for unit tests.
+    """
+
     model_config = SettingsConfigDict(cli_parse_args=False)
