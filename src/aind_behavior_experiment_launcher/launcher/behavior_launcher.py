@@ -18,6 +18,7 @@ from typing_extensions import override
 import aind_behavior_experiment_launcher.ui as ui
 from aind_behavior_experiment_launcher import logging_helper
 from aind_behavior_experiment_launcher.apps import App
+from aind_behavior_experiment_launcher.apps.bonsai import AindBehaviorServicesBonsaiAppSettings
 from aind_behavior_experiment_launcher.data_mapper import DataMapper
 from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
 from aind_behavior_experiment_launcher.data_transfer import DataTransfer
@@ -118,13 +119,14 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
         if self._rig_schema is None:
             raise ValueError("Rig schema instance not set.")
 
-        settings = {
-            "TaskLogicPath": os.path.abspath(
+        settings = AindBehaviorServicesBonsaiAppSettings(
+            task_logic_path=os.path.abspath(
                 self._save_temp_model(model=self._task_logic_schema, directory=self.temp_dir)
             ),
-            "SessionPath": os.path.abspath(self._save_temp_model(model=self._session_schema, directory=self.temp_dir)),
-            "RigPath": os.path.abspath(self._save_temp_model(model=self._rig_schema, directory=self.temp_dir)),
-        }
+            session_path=os.path.abspath(self._save_temp_model(model=self._session_schema, directory=self.temp_dir)),
+            rig_path=os.path.abspath(self._save_temp_model(model=self._rig_schema, directory=self.temp_dir)),
+        )
+
         self.services_factory_manager.app.add_app_settings(settings)
 
         try:
