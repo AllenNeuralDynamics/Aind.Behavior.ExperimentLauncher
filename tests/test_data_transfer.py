@@ -13,7 +13,6 @@ from aind_behavior_experiment_launcher import ui
 from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
 from aind_behavior_experiment_launcher.data_transfer import RobocopyService
 from aind_behavior_experiment_launcher.data_transfer.aind_watchdog import (
-    BasicUploadJobConfigs,
     ManifestConfig,
     ModalityConfigs,
     WatchConfig,
@@ -239,7 +238,33 @@ class TestWatchdogDataTransferService(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.service.dump_manifest_config()
 
-    def test_add_transfer_service_args(self):
+    def test_add_transfer_service_args_from_factory(self):
+        modality_configs_factory = video_compression_job()
+
+        _manifest_config = self.service.add_transfer_service_args(
+            self.service._manifest_config, jobs=[modality_configs_factory]
+        )
+
+        for job in _manifest_config.transfer_service_args.upload_jobs:
+            self.assertEqual(job, _manifest_config.transfer_service_args.upload_jobs[-1])
+
+    def test_add_transfer_service_args_from_instance(self):
+        modality_configs = ModalityConfigs(
+            modality=Modality.BEHAVIOR_VIDEOS,
+            source=(Path(self.service.source) / Modality.BEHAVIOR_VIDEOS.abbreviation).as_posix(),
+            job_settings=CompressionRequest(compression_enum=CompressionEnum.GAMMA_ENCODING).model_dump(
+                mode="json"
+            ),  # needs mode to be json, otherwise parent class will raise an error
+        )
+
+        _manifest_config = self.service.add_transfer_service_args(
+            self.service._manifest_config, jobs=[modality_configs]
+        )
+
+        for job in _manifest_config.transfer_service_args.upload_jobs:
+            self.assertEqual(job, _manifest_config.transfer_service_args.upload_jobs[-1])
+
+    def test_add_transfer_service_args_fail_on_duplicate_modality(self):
         modality_configs_factory = video_compression_job()
         modality_configs = ModalityConfigs(
             modality=Modality.BEHAVIOR_VIDEOS,
@@ -248,21 +273,11 @@ class TestWatchdogDataTransferService(unittest.TestCase):
                 mode="json"
             ),  # needs mode to be json, otherwise parent class will raise an error
         )
-        basic_upload_job_configs = BasicUploadJobConfigs(
-            metadata_dir=self.service._manifest_config.destination,
-            project_name=self.service._manifest_config.project_name,
-            s3_bucket=self.service._manifest_config.s3_bucket,
-            platform=self.service._manifest_config.platform,
-            subject_id=str(self.service._manifest_config.subject_id),
-            acq_datetime=self.service._manifest_config.acquisition_datetime,
-            modalities=[modality_configs.model_copy(deep=True)],
-        )
 
-        _manifest_config = self.service.add_transfer_service_args(
-            self.service._manifest_config, jobs=[modality_configs_factory, modality_configs, basic_upload_job_configs]
-        )
-        for job in _manifest_config.transfer_service_args.upload_jobs:
-            self.assertEqual(job, _manifest_config.transfer_service_args.upload_jobs[-1])
+        with self.assertRaises(ValueError):
+            _ = self.service.add_transfer_service_args(
+                self.service._manifest_config, jobs=[modality_configs_factory, modality_configs]
+            )
 
 
 class TestRobocopyService(unittest.TestCase):

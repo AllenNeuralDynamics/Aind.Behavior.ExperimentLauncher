@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Union
 
 import aind_behavior_video_transformation as abvt
+import aind_watchdog_service.models
 import pydantic
 import requests
 import yaml
@@ -29,7 +30,6 @@ from aind_watchdog_service.models.manifest_config import (
     BucketType,
     ManifestConfig,
     ModalityConfigs,
-    SubmitJobRequest,
 )
 from aind_watchdog_service.models.watch_config import WatchConfig
 from pydantic import BaseModel
@@ -43,8 +43,7 @@ from ._base import DataTransfer
 logger = logging.getLogger(__name__)
 
 
-_ConfigsFactory = Callable[["WatchdogDataTransferService"], Union[ModalityConfigs, BasicUploadJobConfigs]]
-_JobConfigs = Union[ModalityConfigs, BasicUploadJobConfigs, _ConfigsFactory]
+_JobConfigs = Union[ModalityConfigs, Callable[["WatchdogDataTransferService"], Union[ModalityConfigs]]]
 
 
 class WatchdogDataTransferService(DataTransfer):
@@ -345,7 +344,7 @@ class WatchdogDataTransferService(DataTransfer):
 
     def add_transfer_service_args(
         self,
-        manifest_config: Optional[ManifestConfig] = None,
+        manifest_config: ManifestConfig = None,
         jobs=Optional[List[_JobConfigs]],
         submit_job_request_kwargs: Optional[dict] = None,
     ) -> ManifestConfig:
@@ -360,36 +359,36 @@ class WatchdogDataTransferService(DataTransfer):
         Returns:
             The updated ManifestConfig object.
         """
-        if manifest_config is None:
-            manifest_config = self._manifest_config
-        if manifest_config is None:
-            raise ValueError("ManifestConfig is not provided.")
+        # TODO (bruno-f-cruz)
+        # The following code is super hacky and should be refactored once the transfer service
+        # has a more composable API. Currently, the idea is to only allow one job per modality
+
+        # we use the aind-watchdog-service library to create the default transfer service args for us
+        job_settings = aind_watchdog_service.models.make_standard_transfer_args(manifest_config)
+        job_settings = job_settings.model_copy(update=(submit_job_request_kwargs or {}))
+        manifest_config.transfer_service_args = job_settings
+
         if (jobs is None) or (len(jobs) == 0):
             return manifest_config
 
-        def _normalize_job(
-            watchdog: WatchdogDataTransferService, manifest: ManifestConfig, job: _JobConfigs
-        ) -> BasicUploadJobConfigs:
+        def _normalize_callable(job: _JobConfigs) -> ModalityConfigs:
             if callable(job):
-                job = job(watchdog)
-
-            if isinstance(job, ModalityConfigs):
-                job = BasicUploadJobConfigs(
-                    metadata_dir=manifest.destination,
-                    project_name=manifest.project_name,
-                    s3_bucket=manifest.s3_bucket,
-                    platform=manifest.platform,
-                    subject_id=str(manifest.subject_id),
-                    acq_datetime=manifest.acquisition_datetime,
-                    modalities=[job],
-                )
-
+                return job(self)
             return job
 
-        manifest_config.transfer_service_args = SubmitJobRequest(
-            upload_jobs=[_normalize_job(watchdog=self, manifest=manifest_config, job=job) for job in jobs],
-            **(submit_job_request_kwargs or {}),
-        )
+        modality_configs = [_normalize_callable(job) for job in jobs]
+
+        if len(set([m.modality for m in modality_configs])) < len(modality_configs):
+            raise ValueError("Duplicate modality configurations found. Aborting.")
+
+        for c in modality_configs:
+            for m in manifest_config.transfer_service_args.upload_jobs[0].modalities:
+                if c.modality == m.modality:
+                    manifest_config.transfer_service_args.upload_jobs[0].modalities.remove(m)
+                    manifest_config.transfer_service_args.upload_jobs[0].modalities.append(c)
+                    break
+
+        manifest_config.transfer_service_args.upload_jobs[0].modalities.append(modality_configs)
         return manifest_config
 
     @staticmethod
