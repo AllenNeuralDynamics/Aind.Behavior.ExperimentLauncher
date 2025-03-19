@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Generic, Iterable, List, 
 
 if TYPE_CHECKING:
     from aind_behavior_experiment_launcher.launcher import BaseLauncher
+else:
+    BaseLauncher = Any
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +21,10 @@ class IService(abc.ABC):
 
 TService = TypeVar("TService", bound=IService)
 
+TLauncher = TypeVar("TLauncher", bound="BaseLauncher")
 
-class ServiceFactory(Generic[TService]):
+
+class ServiceFactory(Generic[TService, TLauncher]):
     """
     A factory class for defer the creation of service instances.
 
@@ -36,19 +40,19 @@ class ServiceFactory(Generic[TService]):
         """
 
     @overload
-    def __init__(self, service_or_factory: Callable[[BaseLauncher], TService]) -> None:
+    def __init__(self, service_or_factory: Callable[[TLauncher], TService]) -> None:
         """
         Initializes the factory with a callable that creates a service instance.
         """
 
-    def __init__(self, service_or_factory: Callable[[BaseLauncher], TService] | TService) -> None:
+    def __init__(self, service_or_factory: Callable[[TLauncher], TService] | TService) -> None:
         """
         Initializes the factory with either a service instance or a callable.
 
         Args:
             service_or_factory: A service instance or a callable that creates a service.
         """
-        self._service_factory: Optional[Callable[[BaseLauncher], TService]] = None
+        self._service_factory: Optional[Callable[[TLauncher], TService]] = None
         self._service: Optional[TService] = None
         if callable(service_or_factory):
             self._service_factory = service_or_factory
@@ -59,7 +63,7 @@ class ServiceFactory(Generic[TService]):
         else:
             raise ValueError("service_or_factory must be either a service or a service factory")
 
-    def build(self, launcher: BaseLauncher, *args, **kwargs) -> TService:
+    def build(self, launcher: TLauncher, *args, **kwargs) -> TService:
         """
         Builds/instantiates the service instance.
 
@@ -89,7 +93,7 @@ class ServiceFactory(Generic[TService]):
         return self._service
 
 
-class ServicesFactoryManager:
+class ServicesFactoryManager(Generic[TLauncher]):
     """
     A manager class for handling multiple service factories.
 
@@ -100,7 +104,7 @@ class ServicesFactoryManager:
 
     def __init__(
         self,
-        launcher: Optional[BaseLauncher] = None,
+        launcher: Optional[TLauncher] = None,
         **kwargs,
     ) -> None:
         """
@@ -139,7 +143,7 @@ class ServicesFactoryManager:
         return srv.build(self.launcher) if srv is not None else None
 
     def attach_service_factory(
-        self, name: str, service_factory: ServiceFactory | Callable[[BaseLauncher], TService] | TService
+        self, name: str, service_factory: ServiceFactory | Callable[[TLauncher], TService] | TService
     ) -> Self:
         """
         Attaches a service factory to the manager.
@@ -179,7 +183,7 @@ class ServicesFactoryManager:
             raise IndexError(f"Service with name {name} is not registered")
         return self
 
-    def register_launcher(self, launcher: BaseLauncher) -> Self:
+    def register_launcher(self, launcher: TLauncher) -> Self:
         """
         Registers a launcher with the manager.
 
@@ -196,7 +200,7 @@ class ServicesFactoryManager:
         return self
 
     @property
-    def launcher(self) -> BaseLauncher:
+    def launcher(self) -> TLauncher:
         """
         Returns the registered launcher.
 

@@ -86,13 +86,13 @@ class EchoApp(App):
         return self._result
 
 
-data_dir = Path(r"./local/data")
+DATA_DIR = Path(r"./local/data")
 srv = BehaviorServicesFactoryManager()
 srv.attach_app(EchoApp("hello world"))
 srv.attach_resource_monitor(
     resource_monitor.ResourceMonitor(
         constrains=[
-            resource_monitor.available_storage_constraint_factory(data_dir, 2e11),
+            resource_monitor.available_storage_constraint_factory(DATA_DIR, 2e11),
             resource_monitor.remote_dir_exists_constraint_factory(Path(r"C:/")),
         ]
     )
@@ -107,7 +107,7 @@ def make_launcher():
         picker=DefaultBehaviorPicker(config_library_dir=Path(LIB_CONFIG)),
         services=srv,
         settings=BaseCliArgs(
-            data_dir=data_dir,
+            data_dir=DATA_DIR,
             temp_dir=Path(r"./local/.temp"),
             allow_dirty=True,
             skip_hardware_validation=True,
