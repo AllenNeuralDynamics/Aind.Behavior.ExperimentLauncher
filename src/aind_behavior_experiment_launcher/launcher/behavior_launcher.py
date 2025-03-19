@@ -189,10 +189,12 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
         return fpath
 
 
-_ServiceFactoryIsh: TypeAlias = Union[ServiceFactory[TService], Callable[[BaseLauncher], TService], TService]
+_ServiceFactoryIsh: TypeAlias = Union[
+    ServiceFactory[TService, BehaviorLauncher], Callable[[BehaviorLauncher], TService], TService
+]
 
 
-class BehaviorServicesFactoryManager(ServicesFactoryManager):
+class BehaviorServicesFactoryManager(ServicesFactoryManager[BehaviorLauncher]):
     """
     Manages the creation and attachment of services for the BehaviorLauncher.
 
@@ -248,7 +250,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
             raise ValueError("App is not set.")
         return srv
 
-    def attach_app(self, value: _ServiceFactoryIsh[App]) -> None:
+    def attach_app(self, value: _ServiceFactoryIsh[App, BehaviorLauncher]) -> None:
         """
         Attaches an app service factory.
 
@@ -268,7 +270,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         srv = self.try_get_service("data_mapper")
         return self._validate_service_type(srv, DataMapper)
 
-    def attach_data_mapper(self, value: _ServiceFactoryIsh[DataMapper]) -> None:
+    def attach_data_mapper(self, value: _ServiceFactoryIsh[DataMapper, BehaviorLauncher]) -> None:
         """
         Attaches a data mapper service factory.
 
@@ -288,7 +290,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         srv = self.try_get_service("resource_monitor")
         return self._validate_service_type(srv, ResourceMonitor)
 
-    def attach_resource_monitor(self, value: _ServiceFactoryIsh[ResourceMonitor]) -> None:
+    def attach_resource_monitor(self, value: _ServiceFactoryIsh[ResourceMonitor, BehaviorLauncher]) -> None:
         """
         Attaches a resource monitor service factory.
 
@@ -308,7 +310,7 @@ class BehaviorServicesFactoryManager(ServicesFactoryManager):
         srv = self.try_get_service("data_transfer")
         return self._validate_service_type(srv, DataTransfer)
 
-    def attach_data_transfer(self, value: _ServiceFactoryIsh[DataTransfer]) -> None:
+    def attach_data_transfer(self, value: _ServiceFactoryIsh[DataTransfer, BehaviorLauncher]) -> None:
         """
         Attaches a data transfer service factory.
 
