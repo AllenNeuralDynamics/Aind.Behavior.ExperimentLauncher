@@ -96,8 +96,8 @@ class TestBonsaiApp(unittest.TestCase):
     def test_prompt_visualizer_layout_input(self, mock_ui_helper):
         with patch("glob.glob", return_value=["layout1.bonsai.layout", "layout2.bonsai.layout"]):
             layout = self.app.prompt_visualizer_layout_input()
-            self.assertEqual(layout, "picked_layout.bonsai.layout")
-            self.assertEqual(self.app.layout, "picked_layout.bonsai.layout")
+            self.assertEqual(str(layout), "picked_layout.bonsai.layout")
+            self.assertEqual(str(self.app.layout), "picked_layout.bonsai.layout")
 
     def test_prompt_input(self):
         with patch.object(self.app, "prompt_visualizer_layout_input", return_value="picked_layout.bonsai.layout"):
