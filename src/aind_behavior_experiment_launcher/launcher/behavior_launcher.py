@@ -18,7 +18,6 @@ from typing_extensions import override
 import aind_behavior_experiment_launcher.ui as ui
 from aind_behavior_experiment_launcher import logging_helper
 from aind_behavior_experiment_launcher.apps import App
-from aind_behavior_experiment_launcher.apps.bonsai import AindBehaviorServicesBonsaiAppSettings
 from aind_behavior_experiment_launcher.data_mapper import DataMapper
 from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
 from aind_behavior_experiment_launcher.data_transfer import DataTransfer
@@ -119,15 +118,7 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
         if self._rig_schema is None:
             raise ValueError("Rig schema instance not set.")
 
-        settings = AindBehaviorServicesBonsaiAppSettings(
-            task_logic_path=os.path.abspath(
-                self._save_temp_model(model=self._task_logic_schema, directory=self.temp_dir)
-            ),
-            session_path=os.path.abspath(self._save_temp_model(model=self._session_schema, directory=self.temp_dir)),
-            rig_path=os.path.abspath(self._save_temp_model(model=self._rig_schema, directory=self.temp_dir)),
-        )
-
-        self.services_factory_manager.app.add_app_settings(settings)
+        self.services_factory_manager.app.add_app_settings(launcher=self)
 
         try:
             self.services_factory_manager.app.run()
@@ -171,7 +162,7 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
 
         return self
 
-    def _save_temp_model(self, model: Union[TRig, TSession, TTaskLogic], directory: Optional[os.PathLike]) -> str:
+    def save_temp_model(self, model: Union[TRig, TSession, TTaskLogic], directory: Optional[os.PathLike]) -> str:
         """
         Saves a temporary JSON representation of a schema model.
 

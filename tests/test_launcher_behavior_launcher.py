@@ -47,7 +47,7 @@ class TestBehaviorLauncher(unittest.TestCase):
         model = MagicMock()
         model.__class__.__name__ = "TestModel"
         model.model_dump_json.return_value = '{"key": "value"}'
-        path = self.launcher._save_temp_model(model, "/path/to/temp")
+        path = self.launcher.save_temp_model(model, "/path/to/temp")
         self.assertTrue(path.endswith("TestModel.json"))
 
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
@@ -55,7 +55,7 @@ class TestBehaviorLauncher(unittest.TestCase):
         model = MagicMock()
         model.__class__.__name__ = "TestModel"
         model.model_dump_json.return_value = '{"key": "value"}'
-        path = self.launcher._save_temp_model(model, None)
+        path = self.launcher.save_temp_model(model, None)
         self.assertTrue(path.endswith("TestModel.json"))
 
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
@@ -63,7 +63,7 @@ class TestBehaviorLauncher(unittest.TestCase):
         model = MagicMock()
         model.__class__.__name__ = "TestModel"
         model.model_dump_json.return_value = '{"key": "value"}'
-        self.launcher._save_temp_model(model, "/path/to/temp")
+        self.launcher.save_temp_model(model, "/path/to/temp")
         mock_makedirs.assert_called_once_with(Path("/path/to/temp"), exist_ok=True)
 
 
@@ -148,7 +148,7 @@ class TestBehaviorLauncherSaveTempModel(unittest.TestCase):
         model = MagicMock()
         model.__class__.__name__ = "TestModel"
         model.model_dump_json.return_value = '{"key": "value"}'
-        self.launcher._save_temp_model(model, "/path/to/temp")
+        self.launcher.save_temp_model(model, "/path/to/temp")
         mock_makedirs.assert_called_once_with(Path("/path/to/temp"), exist_ok=True)
 
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
@@ -156,7 +156,7 @@ class TestBehaviorLauncherSaveTempModel(unittest.TestCase):
         model = MagicMock()
         model.__class__.__name__ = "TestModel"
         model.model_dump_json.return_value = '{"key": "value"}'
-        path = self.launcher._save_temp_model(model, None)
+        path = self.launcher.save_temp_model(model, None)
         self.assertTrue(path.endswith("TestModel.json"))
 
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
@@ -165,7 +165,7 @@ class TestBehaviorLauncherSaveTempModel(unittest.TestCase):
         model = MagicMock()
         model.__class__.__name__ = "TestModel"
         model.model_dump_json.return_value = '{"key": "value"}'
-        path = self.launcher._save_temp_model(model, Path("/path/to/temp"))
+        path = self.launcher.save_temp_model(model, Path("/path/to/temp"))
         expected_path = os.path.join(Path("/path/to/temp"), "TestModel.json")
         self.assertEqual(path, expected_path)
 

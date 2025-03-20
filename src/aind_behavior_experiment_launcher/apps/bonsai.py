@@ -3,10 +3,10 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import Dict, Optional, Self, TypedDict
+from typing import TYPE_CHECKING, Any, Dict, Optional, Self, TypedDict
 
 from aind_behavior_services.utils import run_bonsai_process
-from typing_extensions import override
+from typing_extensions import overload, override
 
 from aind_behavior_experiment_launcher.ui import DefaultUIHelper, UiHelper
 
@@ -15,6 +15,11 @@ from ._base import App
 logger = logging.getLogger(__name__)
 
 VISUALIZERS_DIR = "VisualizerLayouts"
+
+if TYPE_CHECKING:
+    from aind_behavior_experiment_launcher.launcher.behavior_launcher import BehaviorLauncher
+else:
+    BehaviorLauncher = Any
 
 
 class BonsaiApp(App):
@@ -97,12 +102,11 @@ class BonsaiApp(App):
         return self._result
 
     @override
-    def add_app_settings(self, *args, **kwargs):
+    def add_app_settings(self, **kwargs):
         """
         Adds application-specific settings to the additional properties.
 
         Args:
-            *args: Additional positional arguments.
             **kwargs: Additional keyword arguments.
 
         Returns:
@@ -268,7 +272,28 @@ class BonsaiApp(App):
         return self
 
 
-class AindBehaviorServicesBonsaiAppSettings(TypedDict):
+class _AindBehaviorServicesBonsaiAppSettings(TypedDict):
     task_logic_path: str
     rig_path: str
     session_path: str
+
+
+class AindBehaviorServicesBonsaiApp(BonsaiApp):
+    @overload
+    def add_app_settings(self, *, launcher: Optional[BehaviorLauncher] = None, **kwargs) -> Self: ...
+
+    def add_app_settings(self, **kwargs) -> Self:
+        launcher: BehaviorLauncher = kwargs.pop("launcher", None)
+        if launcher is None:
+            raise ValueError("Missing required argument 'launcher'.")
+
+        settings = _AindBehaviorServicesBonsaiAppSettings(
+            task_logic_path=os.path.abspath(
+                launcher.save_temp_model(model=launcher.task_logic_schema, directory=launcher.temp_dir)
+            ),
+            session_path=os.path.abspath(
+                launcher.save_temp_model(model=launcher.session_schema, directory=launcher.temp_dir)
+            ),
+            rig_path=os.path.abspath(launcher.save_temp_model(model=launcher.rig_schema, directory=launcher.temp_dir)),
+        )
+        return super().add_app_settings(**settings)

@@ -66,12 +66,11 @@ class App(IService, abc.ABC):
             subprocess.CompletedProcess: The result of the application's execution.
         """
 
-    def add_app_settings(self, *args, **kwargs) -> Self:
+    def add_app_settings(self, **kwargs) -> Self:
         """
         Adds or updates application settings.
 
         Args:
-            *args: Positional arguments for application settings.
             **kwargs: Keyword arguments for application settings.
 
         Returns:
