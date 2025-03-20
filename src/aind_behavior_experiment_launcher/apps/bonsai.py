@@ -3,7 +3,7 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional, Self, TypedDict
+from typing import TYPE_CHECKING, Any, Dict, Optional, Self
 
 from aind_behavior_services.utils import run_bonsai_process
 from typing_extensions import overload, override
@@ -272,12 +272,6 @@ class BonsaiApp(App):
         return self
 
 
-class _AindBehaviorServicesBonsaiAppSettings(TypedDict):
-    task_logic_path: str
-    rig_path: str
-    session_path: str
-
-
 class AindBehaviorServicesBonsaiApp(BonsaiApp):
     @overload
     def add_app_settings(self, *, launcher: Optional[BehaviorLauncher] = None, **kwargs) -> Self: ...
@@ -287,13 +281,15 @@ class AindBehaviorServicesBonsaiApp(BonsaiApp):
         if launcher is None:
             raise ValueError("Missing required argument 'launcher'.")
 
-        settings = _AindBehaviorServicesBonsaiAppSettings(
-            task_logic_path=os.path.abspath(
+        settings = {
+            "TaskLogicPath": os.path.abspath(
                 launcher.save_temp_model(model=launcher.task_logic_schema, directory=launcher.temp_dir)
             ),
-            session_path=os.path.abspath(
+            "SessionPath": os.path.abspath(
                 launcher.save_temp_model(model=launcher.session_schema, directory=launcher.temp_dir)
             ),
-            rig_path=os.path.abspath(launcher.save_temp_model(model=launcher.rig_schema, directory=launcher.temp_dir)),
-        )
+            "RigPath": os.path.abspath(
+                launcher.save_temp_model(model=launcher.rig_schema, directory=launcher.temp_dir)
+            ),
+        }
         return super().add_app_settings(**settings)

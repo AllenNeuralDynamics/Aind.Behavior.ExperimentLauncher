@@ -1,3 +1,5 @@
-from ._base import App as App
-from .bonsai import BonsaiApp as BonsaiApp
-from .python_script import PythonScriptApp as PythonScriptApp
+from ._base import App
+from .bonsai import AindBehaviorServicesBonsaiApp, BonsaiApp
+from .python_script import PythonScriptApp
+
+__all__ = ["App", "BonsaiApp", "AindBehaviorServicesBonsaiApp", "PythonScriptApp"]
