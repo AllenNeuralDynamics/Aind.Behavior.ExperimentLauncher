@@ -71,7 +71,7 @@ class TestWatchdogDataTransferService(unittest.TestCase):
 
         self.service._manifest_config = ManifestConfig(
             name="test_manifest",
-            modalities={Modality.BEHAVIOR: ["path/to/modality"]},
+            modalities={Modality.BEHAVIOR: ["path/to/behavior"], Modality.BEHAVIOR_VIDEOS: ["path/to/behavior-videos"]},
             subject_id=1,
             acquisition_datetime="2023-01-01T00:00:00",
             schemas=["path/to/schema"],

@@ -372,16 +372,15 @@ class WatchdogDataTransferService(DataTransfer):
         if len(set([m.modality for m in modality_configs])) < len(modality_configs):
             raise ValueError("Duplicate modality configurations found. Aborting.")
 
-        for c in modality_configs:
-            for m in manifest_config.transfer_service_args.upload_jobs[0].modalities:
-                if c.modality == m.modality:
+        for modified in modality_configs:
+            for overridable in manifest_config.transfer_service_args.upload_jobs[0].modalities:
+                if modified.modality == overridable.modality:
                     # We need to let the watchdog api handle this or we are screwed...
-                    c.source = m.source
-                    manifest_config.transfer_service_args.upload_jobs[0].modalities.remove(m)
-                    manifest_config.transfer_service_args.upload_jobs[0].modalities.append(c)
+                    modified.source = overridable.source
+                    manifest_config.transfer_service_args.upload_jobs[0].modalities.remove(overridable)
+                    manifest_config.transfer_service_args.upload_jobs[0].modalities.append(modified)
                     break
 
-        manifest_config.transfer_service_args.upload_jobs[0].modalities.append(modality_configs)
         return manifest_config
 
     @staticmethod
