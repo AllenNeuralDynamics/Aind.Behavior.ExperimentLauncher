@@ -153,9 +153,6 @@ class WatchdogDataTransferService(DataTransfer):
         """
         Executes the data transfer by generating a Watchdog manifest configuration.
         """
-        if not self.prompt_input():
-            logger.info("User chose not to generate a watchdog manifest.")
-            return
         try:
             if not self.is_running():
                 logger.warning("Watchdog service is not running. Attempting to start it.")

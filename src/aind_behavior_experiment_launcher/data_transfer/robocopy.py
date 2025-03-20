@@ -61,9 +61,6 @@ class RobocopyService(DataTransfer):
         """
         Executes the data transfer using Robocopy.
         """
-        if not self.prompt_input():
-            logger.info("User skipped data transfer.")
-            return
 
         # Loop through each source-destination pair and call robocopy'
         logger.info("Starting robocopy transfer service.")
