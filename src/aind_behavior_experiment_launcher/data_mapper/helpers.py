@@ -5,7 +5,7 @@ import os
 import xml.etree.ElementTree as ET
 from importlib import metadata
 from pathlib import Path
-from typing import Dict, List, TypeVar, Union
+from typing import Dict, List, Union
 
 import pydantic
 from aind_behavior_services import (
@@ -15,9 +15,6 @@ from aind_behavior_services.rig import CameraController, CameraTypes
 from aind_behavior_services.utils import get_fields_of_type
 
 logger = logging.getLogger(__name__)
-
-
-T = TypeVar("T")
 
 
 def get_cameras(
