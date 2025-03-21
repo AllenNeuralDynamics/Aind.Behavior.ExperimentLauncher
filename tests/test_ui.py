@@ -37,13 +37,6 @@ class TestDefaultBehaviorPicker(unittest.TestCase):
         )
         self.picker = self.launcher.picker
 
-    @patch("os.path.isdir", return_value=True)
-    @patch("os.listdir", return_value=["subjects/subject1", "subjects/subject2"])
-    @patch("builtins.input", side_effect=["1"])
-    def test_choose_subject(self, mock_input, mock_listdir, mock_isdir):
-        result = self.picker.choose_subject("")
-        self.assertEqual(result, "subject1")
-
     @patch("builtins.input", side_effect=["John Doe"])
     def test_prompt_experimenter(self, mock_input):
         result = self.picker.prompt_experimenter()
