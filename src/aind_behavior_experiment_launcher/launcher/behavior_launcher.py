@@ -438,8 +438,6 @@ class ByAnimalFiles(enum.StrEnum):
     TASK_LOGIC = "task_logic"
 
 
-_T = TypeVar("_T", bound=Any)
-
 _BehaviorPickerAlias = ui.PickerBase[BehaviorLauncher[TRig, TSession, TTaskLogic], TRig, TSession, TTaskLogic]
 
 
@@ -666,20 +664,20 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         """
         subject = None
         while subject is None:
-            subject = self.ui_helper.prompt_pick_from_list(
-                [
-                    os.path.basename(folder)
-                    for folder in os.listdir(directory)
-                    if os.path.isdir(os.path.join(directory, folder))
-                ],
-                prompt="Choose a subject:",
-                allow_0_as_none=True,
-            )
-            if subject is None:
-                subject = self.ui_helper.input("Enter subject name manually: ")
-                if subject == "":
-                    logger.error("Subject name cannot be empty.")
-                    subject = None
+            subject = self.ui_helper.input("Enter subject name: ")
+            if subject == "":
+                subject = self.ui_helper.prompt_pick_from_list(
+                    [
+                        os.path.basename(folder)
+                        for folder in os.listdir(directory)
+                        if os.path.isdir(os.path.join(directory, folder))
+                    ],
+                    prompt="Choose a subject:",
+                    allow_0_as_none=True,
+                )
+            else:
+                return subject
+
         return subject
 
     def prompt_experimenter(self, strict: bool = True) -> Optional[List[str]]:
