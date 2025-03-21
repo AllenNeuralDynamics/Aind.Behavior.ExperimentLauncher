@@ -36,7 +36,6 @@ Changelog = "https://github.com/AllenNeuralDynamics/Aind.Behavior.ExperimentLaun
 [project.optional-dependencies]
 aind-services = [
     "aind-watchdog-service",
-    "aind-behavior-video-transformation",
     "aind-data-schema<2"
 ]
 

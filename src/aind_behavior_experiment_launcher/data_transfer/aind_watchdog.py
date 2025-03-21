@@ -1,12 +1,11 @@
-try:
-    import aind_watchdog_service  # noqa: F401
-except ImportError as e:
-    e.add_note(
-        "The 'aind-watchdog-service' package is required to use this module. \
+import importlib.util
+
+if importlib.util.find_spec("aind_watchdog_service") is None:
+    raise ImportError(
+        "The 'aind_watchdog_service' package is required to use this module. \
             Install the optional dependencies defined in `project.toml' \
                 by running `pip install .[aind-services]`"
     )
-    raise
 
 import datetime
 import json
@@ -17,25 +16,23 @@ from os import PathLike
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Union
 
-import aind_behavior_video_transformation as abvt
+import aind_watchdog_service.models
 import pydantic
 import requests
 import yaml
 from aind_data_schema.core.metadata import CORE_FILES
 from aind_data_schema.core.session import Session as AdsSession
-from aind_data_schema_models.modalities import Modality
 from aind_data_schema_models.platforms import Platform
 from aind_watchdog_service.models.manifest_config import (
-    BasicUploadJobConfigs,
     BucketType,
     ManifestConfig,
     ModalityConfigs,
-    SubmitJobRequest,
 )
 from aind_watchdog_service.models.watch_config import WatchConfig
 from pydantic import BaseModel
 from requests.exceptions import HTTPError
 
+from aind_behavior_experiment_launcher import ui
 from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
 
 from ._base import DataTransfer
@@ -43,11 +40,15 @@ from ._base import DataTransfer
 logger = logging.getLogger(__name__)
 
 
-_ConfigsFactory = Callable[["WatchdogDataTransferService"], Union[ModalityConfigs, BasicUploadJobConfigs]]
-_JobConfigs = Union[ModalityConfigs, BasicUploadJobConfigs, _ConfigsFactory]
+_JobConfigs = Union[ModalityConfigs, Callable[["WatchdogDataTransferService"], Union[ModalityConfigs]]]
 
 
 class WatchdogDataTransferService(DataTransfer):
+    """
+    A data transfer service that uses the aind-watchdog-service service to monitor and transfer
+    data based on manifest configurations.
+    """
+
     def __init__(
         self,
         source: PathLike,
@@ -65,7 +66,29 @@ class WatchdogDataTransferService(DataTransfer):
         validate: bool = True,
         session_name: Optional[str] = None,
         upload_job_configs: Optional[List[_JobConfigs]] = None,
+        ui_helper: Optional[ui.UiHelper] = None,
     ) -> None:
+        """
+        Initializes the WatchdogDataTransferService.
+
+        Args:
+            source: The source directory or file to monitor.
+            destination: The destination directory or file.
+            aind_session_data_mapper: Mapper for session data to AIND schema.
+            schedule_time: Time to schedule the transfer.
+            project_name: Name of the project.
+            platform: Platform associated with the data.
+            capsule_id: Capsule ID for the session.
+            script: Optional scripts to execute during transfer.
+            s3_bucket: S3 bucket type for cloud storage.
+            mount: Mount point for the destination.
+            force_cloud_sync: Whether to force synchronization with the cloud.
+            transfer_endpoint: Endpoint for the transfer service.
+            validate: Whether to validate the project name.
+            session_name: Name of the session.
+            upload_job_configs: List of job configurations for the transfer.
+            ui_helper: UI helper for user prompts.
+        """
         self.source = source
         self.destination = destination
         self.project_name = project_name
@@ -94,20 +117,42 @@ class WatchdogDataTransferService(DataTransfer):
         self._manifest_config: Optional[ManifestConfig] = None
 
         self.validate_project_name = validate
+        self._ui_helper = ui_helper or ui.DefaultUIHelper()
 
     @property
     def aind_session_data_mapper(self) -> AindDataSchemaSessionDataMapper:
+        """
+        Gets the aind-data-schema session data mapper.
+
+        Returns:
+            The session data mapper.
+
+        Raises:
+            ValueError: If the data mapper is not set.
+        """
         if self._aind_session_data_mapper is None:
             raise ValueError("Data mapper is not set.")
         return self._aind_session_data_mapper
 
     @aind_session_data_mapper.setter
     def aind_session_data_mapper(self, value: AindDataSchemaSessionDataMapper) -> None:
+        """
+        Sets the session data mapper.
+
+        Args:
+            value: The data mapper to set.
+
+        Raises:
+            ValueError: If the provided value is not a valid data mapper.
+        """
         if not isinstance(value, AindDataSchemaSessionDataMapper):
             raise ValueError("Data mapper must be an instance of AindDataSchemaSessionDataMapper.")
         self._aind_session_data_mapper = value
 
     def transfer(self) -> None:
+        """
+        Executes the data transfer by generating a Watchdog manifest configuration.
+        """
         try:
             if not self.is_running():
                 logger.warning("Watchdog service is not running. Attempting to start it.")
@@ -146,6 +191,19 @@ class WatchdogDataTransferService(DataTransfer):
             raise e
 
     def validate(self, create_config: bool = True) -> bool:
+        """
+        Validates the Watchdog service and its configuration.
+
+        Args:
+            create_config: Whether to create a default configuration if missing.
+
+        Returns:
+            True if the service is valid, False otherwise.
+
+        Raises:
+            FileNotFoundError: If required files are missing.
+            HTTPError: If the project name validation fails.
+        """
         logger.info("Attempting to validate Watchdog service.")
         if not self.executable_path.exists():
             raise FileNotFoundError(f"Executable not found at {self.executable_path}")
@@ -185,8 +243,18 @@ class WatchdogDataTransferService(DataTransfer):
         webhook_url: Optional[str] = None,
         create_dir: bool = True,
     ) -> WatchConfig:
-        """Create a WatchConfig object"""
+        """
+        Creates a WatchConfig object for the Watchdog service.
 
+        Args:
+            watched_directory: Directory to monitor for changes.
+            manifest_complete_directory: Directory for completed manifests.
+            webhook_url: Optional webhook URL for notifications.
+            create_dir: Whether to create the directories if they don't exist.
+
+        Returns:
+            A WatchConfig object.
+        """
         if create_dir:
             if not Path(watched_directory).exists():
                 Path(watched_directory).mkdir(parents=True, exist_ok=True)
@@ -200,6 +268,12 @@ class WatchdogDataTransferService(DataTransfer):
         )
 
     def is_valid_project_name(self) -> bool:
+        """
+        Checks if the project name is valid by querying the metadata service.
+
+        Returns:
+            True if the project name is valid, False otherwise.
+        """
         project_names = self._get_project_names()
         return self.project_name in project_names
 
@@ -209,14 +283,24 @@ class WatchdogDataTransferService(DataTransfer):
         ads_schemas: Optional[List[os.PathLike]] = None,
         session_name: Optional[str] = None,
     ) -> ManifestConfig:
-        """Create a ManifestConfig object"""
+        """
+        Creates a ManifestConfig object from an aind-data-schema session.
+
+        Args:
+            ads_session: The aind-data-schema session data.
+            ads_schemas: Optional list of schema files.
+            session_name: Name of the session.
+
+        Returns:
+            A ManifestConfig object.
+
+        Raises:
+            ValueError: If the project name is invalid.
+        """
         processor_full_name = ",".join(ads_session.experimenter_full_name) or os.environ.get("USERNAME", "unknown")
 
         destination = Path(self.destination).resolve()
         source = Path(self.source).resolve()
-
-        if session_name is None:
-            session_name = self._session_name
 
         if self.validate_project_name:
             project_names = self._get_project_names()
@@ -251,44 +335,65 @@ class WatchdogDataTransferService(DataTransfer):
 
     def add_transfer_service_args(
         self,
-        manifest_config: Optional[ManifestConfig] = None,
+        manifest_config: ManifestConfig = None,
         jobs=Optional[List[_JobConfigs]],
         submit_job_request_kwargs: Optional[dict] = None,
     ) -> ManifestConfig:
-        if manifest_config is None:
-            manifest_config = self._manifest_config
-        if manifest_config is None:
-            raise ValueError("ManifestConfig is not provided.")
+        """
+        Adds transfer service arguments to the manifest configuration.
+
+        Args:
+            manifest_config: The manifest configuration to update.
+            jobs: List of job configurations.
+            submit_job_request_kwargs: Additional arguments for the job request.
+
+        Returns:
+            The updated ManifestConfig object.
+        """
+        # TODO (bruno-f-cruz)
+        # The following code is super hacky and should be refactored once the transfer service
+        # has a more composable API. Currently, the idea is to only allow one job per modality
+
+        # we use the aind-watchdog-service library to create the default transfer service args for us
+        job_settings = aind_watchdog_service.models.make_standard_transfer_args(manifest_config)
+        job_settings = job_settings.model_copy(update=(submit_job_request_kwargs or {}))
+        manifest_config.transfer_service_args = job_settings
+
         if (jobs is None) or (len(jobs) == 0):
             return manifest_config
 
-        def _normalize_job(
-            watchdog: WatchdogDataTransferService, manifest: ManifestConfig, job: _JobConfigs
-        ) -> BasicUploadJobConfigs:
+        def _normalize_callable(job: _JobConfigs) -> ModalityConfigs:
             if callable(job):
-                job = job(watchdog)
-
-            if isinstance(job, ModalityConfigs):
-                job = BasicUploadJobConfigs(
-                    metadata_dir=manifest.destination,
-                    project_name=manifest.project_name,
-                    s3_bucket=manifest.s3_bucket,
-                    platform=manifest.platform,
-                    subject_id=str(manifest.subject_id),
-                    acq_datetime=manifest.acquisition_datetime,
-                    modalities=[job],
-                )
-
+                return job(self)
             return job
 
-        manifest_config.transfer_service_args = SubmitJobRequest(
-            upload_jobs=[_normalize_job(watchdog=self, manifest=manifest_config, job=job) for job in jobs],
-            **(submit_job_request_kwargs or {}),
-        )
+        modality_configs = [_normalize_callable(job) for job in jobs]
+
+        if len(set([m.modality for m in modality_configs])) < len(modality_configs):
+            raise ValueError("Duplicate modality configurations found. Aborting.")
+
+        for modified in modality_configs:
+            for overridable in manifest_config.transfer_service_args.upload_jobs[0].modalities:
+                if modified.modality == overridable.modality:
+                    # We need to let the watchdog api handle this or we are screwed...
+                    modified.source = overridable.source
+                    manifest_config.transfer_service_args.upload_jobs[0].modalities.remove(overridable)
+                    manifest_config.transfer_service_args.upload_jobs[0].modalities.append(modified)
+                    break
+
         return manifest_config
 
     @staticmethod
     def _find_ads_schemas(source: PathLike) -> List[PathLike]:
+        """
+        Finds aind-data-schema schema files in the source directory.
+
+        Args:
+            source: The source directory to search.
+
+        Returns:
+            A list of schema file paths.
+        """
         json_files = []
         for core_file in CORE_FILES:
             json_file = Path(source) / f"{core_file}.json"
@@ -300,14 +405,33 @@ class WatchdogDataTransferService(DataTransfer):
     def _get_project_names(
         end_point: str = "http://aind-metadata-service/project_names", timeout: int = 5
     ) -> list[str]:
+        """
+        Fetches the list of valid project names from the metadata service.
+
+        Args:
+            end_point: The endpoint URL for the metadata service.
+            timeout: Timeout for the request.
+
+        Returns:
+            A list of valid project names.
+
+        Raises:
+            HTTPError: If the request fails.
+        """
         response = requests.get(end_point, timeout=timeout)
         if response.ok:
             return json.loads(response.content)["data"]
         else:
             response.raise_for_status()
-            raise HTTPError(f"Failed to fetch project names from endpoint. {response.content}")
+            raise HTTPError(f"Failed to fetch project names from endpoint. {response.content.decode('utf-8')}")
 
     def is_running(self) -> bool:
+        """
+        Checks if the Watchdog service is currently running.
+
+        Returns:
+            True if the service is running, False otherwise.
+        """
         output = subprocess.check_output(
             ["tasklist", "/FI", f"IMAGENAME eq {self.executable_path.name}"], shell=True, encoding="utf-8"
         )
@@ -315,6 +439,15 @@ class WatchdogDataTransferService(DataTransfer):
         return len(processes) > 0
 
     def force_restart(self, kill_if_running: bool = True) -> subprocess.Popen[bytes]:
+        """
+        Attempts to restart the Watchdog application.
+
+        Args:
+            kill_if_running: Whether to terminate the service if it's already running.
+
+        Returns:
+            A subprocess.Popen object representing the restarted service.
+        """
         if kill_if_running is True:
             while self.is_running():
                 subprocess.run(["taskkill", "/IM", self.executable_path.name, "/F"], shell=True, check=True)
@@ -324,6 +457,19 @@ class WatchdogDataTransferService(DataTransfer):
         return subprocess.Popen(cmd_factory, start_new_session=True, shell=True)
 
     def dump_manifest_config(self, path: Optional[os.PathLike] = None, make_dir: bool = True) -> Path:
+        """
+        Dumps the manifest configuration to a YAML file.
+
+        Args:
+            path: The file path to save the manifest.
+            make_dir: Whether to create the directory if it doesn't exist.
+
+        Returns:
+            The path to the saved manifest file.
+
+        Raises:
+            ValueError: If the manifest or watch configuration is not set.
+        """
         manifest_config = self._manifest_config
         watch_config = self._watch_config
 
@@ -350,33 +496,49 @@ class WatchdogDataTransferService(DataTransfer):
 
     @staticmethod
     def _yaml_dump(model: BaseModel) -> str:
+        """
+        Converts a Pydantic model to a YAML string.
+
+        Args:
+            model: The Pydantic model to convert.
+
+        Returns:
+            A YAML string representation of the model.
+        """
         native_json = json.loads(model.model_dump_json())
         return yaml.dump(native_json, default_flow_style=False)
 
     @classmethod
     def _write_yaml(cls, model: BaseModel, path: PathLike) -> None:
+        """
+        Writes a Pydantic model to a YAML file.
+
+        Args:
+            model: The Pydantic model to write.
+            path: The file path to save the YAML.
+        """
         with open(path, "w", encoding="utf-8") as f:
             f.write(cls._yaml_dump(model))
 
     @staticmethod
     def _read_yaml(path: PathLike) -> dict:
+        """
+        Reads a YAML file and returns its contents as a dictionary.
+
+        Args:
+            path: The file path to read.
+
+        Returns:
+            A dictionary representation of the YAML file.
+        """
         with open(path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f)
 
+    def prompt_input(self) -> bool:
+        """
+        Prompts the user to confirm whether to generate a manifest.
 
-def video_compression_job(
-    compression_request_settings: Optional[abvt.CompressionRequest] = None,
-) -> Callable[["WatchdogDataTransferService"], ModalityConfigs]:
-    if compression_request_settings is None:
-        compression_request_settings = abvt.CompressionRequest(compression_enum=abvt.CompressionEnum.GAMMA_ENCODING)
-
-    def _video_compression_job_factory(watchdog: WatchdogDataTransferService) -> BasicUploadJobConfigs:
-        return ModalityConfigs(
-            modality=Modality.BEHAVIOR_VIDEOS,
-            source=(Path(watchdog.source) / Modality.BEHAVIOR_VIDEOS.abbreviation).as_posix(),
-            job_settings=compression_request_settings.model_dump(
-                mode="json"
-            ),  # needs mode to be json, otherwise parent class will raise an error
-        )
-
-    return _video_compression_job_factory
+        Returns:
+            True if the user confirms, False otherwise.
+        """
+        return self._ui_helper.prompt_yes_no_question("Would you like to generate a watchdog manifest (Y/N)?")
