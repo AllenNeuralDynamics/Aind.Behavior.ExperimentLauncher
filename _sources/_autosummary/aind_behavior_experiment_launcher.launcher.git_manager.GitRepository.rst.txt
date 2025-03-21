@@ -1,0 +1,100 @@
+aind\_behavior\_experiment\_launcher.launcher.git\_manager.GitRepository
+========================================================================
+
+.. currentmodule:: aind_behavior_experiment_launcher.launcher.git_manager
+
+.. autoclass:: GitRepository
+   :members:
+   :show-inheritance:
+   :inherited-members:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~GitRepository.__init__
+      ~GitRepository.archive
+      ~GitRepository.blame
+      ~GitRepository.blame_incremental
+      ~GitRepository.clean_repo
+      ~GitRepository.clone
+      ~GitRepository.clone_from
+      ~GitRepository.close
+      ~GitRepository.commit
+      ~GitRepository.config_reader
+      ~GitRepository.config_writer
+      ~GitRepository.create_head
+      ~GitRepository.create_remote
+      ~GitRepository.create_submodule
+      ~GitRepository.create_tag
+      ~GitRepository.currently_rebasing_on
+      ~GitRepository.delete_head
+      ~GitRepository.delete_remote
+      ~GitRepository.delete_tag
+      ~GitRepository.force_update_submodules
+      ~GitRepository.full_reset
+      ~GitRepository.has_separate_working_tree
+      ~GitRepository.ignored
+      ~GitRepository.init
+      ~GitRepository.is_ancestor
+      ~GitRepository.is_dirty
+      ~GitRepository.is_dirty_with_submodules
+      ~GitRepository.is_valid_object
+      ~GitRepository.iter_commits
+      ~GitRepository.iter_submodules
+      ~GitRepository.iter_trees
+      ~GitRepository.merge_base
+      ~GitRepository.remote
+      ~GitRepository.reset_repo
+      ~GitRepository.rev_parse
+      ~GitRepository.submodule
+      ~GitRepository.submodule_update
+      ~GitRepository.submodules_sync
+      ~GitRepository.tag
+      ~GitRepository.tree
+      ~GitRepository.try_prompt_full_reset
+      ~GitRepository.untracked_files_with_submodules
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GitRepository.DAEMON_EXPORT_FILE
+      ~GitRepository.active_branch
+      ~GitRepository.alternates
+      ~GitRepository.bare
+      ~GitRepository.branches
+      ~GitRepository.common_dir
+      ~GitRepository.config_level
+      ~GitRepository.daemon_export
+      ~GitRepository.description
+      ~GitRepository.git
+      ~GitRepository.head
+      ~GitRepository.heads
+      ~GitRepository.index
+      ~GitRepository.re_author_committer_start
+      ~GitRepository.re_envvars
+      ~GitRepository.re_hexsha_only
+      ~GitRepository.re_hexsha_shortened
+      ~GitRepository.re_tab_full_line
+      ~GitRepository.re_whitespace
+      ~GitRepository.references
+      ~GitRepository.refs
+      ~GitRepository.remotes
+      ~GitRepository.submodules
+      ~GitRepository.tags
+      ~GitRepository.unsafe_git_clone_options
+      ~GitRepository.untracked_files
+      ~GitRepository.working_tree_dir
+      ~GitRepository.working_dir
+      ~GitRepository.git_dir
+   
+   

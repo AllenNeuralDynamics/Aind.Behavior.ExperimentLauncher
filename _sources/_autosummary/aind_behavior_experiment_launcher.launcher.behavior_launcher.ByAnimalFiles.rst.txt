@@ -1,0 +1,78 @@
+aind\_behavior\_experiment\_launcher.launcher.behavior\_launcher.ByAnimalFiles
+==============================================================================
+
+.. currentmodule:: aind_behavior_experiment_launcher.launcher.behavior_launcher
+
+.. autoclass:: ByAnimalFiles
+   :members:
+   :show-inheritance:
+   :inherited-members:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ByAnimalFiles.__init__
+      ~ByAnimalFiles.capitalize
+      ~ByAnimalFiles.casefold
+      ~ByAnimalFiles.center
+      ~ByAnimalFiles.count
+      ~ByAnimalFiles.encode
+      ~ByAnimalFiles.endswith
+      ~ByAnimalFiles.expandtabs
+      ~ByAnimalFiles.find
+      ~ByAnimalFiles.format
+      ~ByAnimalFiles.format_map
+      ~ByAnimalFiles.index
+      ~ByAnimalFiles.isalnum
+      ~ByAnimalFiles.isalpha
+      ~ByAnimalFiles.isascii
+      ~ByAnimalFiles.isdecimal
+      ~ByAnimalFiles.isdigit
+      ~ByAnimalFiles.isidentifier
+      ~ByAnimalFiles.islower
+      ~ByAnimalFiles.isnumeric
+      ~ByAnimalFiles.isprintable
+      ~ByAnimalFiles.isspace
+      ~ByAnimalFiles.istitle
+      ~ByAnimalFiles.isupper
+      ~ByAnimalFiles.join
+      ~ByAnimalFiles.ljust
+      ~ByAnimalFiles.lower
+      ~ByAnimalFiles.lstrip
+      ~ByAnimalFiles.maketrans
+      ~ByAnimalFiles.partition
+      ~ByAnimalFiles.removeprefix
+      ~ByAnimalFiles.removesuffix
+      ~ByAnimalFiles.replace
+      ~ByAnimalFiles.rfind
+      ~ByAnimalFiles.rindex
+      ~ByAnimalFiles.rjust
+      ~ByAnimalFiles.rpartition
+      ~ByAnimalFiles.rsplit
+      ~ByAnimalFiles.rstrip
+      ~ByAnimalFiles.split
+      ~ByAnimalFiles.splitlines
+      ~ByAnimalFiles.startswith
+      ~ByAnimalFiles.strip
+      ~ByAnimalFiles.swapcase
+      ~ByAnimalFiles.title
+      ~ByAnimalFiles.translate
+      ~ByAnimalFiles.upper
+      ~ByAnimalFiles.zfill
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ByAnimalFiles.TASK_LOGIC
+   
+   
