@@ -20,11 +20,12 @@ classifiers = [
 
 dependencies = [
     "pydantic>=2.7, <3.0",
+    "pydantic-settings",
     "gitpython",
     "semver",
     "rich",
     "aind_behavior_services<1",
-    "aind-slims-api<0.2",
+    "aind-slims-api",
 ]
 
 [project.urls]
