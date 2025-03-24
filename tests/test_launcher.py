@@ -6,7 +6,7 @@ from aind_behavior_services import AindBehaviorRigModel, AindBehaviorSessionMode
 
 from aind_behavior_experiment_launcher import ui
 from aind_behavior_experiment_launcher.launcher import BaseLauncher
-from aind_behavior_experiment_launcher.launcher.cli import _BaseCliArgsForUnitTests as BaseCliArgs
+from aind_behavior_experiment_launcher.launcher.cli import BaseCliArgs
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
 
 
