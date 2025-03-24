@@ -8,12 +8,13 @@ from aind_behavior_services.rig import AindBehaviorRigModel
 from aind_behavior_services.session import AindBehaviorSessionModel
 from aind_behavior_services.task_logic import AindBehaviorTaskLogicModel
 from pydantic import Field
+from pydantic_settings import CliApp
 from typing_extensions import override
 
 from aind_behavior_experiment_launcher import resource_monitor
 from aind_behavior_experiment_launcher.apps import App
-from aind_behavior_experiment_launcher.launcher import BaseCliArgs
 from aind_behavior_experiment_launcher.launcher.behavior_launcher import (
+    BehaviorCliArgs,
     BehaviorLauncher,
     BehaviorServicesFactoryManager,
     DefaultBehaviorPicker,
@@ -100,21 +101,18 @@ srv.attach_resource_monitor(
 
 
 def make_launcher():
+    behavior_cli_args = CliApp.run(
+        BehaviorCliArgs,
+        cli_args=["--temp-dir", "./local/.temp", "--allow-dirty", "--skip-hardware-validation", "--data-dir", "."],
+    )
+
     return BehaviorLauncher(
         rig_schema_model=RigModel,
         session_schema_model=AindBehaviorSessionModel,
         task_logic_schema_model=TaskLogicModel,
         picker=DefaultBehaviorPicker(config_library_dir=Path(LIB_CONFIG)),
         services=srv,
-        settings=BaseCliArgs(
-            data_dir=DATA_DIR,
-            temp_dir=Path(r"./local/.temp"),
-            allow_dirty=True,
-            skip_hardware_validation=True,
-            debug_mode=True,
-            group_by_subject_log=True,
-            validate_init=True,
-        ),
+        settings=behavior_cli_args,
     )
 
 

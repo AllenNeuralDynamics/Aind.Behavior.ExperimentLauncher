@@ -6,7 +6,7 @@ from aind_behavior_experiment_launcher.launcher.behavior_launcher import (
     BehaviorServicesFactoryManager,
     DefaultBehaviorPicker,
 )
-from aind_behavior_experiment_launcher.launcher.cli import _BaseCliArgsForUnitTests as BaseCliArgs
+from aind_behavior_experiment_launcher.launcher.cli import BaseCliArgs
 from aind_behavior_experiment_launcher.ui import DefaultUIHelper
 from tests import suppress_stdout
 
