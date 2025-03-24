@@ -13,7 +13,7 @@ from pydantic_settings import (
 )
 
 
-class BaseCliArgs(BaseSettings, cli_parse_args=True, cli_prog_name="clabe", cli_kebab_case=True):
+class BaseCliArgs(BaseSettings, cli_prog_name="clabe", cli_kebab_case=True):
     """
     Base class for CLI arguments using Pydantic for validation and configuration.
 
@@ -94,15 +94,3 @@ class BaseCliArgs(BaseSettings, cli_parse_args=True, cli_prog_name="clabe", cli_
             dotenv_settings,
             file_secret_settings,
         )
-
-
-class _BaseCliArgsForUnitTests(BaseCliArgs):
-    """
-    A subclass of BaseCliArgs for unit testing purposes only.
-    It disables CLI argument parsing to avoid conflicts with the testing suite.
-
-    Overrides:
-        model_config: Disables CLI argument parsing for unit tests.
-    """
-
-    model_config = SettingsConfigDict(cli_parse_args=False)

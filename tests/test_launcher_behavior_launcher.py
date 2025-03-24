@@ -12,7 +12,7 @@ from aind_behavior_experiment_launcher.launcher.behavior_launcher import (
     DefaultBehaviorPicker,
     ResourceMonitor,
 )
-from aind_behavior_experiment_launcher.launcher.cli import _BaseCliArgsForUnitTests as BaseCliArgs
+from aind_behavior_experiment_launcher.launcher.cli import BaseCliArgs
 
 
 class TestBehaviorLauncher(unittest.TestCase):
