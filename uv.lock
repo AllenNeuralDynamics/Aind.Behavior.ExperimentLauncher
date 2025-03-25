@@ -24,7 +24,6 @@ wheels = [
 name = "aind-behavior-experiment-launcher"
 source = { editable = "." }
 dependencies = [
-    { name = "aind-behavior-curriculum" },
     { name = "aind-behavior-services" },
     { name = "aind-slims-api" },
     { name = "gitpython" },
@@ -60,7 +59,6 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aind-behavior-curriculum" },
     { name = "aind-behavior-experiment-launcher", extras = ["aind-services"], marker = "extra == 'dev'" },
     { name = "aind-behavior-experiment-launcher", extras = ["aind-services"], marker = "extra == 'docs'" },
     { name = "aind-behavior-services", specifier = "<1" },

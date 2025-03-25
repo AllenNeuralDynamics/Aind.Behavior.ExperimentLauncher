@@ -25,7 +25,6 @@ dependencies = [
     "semver",
     "rich",
     "aind_behavior_services < 1",
-    "aind_behavior_curriculum",
     "aind-slims-api",
 ]
 
