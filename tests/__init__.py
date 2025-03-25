@@ -1,5 +1,4 @@
 import contextlib
-import glob
 import importlib.util
 import io
 import logging
@@ -12,7 +11,6 @@ import git
 
 REPO_ROOT = Path(__file__).parents[1]
 
-EXAMPLES_DIR = REPO_ROOT / "examples"
 TESTS_ASSETS = REPO_ROOT / "tests" / "assets"
 
 logger = logging.getLogger(__name__)
@@ -32,11 +30,6 @@ def build_example(script_path: str) -> ModuleType:
         raise ImportError(f"Can't load {script_path}")
     spec.loader.exec_module(module)
     return module
-
-
-def build_examples(examples_dir: Path = EXAMPLES_DIR):
-    for script_path in glob.glob(str(examples_dir / "*.py")):
-        _ = build_example(script_path)
 
 
 @contextlib.contextmanager

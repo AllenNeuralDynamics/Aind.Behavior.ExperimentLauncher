@@ -3,81 +3,51 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, create_autospec, patch
 
+from aind_behavior_experiment_launcher.apps.bonsai import BonsaiApp
 from aind_behavior_experiment_launcher.launcher.behavior_launcher import (
     BehaviorLauncher,
     BehaviorServicesFactoryManager,
-    BonsaiApp,
     DataMapper,
     DataTransfer,
+    DefaultBehaviorPicker,
     ResourceMonitor,
 )
-from tests import suppress_stdout
+from aind_behavior_experiment_launcher.launcher.cli import BaseCliArgs
 
 
 class TestBehaviorLauncher(unittest.TestCase):
     def setUp(self):
         self.services_factory_manager = create_autospec(BehaviorServicesFactoryManager)
         self.services_factory_manager.resource_monitor = MagicMock()
-        self.services_factory_manager.bonsai_app = MagicMock()
+        self.services_factory_manager.app = MagicMock()
         self.services_factory_manager.data_mapper = MagicMock()
         self.services_factory_manager.data_transfer = MagicMock()
-
-        self.launcher = BehaviorLauncher(
-            rig_schema_model=MagicMock(),
-            task_logic_schema_model=MagicMock(),
-            session_schema_model=MagicMock(),
+        self.args = BaseCliArgs(
             data_dir="/path/to/data",
-            config_library_dir="/path/to/config",
             temp_dir="/path/to/temp",
             repository_dir=None,
             allow_dirty=False,
             skip_hardware_validation=False,
             debug_mode=False,
             group_by_subject_log=False,
-            services=self.services_factory_manager,
             validate_init=False,
+        )
+        self.launcher = BehaviorLauncher(
+            rig_schema_model=MagicMock(),
+            task_logic_schema_model=MagicMock(),
+            session_schema_model=MagicMock(),
+            picker=DefaultBehaviorPicker(config_library_dir="/path/to/config"),
+            settings=self.args,
+            services=self.services_factory_manager,
             attached_logger=None,
         )
-
-    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.model_from_json_file")
-    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.glob.glob")
-    def test_prompt_rig_input(self, mock_glob, mock_model_from_json_file):
-        with suppress_stdout():
-            mock_glob.return_value = ["/path/to/rig1.json"]
-            mock_model_from_json_file.return_value = MagicMock()
-            rig = self.launcher._prompt_rig_input("/path/to/directory")
-            self.assertIsNotNone(rig)
-
-    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.model_from_json_file")
-    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.glob.glob")
-    @patch("os.path.isfile", return_value=True)
-    @patch("builtins.input", return_value="1")
-    def test_prompt_task_logic_input(self, mock_input, mock_is_file, mock_glob, mock_model_from_json_file):
-        with suppress_stdout():
-            mock_glob.return_value = ["/path/to/task1.json"]
-            mock_model_from_json_file.return_value = MagicMock()
-            task_logic = self.launcher._prompt_task_logic_input("/path/to/directory")
-            self.assertIsNotNone(task_logic)
-
-    @patch("os.path.isfile", return_value=True)
-    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.glob.glob")
-    def test_get_available_batches(self, mock_glob, mock_is_file):
-        mock_glob.return_value = ["/path/to/batch1.json", "/path/to/batch2.json"]
-        available_batches = self.launcher._get_available_batches("/path/to/directory")
-        self.assertEqual(len(available_batches), 2)
-
-    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.glob.glob")
-    def test_get_available_batches_no_files(self, mock_glob):
-        mock_glob.return_value = []
-        with self.assertRaises(FileNotFoundError):
-            self.launcher._get_available_batches("/path/to/directory")
 
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
     def test_save_temp_model(self, mock_makedirs):
         model = MagicMock()
         model.__class__.__name__ = "TestModel"
         model.model_dump_json.return_value = '{"key": "value"}'
-        path = self.launcher._save_temp_model(model, "/path/to/temp")
+        path = self.launcher.save_temp_model(model, "/path/to/temp")
         self.assertTrue(path.endswith("TestModel.json"))
 
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
@@ -85,7 +55,7 @@ class TestBehaviorLauncher(unittest.TestCase):
         model = MagicMock()
         model.__class__.__name__ = "TestModel"
         model.model_dump_json.return_value = '{"key": "value"}'
-        path = self.launcher._save_temp_model(model, None)
+        path = self.launcher.save_temp_model(model, None)
         self.assertTrue(path.endswith("TestModel.json"))
 
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
@@ -93,7 +63,7 @@ class TestBehaviorLauncher(unittest.TestCase):
         model = MagicMock()
         model.__class__.__name__ = "TestModel"
         model.model_dump_json.return_value = '{"key": "value"}'
-        self.launcher._save_temp_model(model, "/path/to/temp")
+        self.launcher.save_temp_model(model, "/path/to/temp")
         mock_makedirs.assert_called_once_with(Path("/path/to/temp"), exist_ok=True)
 
 
@@ -102,10 +72,10 @@ class TestBehaviorServicesFactoryManager(unittest.TestCase):
         self.launcher = create_autospec(BehaviorLauncher)
         self.factory_manager = BehaviorServicesFactoryManager(self.launcher)
 
-    def test_attach_bonsai_app(self):
-        bonsai_app = BonsaiApp("test.bonsai")
-        self.factory_manager.attach_bonsai_app(bonsai_app)
-        self.assertEqual(self.factory_manager.bonsai_app, bonsai_app)
+    def test_attach_app(self):
+        app = BonsaiApp("test.bonsai")
+        self.factory_manager.attach_app(app)
+        self.assertEqual(self.factory_manager.app, app)
 
     def test_attach_data_mapper(self):
         class DataMapperServiceConcrete(DataMapper):
@@ -153,21 +123,24 @@ class TestBehaviorServicesFactoryManager(unittest.TestCase):
 class TestBehaviorLauncherSaveTempModel(unittest.TestCase):
     def setUp(self):
         self.services_factory_manager = create_autospec(BehaviorServicesFactoryManager)
-        self.launcher = BehaviorLauncher(
-            rig_schema_model=MagicMock(),
-            task_logic_schema_model=MagicMock(),
-            session_schema_model=MagicMock(),
+        self.args = BaseCliArgs(
             data_dir="/path/to/data",
-            config_library_dir="/path/to/config",
             temp_dir="/path/to/temp",
             repository_dir=None,
             allow_dirty=False,
             skip_hardware_validation=False,
             debug_mode=False,
             group_by_subject_log=False,
-            services=self.services_factory_manager,
             validate_init=False,
+        )
+        self.launcher = BehaviorLauncher(
+            rig_schema_model=MagicMock(),
+            task_logic_schema_model=MagicMock(),
+            session_schema_model=MagicMock(),
+            picker=DefaultBehaviorPicker(config_library_dir="/path/to/config"),
+            services=self.services_factory_manager,
             attached_logger=None,
+            settings=self.args,
         )
 
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
@@ -175,7 +148,7 @@ class TestBehaviorLauncherSaveTempModel(unittest.TestCase):
         model = MagicMock()
         model.__class__.__name__ = "TestModel"
         model.model_dump_json.return_value = '{"key": "value"}'
-        self.launcher._save_temp_model(model, "/path/to/temp")
+        self.launcher.save_temp_model(model, "/path/to/temp")
         mock_makedirs.assert_called_once_with(Path("/path/to/temp"), exist_ok=True)
 
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
@@ -183,7 +156,7 @@ class TestBehaviorLauncherSaveTempModel(unittest.TestCase):
         model = MagicMock()
         model.__class__.__name__ = "TestModel"
         model.model_dump_json.return_value = '{"key": "value"}'
-        path = self.launcher._save_temp_model(model, None)
+        path = self.launcher.save_temp_model(model, None)
         self.assertTrue(path.endswith("TestModel.json"))
 
     @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
@@ -192,7 +165,7 @@ class TestBehaviorLauncherSaveTempModel(unittest.TestCase):
         model = MagicMock()
         model.__class__.__name__ = "TestModel"
         model.model_dump_json.return_value = '{"key": "value"}'
-        path = self.launcher._save_temp_model(model, Path("/path/to/temp"))
+        path = self.launcher.save_temp_model(model, Path("/path/to/temp"))
         expected_path = os.path.join(Path("/path/to/temp"), "TestModel.json")
         self.assertEqual(path, expected_path)
 

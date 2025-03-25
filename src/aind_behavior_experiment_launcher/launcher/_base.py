@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import logging
 import os
 import shutil
@@ -17,49 +16,60 @@ from aind_behavior_services import (
 )
 from aind_behavior_services.utils import format_datetime, model_from_json_file, utcnow
 
-from aind_behavior_experiment_launcher import logging_helper, ui_helper
+import aind_behavior_experiment_launcher.ui as ui
+from aind_behavior_experiment_launcher import __version__, logging_helper
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
 
+from .cli import BaseCliArgs
 from .git_manager import GitRepository
 
-TRig = TypeVar("TRig", bound=AindBehaviorRigModel)  # pylint: disable=invalid-name
-TSession = TypeVar("TSession", bound=AindBehaviorSessionModel)  # pylint: disable=invalid-name
-TTaskLogic = TypeVar("TTaskLogic", bound=AindBehaviorTaskLogicModel)  # pylint: disable=invalid-name
-
-TModel = TypeVar("TModel", bound=pydantic.BaseModel)  # pylint: disable=invalid-name
-
+TRig = TypeVar("TRig", bound=AindBehaviorRigModel)
+TSession = TypeVar("TSession", bound=AindBehaviorSessionModel)
+TTaskLogic = TypeVar("TTaskLogic", bound=AindBehaviorTaskLogicModel)
+TModel = TypeVar("TModel", bound=pydantic.BaseModel)
 
 logger = logging.getLogger(__name__)
 
+TLauncher = TypeVar("TLauncher", bound="BaseLauncher")
+
 
 class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
-    RIG_DIR = "Rig"
-    SUBJECT_DIR = "Subjects"
-    TASK_LOGIC_DIR = "TaskLogic"
+    """
+    Abstract base class for experiment launchers. Provides common functionality
+    for managing configuration files, directories, and execution hooks.
+    """
+
+    settings: BaseCliArgs
 
     def __init__(
         self,
         *,
+        settings: BaseCliArgs,
         rig_schema_model: Type[TRig],
         session_schema_model: Type[TSession],
         task_logic_schema_model: Type[TTaskLogic],
-        data_dir: os.PathLike,
-        config_library_dir: os.PathLike,
-        temp_dir: os.PathLike = Path("local/.temp"),
-        repository_dir: Optional[os.PathLike] = None,
-        allow_dirty: bool = False,
-        skip_hardware_validation: bool = False,
-        debug_mode: bool = False,
-        group_by_subject_log: bool = False,
+        picker: ui.PickerBase[Self, TRig, TSession, TTaskLogic],
         services: Optional[ServicesFactoryManager] = None,
-        validate_init: bool = True,
         attached_logger: Optional[logging.Logger] = None,
-        rig_schema_path: Optional[os.PathLike] = None,
-        task_logic_schema: Optional[os.PathLike] = None,
-        subject: Optional[str] = None,
+        **kwargs,
     ) -> None:
-        self.temp_dir = self.abspath(temp_dir) / format_datetime(utcnow())
+        """
+        Initializes the BaseLauncher instance.
+
+        Args:
+            settings (BaseCliArgs): The settings for the launcher.
+            rig_schema_model (Type[TRig]): The model class for the rig schema.
+            session_schema_model (Type[TSession]): The model class for the session schema.
+            task_logic_schema_model (Type[TTaskLogic]): The model class for the task logic schema.
+            picker (ui.PickerBase): The picker instance for selecting schemas.
+            services (Optional[ServicesFactoryManager], optional): The services factory manager. Defaults to None.
+            attached_logger (Optional[logging.Logger], optional): An attached logger instance. Defaults to None.
+        """
+        self._settings = settings
+
+        self.temp_dir = self.abspath(settings.temp_dir) / format_datetime(utcnow())
         self.temp_dir.mkdir(parents=True, exist_ok=True)
+        self.computer_name = os.environ["COMPUTERNAME"]
 
         # Solve logger
         if attached_logger:
@@ -68,75 +78,109 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
             root_logger = logging.getLogger()
             _logger = logging_helper.add_file_logger(root_logger, self.temp_dir / "launcher.log")
 
-        if debug_mode:
+        if settings.debug_mode:
             _logger.setLevel(logging.DEBUG)
 
         self._logger = _logger
 
-        # Solve UI helper
-        self._ui_helper = ui_helper.UIHelper()
-
-        # Solve CLI arguments
-        self._cli_args: _CliArgs = self._cli_wrapper()
-
         # Solve services and git repository
         self._bind_launcher_services(services)
 
-        repository_dir = (
-            Path(self._cli_args.repository_dir) if self._cli_args.repository_dir is not None else repository_dir
-        )
+        repository_dir = Path(self.settings.repository_dir) if self.settings.repository_dir is not None else None
         self.repository = GitRepository() if repository_dir is None else GitRepository(path=repository_dir)
         self._cwd = self.repository.working_dir
         os.chdir(self._cwd)
 
         # Schemas
-        self.rig_schema_model = rig_schema_model
-        self.session_schema_model = session_schema_model
-        self.task_logic_schema_model = task_logic_schema_model
+        self._rig_schema_model = rig_schema_model
+        self._session_schema_model = session_schema_model
+        self._task_logic_schema_model = task_logic_schema_model
 
         # Schema instances
         self._rig_schema: Optional[TRig] = None
         self._session_schema: Optional[TSession] = None
         self._task_logic_schema: Optional[TTaskLogic] = None
-        self._solve_schema_instances(rig_path_path=rig_schema_path, task_logic_path=task_logic_schema)
-        self._subject: Optional[str] = self._cli_args.subject if self._cli_args.subject else subject
-
-        # Directories
-        self.data_dir = Path(self._cli_args.data_dir) if self._cli_args.data_dir is not None else self.abspath(data_dir)
-
-        # Derived directories
-        self.config_library_dir = (
-            Path(self._cli_args.config_library_dir)
-            if self._cli_args.config_library_dir is not None
-            else self.abspath(Path(config_library_dir))
+        self._solve_schema_instances(
+            rig_path_path=self.settings.rig_path, task_logic_path=self.settings.task_logic_path
         )
-        self.computer_name = os.environ["COMPUTERNAME"]
-        self._debug_mode = self._cli_args.debug if self._cli_args.debug else debug_mode
-
-        self._rig_dir = Path(os.path.join(self.config_library_dir, self.RIG_DIR, self.computer_name))
-        self._subject_dir = Path(os.path.join(self.config_library_dir, self.SUBJECT_DIR))
-        self._task_logic_dir = Path(os.path.join(self.config_library_dir, self.TASK_LOGIC_DIR))
-
-        # Flags
-        self.allow_dirty = self._cli_args.allow_dirty if self._cli_args.allow_dirty else allow_dirty
-        self.skip_hardware_validation = (
-            self._cli_args.skip_hardware_validation
-            if self._cli_args.skip_hardware_validation
-            else skip_hardware_validation
-        )
-        self.group_by_subject_log = group_by_subject_log
+        self._subject: Optional[str] = self.settings.subject
 
         self._run_hook_return: Any = None
 
-        self._post_init(validate=validate_init)
+        self._register_picker(picker)
+        self._post_init(validate=self.is_validate_init)
+
+    @property
+    def is_validate_init(self) -> bool:
+        return self.settings.validate_init
+
+    @property
+    def data_dir(self) -> Path:
+        return Path(self.settings.data_dir)
+
+    @property
+    def is_debug_mode(self) -> bool:
+        return self.settings.debug_mode
+
+    @property
+    def allow_dirty(self) -> bool:
+        return self.settings.allow_dirty
+
+    @property
+    def skip_hardware_validation(self) -> bool:
+        return self.settings.skip_hardware_validation
+
+    @property
+    def group_by_subject_log(self) -> bool:
+        return self.settings.group_by_subject_log
+
+    def _register_picker(self, picker: ui.PickerBase[Self, TRig, TSession, TTaskLogic]) -> None:
+        """
+        Registers a picker for selecting schemas.
+
+        Args:
+            picker (ui.PickerBase): The picker instance to register.
+        """
+        if picker.has_launcher:
+            raise ValueError("Picker already has a launcher registered.")
+        picker.register_launcher(self)
+
+        if not picker.has_ui_helper:
+            picker.register_ui_helper(ui.DefaultUIHelper())
+
+        self._picker = picker
+
+        return
 
     def _post_init(self, validate: bool = True) -> None:
-        """Overridable method that runs at the end of the self.__init__ method"""
-        cli_args = self._cli_args
+        """
+        Overridable method that runs at the end of the constructor.
+
+        Args:
+            validate (bool): Whether to validate the launcher state.
+        """
+        cli_args = self._settings
+        self.picker.initialize()
+
         if cli_args.create_directories is True:
             self._create_directory_structure()
+
         if validate:
             self.validate()
+
+    @property
+    def subject(self) -> Optional[str]:
+        return self._subject
+
+    @subject.setter
+    def subject(self, value: str) -> None:
+        if self._subject is not None:
+            raise ValueError("Subject already set.")
+        self._subject = value
+
+    @property
+    def settings(self) -> BaseCliArgs:
+        return self._settings
 
     # Public properties / interfaces
     @property
@@ -158,6 +202,18 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         return self._task_logic_schema
 
     @property
+    def rig_schema_model(self) -> Type[TRig]:
+        return self._rig_schema_model
+
+    @property
+    def session_schema_model(self) -> Type[TSession]:
+        return self._session_schema_model
+
+    @property
+    def task_logic_schema_model(self) -> Type[TTaskLogic]:
+        return self._task_logic_schema_model
+
+    @property
     def session_directory(self) -> Path:
         if self.session_schema.session_name is None:
             raise ValueError("session_schema.session_name is not set.")
@@ -172,6 +228,36 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
             raise ValueError("Services instance not set.")
         return self._services_factory_manager
 
+    @property
+    def picker(self):
+        return self._picker
+
+    def make_header(self) -> str:
+        _HEADER = r"""
+
+         ██████╗██╗      █████╗ ██████╗ ███████╗
+        ██╔════╝██║     ██╔══██╗██╔══██╗██╔════╝
+        ██║     ██║     ███████║██████╔╝█████╗
+        ██║     ██║     ██╔══██║██╔══██╗██╔══╝
+        ╚██████╗███████╗██║  ██║██████╔╝███████╗
+        ╚═════╝╚══════╝╚═╝  ╚═╝╚═════╝ ╚══════╝
+
+        Command-line-interface Launcher for AIND Behavior Experiments
+        Press Control+C to exit at any time.
+        """
+
+        _str = (
+            "-------------------------------\n"
+            f"{_HEADER}\n"
+            f"CLABE Version: {__version__}\n"
+            f"TaskLogic ({self.task_logic_schema_model.__name__}) Schema Version: {self.task_logic_schema_model.model_construct().version}\n"
+            f"Rig ({self.rig_schema_model.__name__}) Schema Version: {self.rig_schema_model.model_construct().version}\n"
+            f"Session ({self.session_schema_model.__name__}) Schema Version: {self.session_schema_model.model_construct().version}\n"
+            "-------------------------------"
+        )
+
+        return _str
+
     def main(self) -> None:
         try:
             self._ui_prompt()
@@ -183,34 +269,16 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
             return
 
     def _ui_prompt(self) -> Self:
-        logger.info(
-            self._ui_helper.make_header(
-                task_logic_schema_model=self.task_logic_schema_model,
-                rig_schema_model=self.rig_schema_model,
-                session_schema_model=self.session_schema_model,
-            )
-        )
-        if self._debug_mode:
-            self._print_diagnosis()
+        logger.info(self.make_header())
+        if self.is_debug_mode:
+            self._print_debug()
 
-        self._session_schema = self._prompt_session_input()
+        self._session_schema = self.picker.pick_session()
         if self._task_logic_schema is None:
-            self._task_logic_schema = self._prompt_task_logic_input()
+            self._task_logic_schema = self.picker.pick_task_logic()
         if self._rig_schema is None:
-            self._rig_schema = self._prompt_rig_input()
+            self._rig_schema = self.picker.pick_rig()
         return self
-
-    @abstractmethod
-    def _prompt_session_input(self) -> TSession:
-        raise NotImplementedError("Method not implemented.")
-
-    @abstractmethod
-    def _prompt_task_logic_input(self) -> TTaskLogic:
-        raise NotImplementedError("Method not implemented.")
-
-    @abstractmethod
-    def _prompt_rig_input(self) -> TRig:
-        raise NotImplementedError("Method not implemented.")
 
     def _run_hooks(self) -> Self:
         self._pre_run_hook()
@@ -223,14 +291,32 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
 
     @abstractmethod
     def _pre_run_hook(self, *args, **kwargs) -> Self:
+        """
+        Abstract method for pre-run logic. Must be implemented by subclasses.
+
+        Returns:
+            Self: The current instance for method chaining.
+        """
         raise NotImplementedError("Method not implemented.")
 
     @abstractmethod
     def _run_hook(self, *args, **kwargs) -> Self:
+        """
+        Abstract method for main run logic. Must be implemented by subclasses.
+
+        Returns:
+            Self: The current instance for method chaining.
+        """
         raise NotImplementedError("Method not implemented.")
 
     @abstractmethod
     def _post_run_hook(self, *args, **kwargs) -> Self:
+        """
+        Abstract method for post-run logic. Must be implemented by subclasses.
+
+        Returns:
+            Self: The current instance for method chaining.
+        """
         raise NotImplementedError("Method not implemented.")
 
     def _exit(self, code: int = 0) -> None:
@@ -239,7 +325,7 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
             logging_helper.shutdown_logger(logger)
         sys.exit(code)
 
-    def _print_diagnosis(self) -> None:
+    def _print_debug(self) -> None:
         """
         Prints the diagnosis information for the launcher.
 
@@ -261,15 +347,15 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
             "Repository: %s\n"
             "Computer Name: %s\n"
             "Data Directory: %s\n"
-            "Config Library Directory: %s\n"
             "Temporary Directory: %s\n"
+            "Settings: %s\n"
             "-------------------------------",
             self._cwd,
             self.repository.working_dir,
             self.computer_name,
             self.data_dir,
-            self.config_library_dir,
             self.temp_dir,
+            self.settings,
         )
 
     def validate(self) -> None:
@@ -277,20 +363,12 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         Validates the dependencies required for the launcher to run.
         """
         try:
-            if not (os.path.isdir(self.config_library_dir)):
-                raise FileNotFoundError(f"Config library not found! Expected {self.config_library_dir}.")
-            if not (os.path.isdir(os.path.join(self.config_library_dir, "Rig", self.computer_name))):
-                raise FileNotFoundError(
-                    f"Rig configuration not found! \
-                        Expected {os.path.join(self.config_library_dir, self.RIG_DIR, self.computer_name)}."
-                )
-
             if self.repository.is_dirty():
                 logger.warning(
                     "Git repository is dirty. Discard changes before continuing unless you know what you are doing!"
                 )
                 if not self.allow_dirty:
-                    self.repository.try_prompt_full_reset(self._ui_helper, force_reset=False)
+                    self.repository.try_prompt_full_reset(self.picker.ui_helper, force_reset=False)
                     if self.repository.is_dirty_with_submodules():
                         logger.error("Dirty repository not allowed. Exiting. Consider running with --allow-dirty flag.")
                         self._exit(-1)
@@ -303,6 +381,9 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
             raise e
 
     def dispose(self) -> None:
+        """
+        Cleans up resources and exits the launcher.
+        """
         logger.info("Disposing...")
         self._exit(0)
 
@@ -312,18 +393,24 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
 
     def _create_directory_structure(self) -> None:
         try:
-            self._create_directory(self.data_dir)
-            self._create_directory(self.config_library_dir)
-            self._create_directory(self.temp_dir)
-            self._create_directory(self._task_logic_dir)
-            self._create_directory(self._rig_dir)
-            self._create_directory(self._subject_dir)
+            self.create_directory(self.data_dir)
+            self.create_directory(self.temp_dir)
+
         except OSError as e:
             logger.error("Failed to create directory structure: %s", e)
             self._exit(-1)
 
     @classmethod
-    def _create_directory(cls, directory: os.PathLike) -> None:
+    def create_directory(cls, directory: os.PathLike) -> None:
+        """
+        Creates a directory at the specified path if it does not already exist.
+
+        Args:
+            directory (os.PathLike): The path of the directory to create.
+
+        Raises:
+            OSError: If the directory creation fails, an OSError is raised and logged.
+        """
         if not os.path.exists(cls.abspath(directory)):
             logger.info("Creating  %s", directory)
             try:
@@ -332,51 +419,6 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
                 logger.error("Failed to create directory %s: %s", directory, e)
                 raise e
 
-    @staticmethod
-    def _get_default_arg_parser() -> argparse.ArgumentParser:
-        parser = argparse.ArgumentParser()
-
-        parser.add_argument("--data-dir", help="Specify the data directory")
-        parser.add_argument("--repository-dir", help="Specify the repository directory")
-        parser.add_argument("--config-library-dir", help="Specify the configuration library directory")
-        parser.add_argument(
-            "--create-directories",
-            help="Specify whether to force create directories",
-            action="store_true",
-            default=False,
-        )
-        parser.add_argument("--debug", help="Specify whether to run in debug mode", action="store_true", default=False)
-        parser.add_argument(
-            "--allow-dirty", help="Specify whether to allow a dirty repository", action="store_true", default=False
-        )
-        parser.add_argument(
-            "--skip-hardware-validation",
-            help="Specify whether to skip hardware validation",
-            action="store_true",
-            default=False,
-        )
-
-        # These should default to None
-        parser.add_argument("--subject", help="Specifies the name of the subject")
-        parser.add_argument("--task-logic-path", help="Specifies the path to a json file containing task logic")
-        parser.add_argument("--rig-path", help="Specifies the path to a json file containing rig configuration")
-
-        # Catch all additional arguments
-        # Syntax is a bit clunky, but it works
-        # e.g. "python script.py -- --arg1 --arg"
-        # This will capture "--arg1 --arg2" in the "extras" list
-        parser.add_argument(
-            "extras", nargs=argparse.REMAINDER, help="Capture all remaining arguments after -- separator"
-        )
-        return parser
-
-    @classmethod
-    def _cli_wrapper(cls) -> _CliArgs:
-        parser = cls._get_default_arg_parser()
-        parsed, _ = parser.parse_known_args()
-        args = vars(parsed)
-        return _CliArgs(**args)
-
     def _copy_tmp_directory(self, dst: os.PathLike) -> None:
         dst = Path(dst) / ".launcher"
         shutil.copytree(self.temp_dir, dst, dirs_exist_ok=True)
@@ -384,6 +426,19 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
     def _bind_launcher_services(
         self, services_factory_manager: Optional[ServicesFactoryManager]
     ) -> Optional[ServicesFactoryManager]:
+        """
+        Binds a ServicesFactoryManager instance to the launcher and registers the
+        launcher with the provided ServicesFactoryManager.
+
+        Args:
+            services_factory_manager (Optional[ServicesFactoryManager]):
+                An instance of ServicesFactoryManager to be bound to the launcher.
+                If None, no binding or registration will occur.
+
+        Returns:
+            Optional[ServicesFactoryManager]: The bound ServicesFactoryManager
+            instance, or None if no instance was provided.
+        """
         self._services_factory_manager = services_factory_manager
         if self._services_factory_manager is not None:
             self._services_factory_manager.register_launcher(self)
@@ -392,51 +447,26 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
     def _solve_schema_instances(
         self, rig_path_path: Optional[os.PathLike] = None, task_logic_path: Optional[os.PathLike] = None
     ) -> None:
-        rig_path_path = self._cli_args.rig_path if self._cli_args.rig_path is not None else rig_path_path
-        task_logic_path = (
-            self._cli_args.task_logic_path if self._cli_args.task_logic_path is not None else task_logic_path
-        )
+        """
+        Resolves and loads schema instances for the rig and task logic.
+
+        This method loads schema definitions from JSON files and assigns them to
+        the corresponding attributes if file paths are provided.
+
+        Args:
+            rig_path_path (Optional[os.PathLike]): Path to the JSON file containing
+                the rig schema. If provided, the rig schema will be loaded and
+                assigned to `_rig_schema`.
+            task_logic_path (Optional[os.PathLike]): Path to the JSON file containing
+                the task logic schema. If provided, the task logic schema will be
+                loaded and assigned to `_task_logic_schema`.
+
+        Returns:
+            None
+        """
         if rig_path_path is not None:
-            logging.info("Loading rig schema from %s", self._cli_args.rig_path)
+            logging.info("Loading rig schema from %s", self.settings.rig_path)
             self._rig_schema = model_from_json_file(rig_path_path, self.rig_schema_model)
         if task_logic_path is not None:
-            logging.info("Loading task logic schema from %s", self._cli_args.task_logic_path)
+            logging.info("Loading task logic schema from %s", self._settings.task_logic_path)
             self._task_logic_schema = model_from_json_file(task_logic_path, self.task_logic_schema_model)
-
-
-@pydantic.dataclasses.dataclass
-class _CliArgs:
-    data_dir: Optional[os.PathLike] = None
-    repository_dir: Optional[os.PathLike] = None
-    config_library_dir: Optional[os.PathLike] = None
-    create_directories: bool = False
-    debug: bool = False
-    allow_dirty: bool = False
-    skip_hardware_validation: bool = False
-    subject: Optional[str] = None
-    task_logic_path: Optional[os.PathLike] = None
-    rig_path: Optional[os.PathLike] = None
-    extras: dict[str, str] = pydantic.Field(default_factory=dict)
-
-    @pydantic.field_validator("extras", mode="before")
-    @classmethod
-    def _validate_extras(cls, v):
-        if isinstance(v, list):
-            v = cls._parse_extra_args(v)
-        return v
-
-    @staticmethod
-    def _parse_extra_args(args: list[str]) -> dict[str, str]:
-        extra_kwargs: dict[str, str] = {}
-        if len(args) == 0:
-            return extra_kwargs
-        _ = args.pop(0)  # remove the "--" separator
-        for arg in args:
-            if arg.startswith("--"):
-                key_value = arg.lstrip("--").split("=", 1)
-                if len(key_value) == 2:
-                    key, value = key_value
-                    extra_kwargs[key] = value
-                else:
-                    logger.error("Skipping invalid argument format: %s", arg)
-        return extra_kwargs

@@ -4,17 +4,34 @@ from datetime import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from aind_data_schema.core.metadata import CORE_FILES
 from aind_data_schema_models.modalities import Modality
 from aind_data_schema_models.platforms import Platform
 from aind_watchdog_service.models.manifest_config import BucketType
 
+from aind_behavior_experiment_launcher import ui
 from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
 from aind_behavior_experiment_launcher.data_transfer import RobocopyService
 from aind_behavior_experiment_launcher.data_transfer.aind_watchdog import (
     ManifestConfig,
+    ModalityConfigs,
     WatchConfig,
     WatchdogDataTransferService,
 )
+
+
+class MockUiHelper(ui.UiHelper):
+    def __init__(self):
+        super().__init__(print_func=lambda x: None, input_func=lambda x: "1")
+
+    def prompt_pick_from_list(self, *args, **kwargs):
+        return ""
+
+    def prompt_yes_no_question(self, prompt: str) -> bool:
+        return True
+
+    def prompt_text(self, prompt: str) -> str:
+        return ""
 
 
 class TestWatchdogDataTransferService(unittest.TestCase):
@@ -49,6 +66,31 @@ class TestWatchdogDataTransferService(unittest.TestCase):
             force_cloud_sync=self.force_cloud_sync,
             transfer_endpoint=self.transfer_endpoint,
             validate=self.validate,
+            ui_helper=MockUiHelper(),
+        )
+
+        self.service._manifest_config = ManifestConfig(
+            name="test_manifest",
+            modalities={Modality.BEHAVIOR: ["path/to/behavior"], Modality.BEHAVIOR_VIDEOS: ["path/to/behavior-videos"]},
+            subject_id=1,
+            acquisition_datetime="2023-01-01T00:00:00",
+            schemas=["path/to/schema"],
+            destination="path/to/destination",
+            mount="mount_path",
+            processor_full_name="processor_name",
+            project_name="test_project",
+            schedule_time=self.schedule_time,
+            platform=Platform.BEHAVIOR,
+            capsule_id="capsule_id",
+            s3_bucket=BucketType.PRIVATE,
+            script={"script_key": ["script_value"]},
+            force_cloud_sync=True,
+            transfer_endpoint="http://aind-data-transfer-service/api/v1/submit_jobs",
+        )
+
+        self.service._watch_config = WatchConfig(
+            flag_dir="flag_dir",
+            manifest_complete="manifest_complete",
         )
 
     def test_initialization(self):
@@ -141,19 +183,8 @@ class TestWatchdogDataTransferService(unittest.TestCase):
 
     @patch("aind_behavior_experiment_launcher.data_transfer.aind_watchdog.Path.exists", return_value=True)
     def test_find_ads_schemas(self, mock_exists):
-        # TODO this test should be updated once the corresponding tested method is also updated
         source = "mock_source_path"
-        expected_files = [
-            Path(source) / "subject.json",
-            Path(source) / "data_description.json",
-            Path(source) / "procedures.json",
-            Path(source) / "session.json",
-            Path(source) / "rig.json",
-            Path(source) / "processing.json",
-            Path(source) / "acquisition.json",
-            Path(source) / "instrument.json",
-            Path(source) / "quality_control.json",
-        ]
+        expected_files = [Path(source) / f"{file}.json" for file in CORE_FILES]
 
         result = WatchdogDataTransferService._find_ads_schemas(source)
         self.assertEqual(result, expected_files)
@@ -161,29 +192,6 @@ class TestWatchdogDataTransferService(unittest.TestCase):
     @patch("aind_behavior_experiment_launcher.data_transfer.aind_watchdog.Path.mkdir")
     @patch("aind_behavior_experiment_launcher.data_transfer.aind_watchdog.WatchdogDataTransferService._write_yaml")
     def test_dump_manifest_config(self, mock_write_yaml, mock_mkdir):
-        self.service._manifest_config = ManifestConfig(
-            name="test_manifest",
-            modalities={Modality.BEHAVIOR: ["path/to/modality"]},
-            subject_id=1,
-            acquisition_datetime="2023-01-01T00:00:00",
-            schemas=["path/to/schema"],
-            destination="path/to/destination",
-            mount="mount_path",
-            processor_full_name="processor_name",
-            project_name="test_project",
-            schedule_time=self.schedule_time,
-            platform=Platform.BEHAVIOR,
-            capsule_id="capsule_id",
-            s3_bucket=BucketType.PRIVATE,
-            script={"script_key": ["script_value"]},
-            force_cloud_sync=True,
-            transfer_endpoint="http://aind-data-transfer-service/api/v1/submit_jobs",
-        )
-        self.service._watch_config = WatchConfig(
-            flag_dir="flag_dir",
-            manifest_complete="manifest_complete",
-        )
-
         path = Path("flag_dir/manifest_test_manifest.yaml")
         result = self.service.dump_manifest_config()
 
@@ -197,29 +205,6 @@ class TestWatchdogDataTransferService(unittest.TestCase):
     @patch("aind_behavior_experiment_launcher.data_transfer.aind_watchdog.Path.mkdir")
     @patch("aind_behavior_experiment_launcher.data_transfer.aind_watchdog.WatchdogDataTransferService._write_yaml")
     def test_dump_manifest_config_custom_path(self, mock_write_yaml, mock_mkdir):
-        self.service._manifest_config = ManifestConfig(
-            name="test_manifest",
-            modalities={Modality.BEHAVIOR: ["path/to/modality"]},
-            subject_id=1,
-            acquisition_datetime="2023-01-01T00:00:00",
-            schemas=["path/to/schema"],
-            destination="path/to/destination",
-            mount="mount_path",
-            processor_full_name="processor_name",
-            project_name="test_project",
-            schedule_time=self.schedule_time,
-            platform=Platform.BEHAVIOR,
-            capsule_id="capsule_id",
-            s3_bucket=BucketType.PRIVATE,
-            script={"script_key": ["script_value"]},
-            force_cloud_sync=True,
-            transfer_endpoint="http://aind-data-transfer-service/api/v1/submit_jobs",
-        )
-        self.service._watch_config = WatchConfig(
-            flag_dir="flag_dir",
-            manifest_complete="manifest_complete",
-        )
-
         custom_path = Path("custom_path/manifest_test_manifest.yaml")
         result = self.service.dump_manifest_config(path=custom_path)
 
@@ -231,37 +216,66 @@ class TestWatchdogDataTransferService(unittest.TestCase):
 
     def test_dump_manifest_config_no_manifest_config(self):
         self.service._manifest_config = None
-        self.service._watch_config = WatchConfig(
-            flag_dir="flag_dir",
-            manifest_complete="manifest_complete",
-        )
 
         with self.assertRaises(ValueError):
             self.service.dump_manifest_config()
 
     def test_dump_manifest_config_no_watch_config(self):
-        self.service._manifest_config = ManifestConfig(
-            name="test_manifest",
-            modalities={Modality.BEHAVIOR_VIDEOS: ["path/to/modality"]},
-            subject_id=1,
-            acquisition_datetime="2023-01-01T00:00:00",
-            schemas=["path/to/schema"],
-            destination="path/to/destination",
-            mount="mount_path",
-            processor_full_name="processor_name",
-            project_name="test_project",
-            schedule_time=self.schedule_time,
-            platform=Platform.BEHAVIOR,
-            capsule_id="capsule_id",
-            s3_bucket=BucketType.PRIVATE,
-            script={"script_key": ["script_value"]},
-            force_cloud_sync=True,
-            transfer_endpoint="http://aind-data-transfer-service/api/v1/submit_jobs",
-        )
         self.service._watch_config = None
 
         with self.assertRaises(ValueError):
             self.service.dump_manifest_config()
+
+    def test_add_transfer_service_args_from_factory(self):
+        def modality_configs_factory(watchdog_service: WatchdogDataTransferService):
+            return ModalityConfigs(
+                modality=Modality.BEHAVIOR_VIDEOS,
+                source=(Path(watchdog_service.source) / Modality.BEHAVIOR_VIDEOS.abbreviation).as_posix(),
+                compress_raw_data=True,
+                job_settings={"key": "value"},
+            )
+
+        _manifest_config = self.service.add_transfer_service_args(
+            self.service._manifest_config, jobs=[modality_configs_factory]
+        )
+
+        for job in _manifest_config.transfer_service_args.upload_jobs:
+            self.assertEqual(job, _manifest_config.transfer_service_args.upload_jobs[-1])
+
+    def test_add_transfer_service_args_from_instance(self):
+        modality_configs = ModalityConfigs(
+            modality=Modality.BEHAVIOR_VIDEOS,
+            source=(Path(self.service.source) / Modality.BEHAVIOR_VIDEOS.abbreviation).as_posix(),
+            compress_raw_data=True,
+            job_settings={"key": "value"},  # needs mode to be json, otherwise parent class will raise an error
+        )
+
+        _manifest_config = self.service.add_transfer_service_args(
+            self.service._manifest_config, jobs=[modality_configs]
+        )
+
+        for job in _manifest_config.transfer_service_args.upload_jobs:
+            self.assertEqual(job, _manifest_config.transfer_service_args.upload_jobs[-1])
+
+    def test_add_transfer_service_args_fail_on_duplicate_modality(self):
+        def modality_configs_factory(watchdog_service: WatchdogDataTransferService):
+            return ModalityConfigs(
+                modality=Modality.BEHAVIOR_VIDEOS,
+                source=(Path(watchdog_service.source) / Modality.BEHAVIOR_VIDEOS.abbreviation).as_posix(),
+                compress_raw_data=True,
+                job_settings={"key": "value"},
+            )
+
+        modality_configs = ModalityConfigs(
+            modality=Modality.BEHAVIOR_VIDEOS,
+            source=(Path(self.service.source) / Modality.BEHAVIOR_VIDEOS.abbreviation).as_posix(),
+            job_settings={"key": "value"},  # needs mode to be json, otherwise parent class will raise an error
+        )
+
+        with self.assertRaises(ValueError):
+            _ = self.service.add_transfer_service_args(
+                self.service._manifest_config, jobs=[modality_configs_factory, modality_configs]
+            )
 
 
 class TestRobocopyService(unittest.TestCase):
@@ -278,6 +292,7 @@ class TestRobocopyService(unittest.TestCase):
             delete_src=True,
             overwrite=True,
             force_dir=False,
+            ui_helper=MockUiHelper(),
         )
 
     def test_initialization(self):
@@ -290,7 +305,8 @@ class TestRobocopyService(unittest.TestCase):
         self.assertFalse(self.service.force_dir)
 
     @patch("src.aind_behavior_experiment_launcher.data_transfer.robocopy.subprocess.Popen")
-    def test_transfer(self, mock_popen):
+    @patch.object(MockUiHelper, "prompt_yes_no_question", return_value=True)
+    def test_transfer(self, mock_ui_helper, mock_popen):
         mock_process = MagicMock()
         mock_process.wait.return_value = 0
         mock_popen.return_value = mock_process

@@ -20,12 +20,13 @@ classifiers = [
 
 dependencies = [
     "pydantic>=2.7, <3.0",
+    "pydantic-settings",
     "gitpython",
     "semver",
     "rich",
     "aind_behavior_services < 1",
     "aind_behavior_curriculum @ git+https://github.com/AllenNeuralDynamics/aind-behavior-curriculum@v0.0.31",
-    "aind-slims-api < 0.2"
+    "aind-slims-api",
 ]
 
 [project.urls]
@@ -36,7 +37,7 @@ Changelog = "https://github.com/AllenNeuralDynamics/Aind.Behavior.ExperimentLaun
 
 [project.optional-dependencies]
 aind-services = [
-    "aind-watchdog-service>=0.1.0, <0.2.0",
+    "aind-watchdog-service",
     "aind-data-schema<2"
 ]
 
@@ -61,7 +62,7 @@ docs = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.setuptools]
+[tool.setuptools] 
 # FIXME: temporary workaround:
 #   - https://github.com/astral-sh/uv/issues/9513
 #   - https://github.com/pypa/setuptools/issues/4759
