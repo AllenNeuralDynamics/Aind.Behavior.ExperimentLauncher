@@ -12,37 +12,24 @@ from typing import Any, Callable, Dict, List, Optional, Self, Type, TypeAlias, T
 
 import pydantic
 from aind_behavior_services.utils import model_from_json_file
-from pydantic_settings import CliImplicitFlag
 from typing_extensions import override
 
 import aind_behavior_experiment_launcher.ui as ui
 from aind_behavior_experiment_launcher import logging_helper
 from aind_behavior_experiment_launcher.apps import App
+from aind_behavior_experiment_launcher.behavior_launcher.cli import BehaviorCliArgs
 from aind_behavior_experiment_launcher.data_mapper import DataMapper
 from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
 from aind_behavior_experiment_launcher.data_transfer import DataTransfer
 from aind_behavior_experiment_launcher.data_transfer.aind_watchdog import WatchdogDataTransferService
 from aind_behavior_experiment_launcher.data_transfer.robocopy import RobocopyService
+from aind_behavior_experiment_launcher.launcher._base import BaseLauncher, TRig, TSession, TTaskLogic
 from aind_behavior_experiment_launcher.resource_monitor import ResourceMonitor
 from aind_behavior_experiment_launcher.services import IService, ServiceFactory, ServicesFactoryManager
-
-from ._base import BaseLauncher, TRig, TSession, TTaskLogic
-from .cli import BaseCliArgs
 
 TService = TypeVar("TService", bound=IService)
 
 logger = logging.getLogger(__name__)
-
-
-class BehaviorCliArgs(BaseCliArgs):
-    """Extends the base"""
-
-    skip_data_transfer: CliImplicitFlag[bool] = pydantic.Field(
-        default=False, description="Whether to skip data transfer after the experiment"
-    )
-    skip_data_mapping: CliImplicitFlag[bool] = pydantic.Field(
-        default=False, description="Whether to skip data mapping after the experiment"
-    )
 
 
 class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
@@ -430,14 +417,6 @@ def _robocopy_data_transfer_factory(
     return RobocopyService(source=launcher.session_directory, destination=dst, **robocopy_kwargs)
 
 
-class ByAnimalFiles(enum.StrEnum):
-    """
-    Enum for file types associated with animals in the experiment.
-    """
-
-    TASK_LOGIC = "task_logic"
-
-
 _BehaviorPickerAlias = ui.PickerBase[BehaviorLauncher[TRig, TSession, TTaskLogic], TRig, TSession, TTaskLogic]
 
 
@@ -452,6 +431,13 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
     RIG_SUFFIX: str = "Rig"
     SUBJECT_SUFFIX: str = "Subjects"
     TASK_LOGIC_SUFFIX: str = "TaskLogic"
+
+    class ByAnimalFiles(enum.StrEnum):
+        """
+        Enum for file types associated with animals in the experiment.
+        """
+
+        TASK_LOGIC = "task_logic"
 
     @override
     def __init__(
@@ -616,7 +602,11 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
 
         # Else, we check inside the subject folder for an existing task file
         try:
-            f = self.subject_dir / self.launcher.session_schema.subject / (ByAnimalFiles.TASK_LOGIC.value + ".json")
+            f = (
+                self.subject_dir
+                / self.launcher.session_schema.subject
+                / (self.ByAnimalFiles.TASK_LOGIC.value + ".json")
+            )
             logger.info("Attempting to load task logic from subject folder: %s", f)
             task_logic = model_from_json_file(f, self.launcher.task_logic_schema_model)
         except (ValueError, FileNotFoundError, pydantic.ValidationError) as e:
