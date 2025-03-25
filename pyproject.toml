@@ -25,7 +25,7 @@ dependencies = [
     "semver",
     "rich",
     "aind_behavior_services < 1",
-    "aind_behavior_curriculum @ git+https://github.com/AllenNeuralDynamics/aind-behavior-curriculum@v0.0.31",
+    "aind_behavior_curriculum",
     "aind-slims-api",
 ]
 
