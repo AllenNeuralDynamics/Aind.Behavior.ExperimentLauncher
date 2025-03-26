@@ -1,0 +1,39 @@
+aind\_behavior\_experiment\_launcher.ui.ui\_helper
+==================================================
+
+.. automodule:: aind_behavior_experiment_launcher.ui.ui_helper
+  
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      prompt_field_from_input
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst               
+   
+      DefaultUIHelper
+      UiHelper
+   
+   
+
+   
+   
+   
+
+
+

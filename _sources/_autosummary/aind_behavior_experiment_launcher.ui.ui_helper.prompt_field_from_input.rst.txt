@@ -1,0 +1,6 @@
+aind\_behavior\_experiment\_launcher.ui.ui\_helper.prompt\_field\_from\_input
+=============================================================================
+
+.. currentmodule:: aind_behavior_experiment_launcher.ui.ui_helper
+
+.. autofunction:: prompt_field_from_input
