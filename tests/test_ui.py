@@ -42,8 +42,8 @@ class TestDefaultBehaviorPicker(unittest.TestCase):
         result = self.picker.prompt_experimenter()
         self.assertEqual(result, ["John", "Doe"])
 
-    @patch("aind_behavior_experiment_launcher.behavior_launcher.model_from_json_file")
-    @patch("aind_behavior_experiment_launcher.behavior_launcher.glob.glob")
+    @patch("aind_behavior_experiment_launcher.behavior_launcher._launcher.model_from_json_file")
+    @patch("glob.glob")
     def test_prompt_rig_input(self, mock_glob, mock_model_from_json_file):
         with suppress_stdout():
             mock_glob.return_value = ["/path/to/rig1.json"]
@@ -51,8 +51,8 @@ class TestDefaultBehaviorPicker(unittest.TestCase):
             rig = self.picker.pick_rig()
             self.assertIsNotNone(rig)
 
-    @patch("aind_behavior_experiment_launcher.behavior_launcher.model_from_json_file")
-    @patch("aind_behavior_experiment_launcher.behavior_launcher.glob.glob")
+    @patch("aind_behavior_experiment_launcher.behavior_launcher._launcher.model_from_json_file")
+    @patch("glob.glob")
     @patch("os.path.isfile", return_value=True)
     @patch("builtins.input", return_value="1")
     def test_prompt_task_logic_input(self, mock_input, mock_is_file, mock_glob, mock_model_from_json_file):
