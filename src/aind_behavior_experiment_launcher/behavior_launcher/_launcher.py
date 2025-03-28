@@ -61,7 +61,7 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
             **kwargs,
         )
         self._by_subject_modifiers_manager = (
-            by_subject_modifiers or BySubjectModifierManager[TRig, TSession, TTaskLogic]()
+            by_subject_modifiers_manager or BySubjectModifierManager[TRig, TSession, TTaskLogic]()
         )
 
     def _post_init(self, validate: bool = True) -> None:
