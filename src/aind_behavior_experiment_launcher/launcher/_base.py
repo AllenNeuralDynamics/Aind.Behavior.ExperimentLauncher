@@ -18,10 +18,10 @@ from aind_behavior_services.utils import format_datetime, model_from_json_file, 
 
 import aind_behavior_experiment_launcher.ui as ui
 from aind_behavior_experiment_launcher import __version__, logging_helper
+from aind_behavior_experiment_launcher.git_manager import GitRepository
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
 
 from .cli import BaseCliArgs
-from .git_manager import GitRepository
 
 TRig = TypeVar("TRig", bound=AindBehaviorRigModel)
 TSession = TypeVar("TSession", bound=AindBehaviorSessionModel)

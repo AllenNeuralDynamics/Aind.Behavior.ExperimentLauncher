@@ -121,7 +121,7 @@ class GitRepository(Repo):
             else:
                 is_reset = True
             if is_reset:
-                logging.info("Full reset of repository and submodules: %s", self.working_dir)
+                logger.info("Full reset of repository and submodules: %s", self.working_dir)
                 self.full_reset()
         return self
 
@@ -137,8 +137,11 @@ class GitRepository(Repo):
             bool: True if Git is installed.
         """
         if not _HAS_GIT:
-            logging.error("git executable not detected.")
+            logger.error("git executable not detected.")
             raise RuntimeError(
                 "git is not installed in this computer. Please install git. https://git-scm.com/downloads"
             )
         return True
+
+
+__all__ = [GitRepository]
