@@ -3,10 +3,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, create_autospec, patch
 
+from aind_behavior_services.session import AindBehaviorSessionModel
+
 from aind_behavior_experiment_launcher.apps._bonsai import BonsaiApp
 from aind_behavior_experiment_launcher.behavior_launcher import (
     BehaviorLauncher,
     BehaviorServicesFactoryManager,
+    BySubjectModifierManager,
     DefaultBehaviorPicker,
 )
 from aind_behavior_experiment_launcher.data_mapper import DataMapper
@@ -168,6 +171,27 @@ class TestBehaviorLauncherSaveTempModel(unittest.TestCase):
         path = self.launcher.save_temp_model(model, Path("/path/to/temp"))
         expected_path = os.path.join(Path("/path/to/temp"), "TestModel.json")
         self.assertEqual(path, expected_path)
+
+
+class TestBySubjectModifierManager(unittest.TestCase):
+    @staticmethod
+    def my_modifier(*, session_schema: AindBehaviorSessionModel, **kwargs) -> None:
+        session_schema.subject += "na"
+        session_schema.experiment = "1"
+
+    def setUp(self):
+        self.manager = BySubjectModifierManager()
+        self.mock_session = AindBehaviorSessionModel(
+            experiment="", root_path="", subject="", experiment_version="1.1.1"
+        )
+
+    def test_register_modifier_run_twice(self):
+        self.manager.register_modifier(self.my_modifier)
+        self.manager.register_modifier(self.my_modifier)
+        self.assertEqual(len(self.manager._modifiers), 2)
+        self.manager.apply_modifiers(session_schema=self.mock_session)
+        self.assertEqual(self.mock_session.subject, "nana")
+        self.assertEqual(self.mock_session.experiment, "1")
 
 
 if __name__ == "__main__":
