@@ -11,7 +11,7 @@ _T = TypeVar("_T", bound=AindBehaviorTaskLogicModel, contravariant=True)
 
 class BySubjectModifier(Protocol, Generic[_R, _S, _T]):
     def __call__(
-        self, rig_schema: Optional[_R], session_schema: Optional[_S], task_logic_schema: Optional[_T], **kwargs: Any
+        self, *, rig_schema: Optional[_R], session_schema: Optional[_S], task_logic_schema: Optional[_T], **kwargs: Any
     ) -> None: ...
 
 
@@ -24,10 +24,13 @@ class BySubjectModifierManager(Generic[_R, _S, _T]):
 
     def apply_modifiers(
         self,
-        rig_schema: Optional[_R],
-        session_schema: Optional[_S],
-        task_logic_schema: Optional[_T],
+        *,
+        rig_schema: Optional[_R] = None,
+        session_schema: Optional[_S] = None,
+        task_logic_schema: Optional[_T] = None,
         **kwargs: Any,
     ) -> None:
         for modifier in self._modifiers:
-            modifier(rig_schema, session_schema, task_logic_schema, **kwargs)
+            modifier(
+                rig_schema=rig_schema, session_schema=session_schema, task_logic_schema=task_logic_schema, **kwargs
+            )
