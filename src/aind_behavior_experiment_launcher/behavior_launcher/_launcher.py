@@ -14,8 +14,10 @@ from typing_extensions import override
 
 import aind_behavior_experiment_launcher.ui as ui
 from aind_behavior_experiment_launcher import logging_helper
-from aind_behavior_experiment_launcher.behavior_launcher._cli import BehaviorCliArgs
 from aind_behavior_experiment_launcher.launcher._base import BaseLauncher, TRig, TSession, TTaskLogic
+
+from ._cli import BehaviorCliArgs
+from ._model_modifiers import BySubjectModifierManager
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +35,7 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
 
     settings: BehaviorCliArgs
     services_factory_manager: BehaviorServicesFactoryManager
+    _by_subject_modifiers_manager: BySubjectModifierManager[TRig, TSession, TTaskLogic]
 
     def __init__(  # pylint: disable=useless-parent-delegation
         self,
@@ -44,6 +47,7 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
         picker,
         services=None,
         attached_logger=None,
+        by_subject_modifiers_manager: Optional[BySubjectModifierManager[TRig, TSession, TTaskLogic]] = None,
         **kwargs,
     ):
         super().__init__(
@@ -55,6 +59,9 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
             services=services,
             attached_logger=attached_logger,
             **kwargs,
+        )
+        self._by_subject_modifiers_manager = (
+            by_subject_modifiers_manager or BySubjectModifierManager[TRig, TSession, TTaskLogic]()
         )
 
     def _post_init(self, validate: bool = True) -> None:
@@ -69,6 +76,16 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
             if self.services_factory_manager.resource_monitor is not None:
                 self.services_factory_manager.resource_monitor.evaluate_constraints()
 
+    @property
+    def by_subject_modifiers_manager(self) -> BySubjectModifierManager[TRig, TSession, TTaskLogic]:
+        """
+        Returns the manager for by-subject modifiers.
+
+        Returns:
+            BySubjectModifierManager: The by-subject modifiers manager.
+        """
+        return self._by_subject_modifiers_manager
+
     @override
     def _pre_run_hook(self, *args, **kwargs) -> Self:
         """
@@ -80,6 +97,7 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
         logger.info("Pre-run hook started.")
         self.session_schema.experiment = self.task_logic_schema.name
         self.session_schema.experiment_version = self.task_logic_schema.version
+        self.by_subject_modifiers_manager.apply_modifiers(self.rig_schema, self.session_schema, self.task_logic_schema)
         return self
 
     @override
