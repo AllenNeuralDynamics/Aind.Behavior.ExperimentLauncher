@@ -6,7 +6,7 @@ import shutil
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Generic, Optional, Self, Type, TypeVar
+from typing import Generic, Optional, Self, Type, TypeVar
 
 import pydantic
 from aind_behavior_services import (
@@ -18,10 +18,10 @@ from aind_behavior_services.utils import format_datetime, model_from_json_file, 
 
 import aind_behavior_experiment_launcher.ui as ui
 from aind_behavior_experiment_launcher import __version__, logging_helper
+from aind_behavior_experiment_launcher.git_manager import GitRepository
 from aind_behavior_experiment_launcher.services import ServicesFactoryManager
 
 from .cli import BaseCliArgs
-from .git_manager import GitRepository
 
 TRig = TypeVar("TRig", bound=AindBehaviorRigModel)
 TSession = TypeVar("TSession", bound=AindBehaviorSessionModel)
@@ -38,8 +38,6 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
     Abstract base class for experiment launchers. Provides common functionality
     for managing configuration files, directories, and execution hooks.
     """
-
-    settings: BaseCliArgs
 
     def __init__(
         self,
@@ -105,10 +103,11 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         )
         self._subject: Optional[str] = self.settings.subject
 
-        self._run_hook_return: Any = None
-
         self._register_picker(picker)
-        self._post_init(validate=self.is_validate_init)
+        self.picker.initialize()
+
+        if self.settings.create_directories is True:
+            self._create_directory_structure()
 
     @property
     def is_validate_init(self) -> bool:
@@ -151,22 +150,6 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         self._picker = picker
 
         return
-
-    def _post_init(self, validate: bool = True) -> None:
-        """
-        Overridable method that runs at the end of the constructor.
-
-        Args:
-            validate (bool): Whether to validate the launcher state.
-        """
-        cli_args = self._settings
-        self.picker.initialize()
-
-        if cli_args.create_directories is True:
-            self._create_directory_structure()
-
-        if validate:
-            self.validate()
 
     @property
     def subject(self) -> Optional[str]:
@@ -260,19 +243,22 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
 
     def main(self) -> None:
         try:
+            logger.info(self.make_header())
+            if self.is_debug_mode:
+                self._print_debug()
+
+            if self.is_validate_init:
+                self.validate()
+
             self._ui_prompt()
             self._run_hooks()
             self.dispose()
         except KeyboardInterrupt:
-            logger.error("User interrupted the process.")
+            logger.critical("User interrupted the process.")
             self._exit(-1)
             return
 
     def _ui_prompt(self) -> Self:
-        logger.info(self.make_header())
-        if self.is_debug_mode:
-            self._print_debug()
-
         self._session_schema = self.picker.pick_session()
         if self._task_logic_schema is None:
             self._task_logic_schema = self.picker.pick_task_logic()
@@ -319,10 +305,12 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         """
         raise NotImplementedError("Method not implemented.")
 
-    def _exit(self, code: int = 0) -> None:
+    def _exit(self, code: int = 0, _force: bool = False) -> None:
         logger.info("Exiting with code %s", code)
         if logger is not None:
             logging_helper.shutdown_logger(logger)
+        if not _force:
+            self.picker.ui_helper.input("Press any key to exit...")
         sys.exit(code)
 
     def _print_debug(self) -> None:
@@ -370,13 +358,15 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
                 if not self.allow_dirty:
                     self.repository.try_prompt_full_reset(self.picker.ui_helper, force_reset=False)
                     if self.repository.is_dirty_with_submodules():
-                        logger.error("Dirty repository not allowed. Exiting. Consider running with --allow-dirty flag.")
+                        logger.critical(
+                            "Dirty repository not allowed. Exiting. Consider running with --allow-dirty flag."
+                        )
                         self._exit(-1)
                 else:
-                    logger.info("Untracked files: %s", self.repository.untracked_files_with_submodules())
+                    logger.info("Uncommitted files: %s", self.repository.uncommitted_changes())
 
         except Exception as e:
-            logger.error("Failed to validate dependencies. %s", e)
+            logger.critical("Failed to validate dependencies. %s", e)
             self._exit(-1)
             raise e
 
@@ -397,7 +387,7 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
             self.create_directory(self.temp_dir)
 
         except OSError as e:
-            logger.error("Failed to create directory structure: %s", e)
+            logger.critical("Failed to create directory structure: %s", e)
             self._exit(-1)
 
     @classmethod
