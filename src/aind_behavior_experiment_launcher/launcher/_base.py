@@ -305,10 +305,12 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         """
         raise NotImplementedError("Method not implemented.")
 
-    def _exit(self, code: int = 0) -> None:
+    def _exit(self, code: int = 0, _force: bool = False) -> None:
         logger.info("Exiting with code %s", code)
         if logger is not None:
             logging_helper.shutdown_logger(logger)
+        if not _force:
+            self.picker.ui_helper.input("Press any key to exit...")
         sys.exit(code)
 
     def _print_debug(self) -> None:
