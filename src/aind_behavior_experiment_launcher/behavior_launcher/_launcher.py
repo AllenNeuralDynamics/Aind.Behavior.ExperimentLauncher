@@ -64,18 +64,6 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
             by_subject_modifiers_manager or BySubjectModifierManager[TRig, TSession, TTaskLogic]()
         )
 
-    def _post_init(self, validate: bool = True) -> None:
-        """
-        Performs additional initialization after the constructor.
-
-        Args:
-            validate (bool): Whether to validate the launcher state.
-        """
-        super()._post_init(validate=validate)
-        if validate:
-            if self.services_factory_manager.resource_monitor is not None:
-                self.services_factory_manager.resource_monitor.evaluate_constraints()
-
     @property
     def by_subject_modifiers_manager(self) -> BySubjectModifierManager[TRig, TSession, TTaskLogic]:
         """
@@ -95,9 +83,20 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
             Self: The current instance for method chaining.
         """
         logger.info("Pre-run hook started.")
+
+        if self.settings.validate_init:
+            logger.debug("Validating initialization.")
+            if self.services_factory_manager.resource_monitor is not None:
+                logger.debug("Evaluating resource monitor constraints.")
+                if not self.services_factory_manager.resource_monitor.evaluate_constraints():
+                    logger.critical("Resource monitor constraints failed.")
+                    self._exit(-1)
+
         self.session_schema.experiment = self.task_logic_schema.name
         self.session_schema.experiment_version = self.task_logic_schema.version
-        self.by_subject_modifiers_manager.apply_modifiers(self.rig_schema, self.session_schema, self.task_logic_schema)
+        self.by_subject_modifiers_manager.apply_modifiers(
+            rig_schema=self.rig_schema, session_schema=self.session_schema, task_logic_schema=self.task_logic_schema
+        )
         return self
 
     @override

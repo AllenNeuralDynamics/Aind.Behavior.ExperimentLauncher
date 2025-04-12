@@ -6,7 +6,7 @@ import shutil
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Generic, Optional, Self, Type, TypeVar
+from typing import Generic, Optional, Self, Type, TypeVar
 
 import pydantic
 from aind_behavior_services import (
@@ -38,8 +38,6 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
     Abstract base class for experiment launchers. Provides common functionality
     for managing configuration files, directories, and execution hooks.
     """
-
-    settings: BaseCliArgs
 
     def __init__(
         self,
@@ -105,10 +103,11 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         )
         self._subject: Optional[str] = self.settings.subject
 
-        self._run_hook_return: Any = None
-
         self._register_picker(picker)
-        self._post_init(validate=self.is_validate_init)
+        self.picker.initialize()
+
+        if self.settings.create_directories is True:
+            self._create_directory_structure()
 
     @property
     def is_validate_init(self) -> bool:
@@ -151,22 +150,6 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         self._picker = picker
 
         return
-
-    def _post_init(self, validate: bool = True) -> None:
-        """
-        Overridable method that runs at the end of the constructor.
-
-        Args:
-            validate (bool): Whether to validate the launcher state.
-        """
-        cli_args = self._settings
-        self.picker.initialize()
-
-        if cli_args.create_directories is True:
-            self._create_directory_structure()
-
-        if validate:
-            self.validate()
 
     @property
     def subject(self) -> Optional[str]:
@@ -260,6 +243,13 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
 
     def main(self) -> None:
         try:
+            logger.info(self.make_header())
+            if self.is_debug_mode:
+                self._print_debug()
+
+            if self.is_validate_init:
+                self.validate()
+
             self._ui_prompt()
             self._run_hooks()
             self.dispose()
@@ -269,10 +259,6 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
             return
 
     def _ui_prompt(self) -> Self:
-        logger.info(self.make_header())
-        if self.is_debug_mode:
-            self._print_debug()
-
         self._session_schema = self.picker.pick_session()
         if self._task_logic_schema is None:
             self._task_logic_schema = self.picker.pick_task_logic()
@@ -373,7 +359,7 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
                         logger.error("Dirty repository not allowed. Exiting. Consider running with --allow-dirty flag.")
                         self._exit(-1)
                 else:
-                    logger.info("Untracked files: %s", self.repository.untracked_files_with_submodules())
+                    logger.info("Uncommitted files: %s", self.repository.uncommitted_changes())
 
         except Exception as e:
             logger.error("Failed to validate dependencies. %s", e)
