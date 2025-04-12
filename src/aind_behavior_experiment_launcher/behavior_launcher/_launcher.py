@@ -121,7 +121,7 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
             self.services_factory_manager.app.run()
             _ = self.services_factory_manager.app.output_from_result(allow_stderr=True)
         except subprocess.CalledProcessError as e:
-            logger.error("Bonsai app failed to run. %s", e)
+            logger.critical("Bonsai app failed to run. %s", e)
             self._exit(-1)
         return self
 
@@ -325,7 +325,7 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             subject = self.choose_subject(self.subject_dir)
             self.launcher.subject = subject
             if not (self.subject_dir / subject).exists():
-                logger.warning("Directory for subject %s does not exist. Creating a new one.", subject)
+                logger.info("Directory for subject %s does not exist. Creating a new one.", subject)
                 os.makedirs(self.subject_dir / subject)
 
         notes = self.ui_helper.prompt_text("Enter notes: ")

@@ -254,7 +254,7 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
             self._run_hooks()
             self.dispose()
         except KeyboardInterrupt:
-            logger.error("User interrupted the process.")
+            logger.critical("User interrupted the process.")
             self._exit(-1)
             return
 
@@ -356,13 +356,15 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
                 if not self.allow_dirty:
                     self.repository.try_prompt_full_reset(self.picker.ui_helper, force_reset=False)
                     if self.repository.is_dirty_with_submodules():
-                        logger.error("Dirty repository not allowed. Exiting. Consider running with --allow-dirty flag.")
+                        logger.critical(
+                            "Dirty repository not allowed. Exiting. Consider running with --allow-dirty flag."
+                        )
                         self._exit(-1)
                 else:
                     logger.info("Uncommitted files: %s", self.repository.uncommitted_changes())
 
         except Exception as e:
-            logger.error("Failed to validate dependencies. %s", e)
+            logger.critical("Failed to validate dependencies. %s", e)
             self._exit(-1)
             raise e
 
@@ -383,7 +385,7 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
             self.create_directory(self.temp_dir)
 
         except OSError as e:
-            logger.error("Failed to create directory structure: %s", e)
+            logger.critical("Failed to create directory structure: %s", e)
             self._exit(-1)
 
     @classmethod
