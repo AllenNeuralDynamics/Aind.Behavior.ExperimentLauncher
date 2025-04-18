@@ -1,5 +1,6 @@
 from aind_behavior_experiment_launcher.behavior_launcher._cli import BehaviorCliArgs
 from aind_behavior_experiment_launcher.behavior_launcher._launcher import BehaviorLauncher, DefaultBehaviorPicker
+from aind_behavior_experiment_launcher.behavior_launcher.slims_picker import SlimsPicker
 from aind_behavior_experiment_launcher.behavior_launcher._model_modifiers import (
     BySubjectModifier,
     BySubjectModifierManager,
@@ -16,6 +17,7 @@ __all__ = [
     "BehaviorServicesFactoryManager",
     "BehaviorCliArgs",
     "DefaultBehaviorPicker",
+    "SlimsPicker",
     "BehaviorLauncher",
     "BySubjectModifier",
     "BySubjectModifierManager",
