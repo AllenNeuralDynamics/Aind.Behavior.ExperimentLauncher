@@ -1,14 +1,15 @@
-from aind_behavior_experiment_launcher.ui import PickerBase
-from typing import Optional, List
-import os
 import logging
+import os
+from typing import List, Optional
+
+from aind_slims_api import SlimsClient, exceptions, models
 from typing_extensions import override
 
-from aind_behavior_experiment_launcher.ui.picker import _L, _R, _S, _T, DefaultPicker
-from aind_slims_api import SlimsClient, models, exceptions
 import aind_behavior_experiment_launcher.ui as ui
+from aind_behavior_experiment_launcher.ui.picker import _L, _R, _S, _T, DefaultPicker
 
 logger = logging.getLogger(__name__)
+
 
 class SlimsPicker(DefaultPicker[_L, _R, _S, _T]):
     """
@@ -16,14 +17,15 @@ class SlimsPicker(DefaultPicker[_L, _R, _S, _T]):
     """
 
     def __init__(
-            self,
-            launcher: Optional[_L] = None,
-            *,
-            ui_helper: Optional[ui.DefaultUIHelper] = None,
-            slims_url: str = None,
-            username: str = None,
-            password: str = None,
-            **kwargs,):
+        self,
+        launcher: Optional[_L] = None,
+        *,
+        ui_helper: Optional[ui.DefaultUIHelper] = None,
+        slims_url: str = None,
+        username: str = None,
+        password: str = None,
+        **kwargs,
+    ):
         """
         Initializes the picker with an optional launcher, UI helper, username, and password.
 
@@ -61,22 +63,26 @@ class SlimsPicker(DefaultPicker[_L, _R, _S, _T]):
         """
 
         try:
-            logger.info('Attempting to connect to Slims')
-            slims_client = SlimsClient(url=url,
-                                       username=username if username else os.environ['SLIMS_USERNAME'],
-                                       password=password if password else os.environ['SLIMS_PASSWORD'])
-            slims_client.fetch_model(models.SlimsMouseContent, barcode='00000000')
+            logger.info("Attempting to connect to Slims")
+            slims_client = SlimsClient(
+                url=url,
+                username=username if username else os.environ["SLIMS_USERNAME"],
+                password=password if password else os.environ["SLIMS_PASSWORD"],
+            )
+            slims_client.fetch_model(models.SlimsMouseContent, barcode="00000000")
 
         except exceptions.SlimsAPIException as e:
-            if 'Status 401 – Unauthorized' in str(e):  # catch error if username and password are incorrect
-                raise Exception(f'Exception trying to read from Slims: {e}.\n'
-                                f' Please check credentials:\n'
-                                f'Username: {username if username else os.environ["SLIMS_USERNAME"]}\n'
-                                f'Password: {password if password else os.environ["SLIMS_PASSWORD"]}')
+            if "Status 401 – Unauthorized" in str(e):  # catch error if username and password are incorrect
+                raise Exception(
+                    f"Exception trying to read from Slims: {e}.\n"
+                    f" Please check credentials:\n"
+                    f"Username: {username if username else os.environ['SLIMS_USERNAME']}\n"
+                    f"Password: {password if password else os.environ['SLIMS_PASSWORD']}"
+                )
             else:
-                raise Exception(f'Exception trying to read from Slims: {e}.\n')
+                raise Exception(f"Exception trying to read from Slims: {e}.\n")
 
-        logger.info('Successfully connected to Slims')
+        logger.info("Successfully connected to Slims")
 
         return slims_client
 
@@ -117,9 +123,7 @@ class SlimsPicker(DefaultPicker[_L, _R, _S, _T]):
             try:
                 rig_name = self.ui_helper.prompt_text(prompt="Input rig name: ")
                 rig = self.slims_client.fetch_model(models.SlimsInstrument, name=rig_name)
-                return self.launcher.rig_schema_model(
-                    rig_name=rig.name
-                )
+                return self.launcher.rig_schema_model(rig_name=rig.name)
 
             except exceptions.SlimsRecordNotFound as e:
                 logger.error("Rig not found in Slims. Try again. %s", e)
@@ -141,7 +145,8 @@ class SlimsPicker(DefaultPicker[_L, _R, _S, _T]):
             subject = self.launcher.subject
         else:
             slims_mice = self.slims_client.fetch_models(models.SlimsMouseContent)[
-                         -100:]  # grab 100 latest mice from slims
+                -100:
+            ]  # grab 100 latest mice from slims
             subject = None
             while subject is None:
                 subject = self.ui_helper.input("Enter subject name: ")
@@ -155,8 +160,9 @@ class SlimsPicker(DefaultPicker[_L, _R, _S, _T]):
 
         self._slims_mouse = self.slims_client.fetch_model(models.SlimsMouseContent, barcode=subject)
         try:
-            self._slims_session = self.slims_client.fetch_models(models.behavior_session.SlimsBehaviorSession,
-                                                                 mouse_pk=self._slims_mouse.pk)[-1]
+            self._slims_session = self.slims_client.fetch_models(
+                models.behavior_session.SlimsBehaviorSession, mouse_pk=self._slims_mouse.pk
+            )[-1]
         except IndexError:  # empty list returned from slims
             raise ValueError(f"No session found on slims for mouse {subject}.")
 
@@ -196,12 +202,16 @@ class SlimsPicker(DefaultPicker[_L, _R, _S, _T]):
             # check attachments from loaded session
             attachments = self.slims_client.fetch_attachments(self._slims_session)
             try:  # get most recently added task_logic
-                response = [self.slims_client.fetch_attachment_content(attach).json() for attach in attachments
-                            if attach.name == "task_logic"][
-                    0]  # TODO: hardcoded attachment name here. Not sure where/how we should store this value
+                response = [
+                    self.slims_client.fetch_attachment_content(attach).json()
+                    for attach in attachments
+                    if attach.name == "task_logic"
+                ][0]  # TODO: hardcoded attachment name here. Not sure where/how we should store this value
             except IndexError:  # empty attachment list with loaded session
-                raise ValueError("No task_logic model found on with loaded slims session for mouse"
-                                 f" {self.launcher.subject}. Please add before continuing.")
+                raise ValueError(
+                    "No task_logic model found on with loaded slims session for mouse"
+                    f" {self.launcher.subject}. Please add before continuing."
+                )
 
             return self.launcher.task_logic_schema_model(**response)
 
@@ -231,7 +241,7 @@ class SlimsPicker(DefaultPicker[_L, _R, _S, _T]):
             if strict & (len(username_lst) == 0):
                 logger.error("Username is not valid.")
                 username_lst = None
-            else:   # check if username(s) exist in slims
+            else:  # check if username(s) exist in slims
                 invalid = []
                 for username in username_lst:
                     try:
@@ -244,4 +254,3 @@ class SlimsPicker(DefaultPicker[_L, _R, _S, _T]):
                     username_lst = None
 
         return username_lst
-

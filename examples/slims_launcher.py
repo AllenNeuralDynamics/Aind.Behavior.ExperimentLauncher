@@ -1,5 +1,4 @@
 import logging
-import os
 import subprocess
 from pathlib import Path
 from typing import Literal, Optional, Self
@@ -114,6 +113,7 @@ def make_launcher():
         services=srv,
         settings=behavior_cli_args,
     )
+
 
 def main():
     launcher = make_launcher()
