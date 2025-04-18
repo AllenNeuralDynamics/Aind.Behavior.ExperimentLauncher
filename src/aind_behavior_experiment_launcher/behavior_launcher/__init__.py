@@ -9,6 +9,7 @@ from aind_behavior_experiment_launcher.behavior_launcher._services import (
     robocopy_data_transfer_factory,
     watchdog_data_transfer_factory,
 )
+from aind_behavior_experiment_launcher.behavior_launcher.slims_picker import SlimsPicker
 
 __all__ = [
     "robocopy_data_transfer_factory",
@@ -16,6 +17,7 @@ __all__ = [
     "BehaviorServicesFactoryManager",
     "BehaviorCliArgs",
     "DefaultBehaviorPicker",
+    "SlimsPicker",
     "BehaviorLauncher",
     "BySubjectModifier",
     "BySubjectModifierManager",
