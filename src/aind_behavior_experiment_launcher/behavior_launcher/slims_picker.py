@@ -120,13 +120,23 @@ class SlimsPicker(DefaultPicker[_L, _R, _S, _T]):
         """
 
         while True:
-            try:
-                rig_name = self.ui_helper.prompt_text(prompt="Input rig name: ")
-                rig = self.slims_client.fetch_model(models.SlimsInstrument, name=rig_name)
-                return self.launcher.rig_schema_model(rig_name=rig.name)
+            instruments = self.slims_client.fetch_models(models.SlimsInstrument)[-100:]
+            rig = None
+            while rig is None:
+                rig = self.ui_helper.input("Enter rig name: ")
+                if rig == "":
+                    rig = self.ui_helper.prompt_pick_from_list(
+                        [instrument.name for instrument in instruments],
+                        prompt="Choose a rig:",
+                        allow_0_as_none=True,
+                    )
+                try:
+                    slims_rig = self.slims_client.fetch_model(models.SlimsInstrument, name=rig)
+                    return self.launcher.rig_schema_model(rig_name=slims_rig.name)
 
-            except exceptions.SlimsRecordNotFound as e:
-                logger.error("Rig not found in Slims. Try again. %s", e)
+                except exceptions.SlimsRecordNotFound as e:
+                    logger.error(f"Rig {rig} not found in Slims. Try again.")
+                    rig = None
 
     def pick_session(self) -> _S:
         """
@@ -156,9 +166,13 @@ class SlimsPicker(DefaultPicker[_L, _R, _S, _T]):
                         prompt="Choose a subject:",
                         allow_0_as_none=True,
                     )
+                try:
+                    self._slims_mouse = self.slims_client.fetch_model(models.SlimsMouseContent, barcode=subject)
+                except exceptions.SlimsRecordNotFound:
+                    logger.info(f"No Slims mouse with barcode {subject}. Please re-enter.")
+                    subject = None
             self.launcher.subject = subject
 
-        self._slims_mouse = self.slims_client.fetch_model(models.SlimsMouseContent, barcode=subject)
         try:
             self._slims_session = self.slims_client.fetch_models(
                 models.behavior_session.SlimsBehaviorSession, mouse_pk=self._slims_mouse.pk
