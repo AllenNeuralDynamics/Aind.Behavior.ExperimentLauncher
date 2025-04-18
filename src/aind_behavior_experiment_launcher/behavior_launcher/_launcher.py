@@ -97,7 +97,9 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
         logger.info("Pre-run hook started.")
         self.session_schema.experiment = self.task_logic_schema.name
         self.session_schema.experiment_version = self.task_logic_schema.version
-        self.by_subject_modifiers_manager.apply_modifiers(self.rig_schema, self.session_schema, self.task_logic_schema)
+        self.by_subject_modifiers_manager.apply_modifiers(rig_schema=self.rig_schema,
+                                                          session_schema=self.session_schema,
+                                                          task_logic_schema=self.task_logic_schema)
         return self
 
     @override
