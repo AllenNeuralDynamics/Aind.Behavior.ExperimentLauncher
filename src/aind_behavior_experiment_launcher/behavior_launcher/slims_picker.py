@@ -4,7 +4,7 @@ from typing import List, Optional
 from pydantic import ValidationError
 
 from aind_slims_api import SlimsClient, exceptions
-from aind_slims_api.models import SlimsBehaviorSession, SlimsMouseContent, SlimsInstrument, SlimsUser
+from aind_slims_api.models import SlimsBehaviorSession, SlimsMouseContent, SlimsInstrument, SlimsWaterlogResult
 from typing_extensions import override
 
 import aind_behavior_experiment_launcher.ui as ui
@@ -141,6 +141,41 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         """
 
         return self._slims_rig
+
+    def add_waterlog(self,
+                     weight_g: float,
+                     animal_weight_post: float,
+                     water_earned_ml: float,
+                     water_supplement_delivered_ml: float,
+                     water_supplement_recommended_ml: float = None):
+        """
+        Add waterlog event to Slims
+
+        Args:
+            weight_g(float):
+
+
+        Returns:
+
+        """
+
+        if self.launcher.session_schema is not None:
+            # create model
+            model = SlimsWaterlogResult(
+                mouse_pk=self._slims_mouse.pk,
+                date=self.launcher.session_schema.date,
+                weight_g=animal_weight_post,
+                operator=", ".join(self.launcher.session_schema.experimenter),
+                water_earned_ml=water_earned_ml,
+                water_supplement_delivered_ml=water_supplement_delivered_ml,
+                water_supplement_recommended_ml=water_supplement_recommended_ml,
+                total_water_ml=water_earned_ml+water_supplement_delivered_ml,
+                comments=self.launcher.session_schema.notes,
+                workstation=self.launcher.rig_schema.name,
+                test_pk=self.slims_client.fetch_pk("Test", test_name="test_waterlog"))
+
+            self.slims_client.add_model(model)
+
 
     def pick_rig(self) -> TRig:
         """
