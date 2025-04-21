@@ -64,7 +64,7 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         Connect to Slims with optional username and password or use environment variables
 
         Args:
-            url(Optional[str]): slims url. Defaults to dev version of slims if not provided
+            url (Optional[str]): slims url. Defaults to dev version of slims if not provided
             username (Optional[str]): slims username. Defaults to SLIMS_USERNAME environment variable if not provided
             password (Optional[str]): slims password. Defaults to SLIMS_PASSWORD environment variable if not provided
 
@@ -144,18 +144,17 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
 
     def add_waterlog(self,
                      weight_g: float,
-                     animal_weight_post: float,
                      water_earned_ml: float,
                      water_supplement_delivered_ml: float,
-                     water_supplement_recommended_ml: float = None):
+                     water_supplement_recommended_ml: Optional[float] = None) -> None:
         """
         Add waterlog event to Slims
 
         Args:
-            weight_g(float):
-
-
-        Returns:
+            weight_g (float): animal weight in grams
+            water_earned_ml (float): water earned during session in mL
+            water_supplement_delivered_ml (float): supplemental water given in session mL
+            water_supplement_recommended_ml (Optional[float]): optional recommended water amount
 
         """
 
@@ -164,7 +163,7 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             model = SlimsWaterlogResult(
                 mouse_pk=self._slims_mouse.pk,
                 date=self.launcher.session_schema.date,
-                weight_g=animal_weight_post,
+                weight_g=weight_g,
                 operator=", ".join(self.launcher.session_schema.experimenter),
                 water_earned_ml=water_earned_ml,
                 water_supplement_delivered_ml=water_supplement_delivered_ml,
@@ -175,7 +174,6 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
                 test_pk=self.slims_client.fetch_pk("Test", test_name="test_waterlog"))
 
             self.slims_client.add_model(model)
-
 
     def pick_rig(self) -> TRig:
         """
