@@ -185,6 +185,14 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
 _BehaviorPickerAlias = ui.PickerBase[BehaviorLauncher[TRig, TSession, TTaskLogic], TRig, TSession, TTaskLogic]
 
 
+class ByAnimalFiles(enum.StrEnum):
+    """
+    Enum for file types associated with animals in the experiment.
+    """
+
+    TASK_LOGIC = "task_logic"
+
+
 class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
     """
     A picker class for selecting rig, session, and task logic configurations for behavior experiments.
@@ -196,13 +204,6 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
     RIG_SUFFIX: str = "Rig"
     SUBJECT_SUFFIX: str = "Subjects"
     TASK_LOGIC_SUFFIX: str = "TaskLogic"
-
-    class ByAnimalFiles(enum.StrEnum):
-        """
-        Enum for file types associated with animals in the experiment.
-        """
-
-        TASK_LOGIC = "task_logic"
 
     @override
     def __init__(
@@ -370,7 +371,7 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             f = (
                 self.subject_dir
                 / self.launcher.session_schema.subject
-                / (self.ByAnimalFiles.TASK_LOGIC.value + ".json")
+                / (ByAnimalFiles.TASK_LOGIC.value + ".json")
             )
             logger.info("Attempting to load task logic from subject folder: %s", f)
             task_logic = model_from_json_file(f, self.launcher.task_logic_schema_model)
