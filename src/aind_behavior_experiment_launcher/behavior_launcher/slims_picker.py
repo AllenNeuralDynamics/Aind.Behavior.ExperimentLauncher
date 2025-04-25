@@ -16,9 +16,11 @@ _BehaviorPickerAlias = ui.PickerBase[BehaviorLauncher[TRig, TSession, TTaskLogic
 
 logger = logging.getLogger(__name__)
 
-SLIMS_USERNAME = os.environ["SLIMS_USERNAME"]
-SLIMS_PASSWORD = os.environ["SLIMS_PASSWORD"]
-
+try:
+    SLIMS_USERNAME = os.environ["SLIMS_USERNAME"]
+    SLIMS_PASSWORD = os.environ["SLIMS_PASSWORD"]
+except KeyError:
+    pass
 
 class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
     """
