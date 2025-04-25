@@ -1,15 +1,15 @@
 import logging
 import os
 from typing import List, Optional
-from pydantic import ValidationError
 
 from aind_slims_api import SlimsClient, exceptions
-from aind_slims_api.models import SlimsBehaviorSession, SlimsMouseContent, SlimsInstrument, SlimsWaterlogResult
+from aind_slims_api.models import SlimsBehaviorSession, SlimsInstrument, SlimsMouseContent, SlimsWaterlogResult
+from pydantic import ValidationError
 from typing_extensions import override
 
 import aind_behavior_experiment_launcher.ui as ui
-from aind_behavior_experiment_launcher.launcher._base import TRig, TSession, TTaskLogic
 from aind_behavior_experiment_launcher.behavior_launcher._launcher import BehaviorLauncher, ByAnimalFiles
+from aind_behavior_experiment_launcher.launcher._base import TRig, TSession, TTaskLogic
 
 _BehaviorPickerAlias = ui.PickerBase[BehaviorLauncher[TRig, TSession, TTaskLogic], TRig, TSession, TTaskLogic]
 
@@ -200,7 +200,7 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
                 rig = self.ui_helper.input("Enter rig name: ")
                 try:
                     self._slims_rig = self.slims_client.fetch_model(SlimsInstrument, name=rig)
-                except exceptions.SlimsRecordNotFound as e:
+                except exceptions.SlimsRecordNotFound:
                     logger.error(f"Rig {rig} not found in Slims. Try again.")
                     rig = None
 

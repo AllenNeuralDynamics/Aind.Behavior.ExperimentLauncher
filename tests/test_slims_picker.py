@@ -1,20 +1,20 @@
 import unittest
 from unittest.mock import MagicMock, create_autospec, patch
 
+from aind_behavior_services import (
+    AindBehaviorRigModel,
+)
 from aind_slims_api.exceptions import SlimsRecordNotFound
-from aind_slims_api.models import SlimsAttachment, SlimsInstrument, SlimsBehaviorSession, SlimsMouseContent
+from aind_slims_api.models import SlimsAttachment, SlimsBehaviorSession, SlimsInstrument, SlimsMouseContent
 from pydantic import ValidationError
-from aind_behavior_experiment_launcher.behavior_launcher._launcher import ByAnimalFiles
+
 from aind_behavior_experiment_launcher.behavior_launcher import (
     BehaviorLauncher,
     BehaviorServicesFactoryManager,
     SlimsPicker,
 )
-from aind_behavior_services import (
-    AindBehaviorRigModel,
-)
+from aind_behavior_experiment_launcher.behavior_launcher._launcher import ByAnimalFiles
 from aind_behavior_experiment_launcher.launcher.cli import BaseCliArgs
-from . import suppress_stdout
 
 MOCK_MOUSE = SlimsMouseContent(point_of_contact="test", water_restricted=False, barcode="test", baseline_weight_g=0)
 MOCK_TASK_LOGIC_ATTACHMENT = SlimsAttachment(pk=0, name=ByAnimalFiles.TASK_LOGIC.value)
@@ -55,6 +55,8 @@ class TestSlimsPicker(unittest.TestCase):
             ),
             attached_logger=None,
             picker=SlimsPicker(
+                username="test",
+                password="test",
                 ui_helper=MagicMock(),
             ),
         )
