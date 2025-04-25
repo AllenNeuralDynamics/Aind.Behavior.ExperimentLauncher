@@ -97,9 +97,9 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
         logger.info("Pre-run hook started.")
         self.session_schema.experiment = self.task_logic_schema.name
         self.session_schema.experiment_version = self.task_logic_schema.version
-        self.by_subject_modifiers_manager.apply_modifiers(rig_schema=self.rig_schema,
-                                                          session_schema=self.session_schema,
-                                                          task_logic_schema=self.task_logic_schema)
+        self.by_subject_modifiers_manager.apply_modifiers(
+            rig_schema=self.rig_schema, session_schema=self.session_schema, task_logic_schema=self.task_logic_schema
+        )
         return self
 
     @override
@@ -368,11 +368,7 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
 
         # Else, we check inside the subject folder for an existing task file
         try:
-            f = (
-                self.subject_dir
-                / self.launcher.session_schema.subject
-                / (ByAnimalFiles.TASK_LOGIC.value + ".json")
-            )
+            f = self.subject_dir / self.launcher.session_schema.subject / (ByAnimalFiles.TASK_LOGIC.value + ".json")
             logger.info("Attempting to load task logic from subject folder: %s", f)
             task_logic = model_from_json_file(f, self.launcher.task_logic_schema_model)
         except (ValueError, FileNotFoundError, pydantic.ValidationError) as e:

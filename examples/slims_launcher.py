@@ -117,7 +117,6 @@ def make_launcher():
 
 def main():
     launcher = make_launcher()
-    print(launcher._task_logic_schema)
     launcher.main()
     return None
 

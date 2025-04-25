@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 SLIMS_USERNAME = os.environ["SLIMS_USERNAME"]
 SLIMS_PASSWORD = os.environ["SLIMS_PASSWORD"]
 
+
 class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
     """
     Picker class that handles the selection of rigs, sessions, and task logic from slims
@@ -57,9 +58,9 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         self._slims_rig = None
 
     @staticmethod
-    def connect_to_slims(url: Optional[str] = None,
-                         username: Optional[str] = None,
-                         password: Optional[str] = None) -> SlimsClient:
+    def connect_to_slims(
+        url: Optional[str] = None, username: Optional[str] = None, password: Optional[str] = None
+    ) -> SlimsClient:
         """
         Connect to Slims with optional username and password or use environment variables
 
@@ -142,11 +143,13 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
 
         return self._slims_rig
 
-    def add_waterlog(self,
-                     weight_g: float,
-                     water_earned_ml: float,
-                     water_supplement_delivered_ml: float,
-                     water_supplement_recommended_ml: Optional[float] = None) -> None:
+    def add_waterlog(
+        self,
+        weight_g: float,
+        water_earned_ml: float,
+        water_supplement_delivered_ml: float,
+        water_supplement_recommended_ml: Optional[float] = None,
+    ) -> None:
         """
         Add waterlog event to Slims
 
@@ -168,10 +171,11 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
                 water_earned_ml=water_earned_ml,
                 water_supplement_delivered_ml=water_supplement_delivered_ml,
                 water_supplement_recommended_ml=water_supplement_recommended_ml,
-                total_water_ml=water_earned_ml+water_supplement_delivered_ml,
+                total_water_ml=water_earned_ml + water_supplement_delivered_ml,
                 comments=self.launcher.session_schema.notes,
                 workstation=self.launcher.rig_schema.name,
-                test_pk=self.slims_client.fetch_pk("Test", test_name="test_waterlog"))
+                test_pk=self.slims_client.fetch_pk("Test", test_name="test_waterlog"),
+            )
 
             self.slims_client.add_model(model)
 
@@ -183,7 +187,8 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             TRig: The selected rig configuration.
 
         Raises:
-            SlimsRecordNotFound: If no rig is found in Slims or an invalid choice is made.
+            ValueError: If no attachment is found with slims rig model or if no valid attachment is found
+
         """
 
         while True:
@@ -200,6 +205,7 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             i = slice(-1, None)
             attachments = self.slims_client.fetch_attachments(self._slims_rig)
             while True:
+                # attempt to fetch rig_model attachment from slims
                 try:
                     attachment = attachments[i]
                     if not attachment:
@@ -214,15 +220,26 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
                         attachment = [attachment[att_names.index(att)]]
 
                     rig_model = self.slims_client.fetch_attachment_content(attachment[0]).json()
-                    return self.launcher.rig_schema_model(**rig_model)
-
                 except IndexError:
                     raise ValueError(f"No rig configuration found attached to rig model {rig}")
 
+                # validate and return model and retry if validation fails
+                try:
+                    return self.launcher.rig_schema_model(**rig_model)
+
                 except ValidationError as e:
-                    logger.error(f"Validation error for last rig configuration found attached to rig model {rig}: {e}. "
-                                 "Please pick a different configuration.")
-                    i = slice(-11, -1)
+                    # remove last tried attachment
+                    index = attachments.index(attachment[0])
+                    del attachments[index]
+
+                    if not attachments:  # attachment list empty
+                        raise ValueError(f"No valid rig configuration found attached to rig model {rig}")
+                    else:
+                        logger.error(
+                            f"Validation error for last rig configuration found attached to rig model {rig}: "
+                            f"{e}. Please pick a different configuration."
+                        )
+                        i = slice(-11, None)
 
     def pick_session(self) -> TSession:
         """
@@ -264,7 +281,7 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             if not self.launcher.group_by_subject_log
             else str(self.launcher.data_dir.resolve() / subject),
             subject=subject,
-            notes=self._slims_session.notes + "\n" + notes,
+            notes=notes + "\n" + (self._slims_session.notes if self._slims_session.notes else ""),
             experimenter=experimenter if experimenter is not None else [],
             commit_hash=self.launcher.repository.head.commit.hexsha,
             allow_dirty_repo=self.launcher.is_debug_mode or self.launcher.allow_dirty,
