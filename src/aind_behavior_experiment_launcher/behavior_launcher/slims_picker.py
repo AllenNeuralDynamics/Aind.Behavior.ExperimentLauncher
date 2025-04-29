@@ -6,13 +6,13 @@ from aind_slims_api import SlimsClient, exceptions
 from aind_slims_api.models import SlimsBehaviorSession, SlimsInstrument, SlimsMouseContent, SlimsWaterlogResult
 from pydantic import ValidationError
 from typing_extensions import override
+from datetime import datetime
 
 import aind_behavior_experiment_launcher.ui as ui
 from aind_behavior_experiment_launcher.behavior_launcher._launcher import BehaviorLauncher, ByAnimalFiles
 from aind_behavior_experiment_launcher.launcher._base import TRig, TSession, TTaskLogic
 
 _BehaviorPickerAlias = ui.PickerBase[BehaviorLauncher[TRig, TSession, TTaskLogic], TRig, TSession, TTaskLogic]
-
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,7 @@ try:
     SLIMS_PASSWORD = os.environ["SLIMS_PASSWORD"]
 except KeyError:
     pass
+
 
 class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
     """
@@ -328,6 +329,49 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
 
         else:
             logger.info("No Slims session loaded.")
+
+    def push_session(
+        self,
+        task_logic: TTaskLogic,
+        notes: Optional[str] = None,
+        is_curriculum_suggestion: Optional[bool] = None,
+        software_version: Optional[str] = None,
+        schedule_date: Optional[datetime] = None,
+    ) -> None:
+        """
+        Pushes behavior session to slims with logic for the next session
+
+        Args:
+            task_logic (TTaskLogic): task_logic to use for next session
+            notes (Optional[str]): note for Slims session
+            is_curriculum_suggestion (Optional[bool]): Whether mouse is on curriculum
+            software_version (Optional[str]): software used to run session
+            schedule_date (Optional[datetime]): date session will be run
+        """
+
+        logger.info("Writing next session to slims.")
+
+        session_schema = self.launcher.session_schema
+
+        # create session
+        added_session = self.slims_client.add_model(
+            SlimsBehaviorSession(
+                mouse_pk=self._slims_mouse.pk,
+                task=session_schema.experiment,
+                task_schema_version=task_logic.version,
+                instrument_pk=self._slims_rig.pk,
+                # trainer_pks   #   TODO: We could add this if we decided to look up experimenters on slims
+                is_curriculum_suggestion=is_curriculum_suggestion,
+                notes=notes,
+                software_version=software_version,
+                date=schedule_date,
+            )
+        )
+
+        # add trainer_state as an attachment
+        self.slims_client.add_attachment_content(
+            record=added_session, name=ByAnimalFiles.TASK_LOGIC.value, content=task_logic.model_dump()
+        )
 
     @override
     def initialize(self) -> None:
