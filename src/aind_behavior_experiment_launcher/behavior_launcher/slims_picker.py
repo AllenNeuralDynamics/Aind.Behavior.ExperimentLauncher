@@ -1,12 +1,12 @@
 import logging
 import os
+from datetime import datetime
 from typing import List, Optional
 
 from aind_slims_api import SlimsClient, exceptions
 from aind_slims_api.models import SlimsBehaviorSession, SlimsInstrument, SlimsMouseContent, SlimsWaterlogResult
 from pydantic import ValidationError
 from typing_extensions import override
-from datetime import datetime
 
 import aind_behavior_experiment_launcher.ui as ui
 from aind_behavior_experiment_launcher.behavior_launcher._launcher import BehaviorLauncher, ByAnimalFiles

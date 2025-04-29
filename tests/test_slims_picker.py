@@ -1,6 +1,6 @@
 import unittest
-from unittest.mock import MagicMock, create_autospec, patch
 from datetime import datetime
+from unittest.mock import MagicMock, create_autospec, patch
 
 from aind_behavior_services import AindBehaviorRigModel, AindBehaviorSessionModel, AindBehaviorTaskLogicModel
 from aind_slims_api.exceptions import SlimsRecordNotFound
