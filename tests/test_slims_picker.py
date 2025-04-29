@@ -2,11 +2,7 @@ import unittest
 from unittest.mock import MagicMock, create_autospec, patch
 from datetime import datetime
 
-from aind_behavior_services import (
-    AindBehaviorRigModel,
-    AindBehaviorSessionModel,
-    AindBehaviorTaskLogicModel
-)
+from aind_behavior_services import AindBehaviorRigModel, AindBehaviorSessionModel, AindBehaviorTaskLogicModel
 from aind_slims_api.exceptions import SlimsRecordNotFound
 from aind_slims_api.models import SlimsAttachment, SlimsBehaviorSession, SlimsInstrument, SlimsMouseContent
 from pydantic import ValidationError
