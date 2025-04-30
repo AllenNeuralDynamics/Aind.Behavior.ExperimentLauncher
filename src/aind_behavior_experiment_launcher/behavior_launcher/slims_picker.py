@@ -28,6 +28,7 @@ except KeyError:
     logger.warning("SLIMS_URL not found in environment variables. Defaulting to the Sandbox instance of Slims.")
     SLIMS_URL = "https://aind-test.us.slims.agilent.com/slimsrest/"
 
+
 class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
     """
     Picker class that handles the selection of rigs, sessions, and task logic from slims
@@ -79,6 +80,7 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             Exception: error in creation of client
         """
 
+        print(SLIMS_USERNAME, SLIMS_PASSWORD)
         try:
             logger.info("Attempting to connect to Slims")
             slims_client = SlimsClient(
@@ -225,7 +227,7 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
                 # attempt to fetch rig_model attachment from slims
                 try:
                     attachment = attachments[i]
-                    if not attachment:  # catch empy list
+                    if not attachment:  # catch empty list
                         raise IndexError
                     elif len(attachment) > 1:
                         att_names = [attachment.name for attachment in attachment]
@@ -381,10 +383,12 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         )
 
     @override
-    def initialize(self,
-                   slims_url: str = SLIMS_URL,
-                   username: str = SLIMS_USERNAME,
-                   password: str = SLIMS_PASSWORD,) -> None:
+    def initialize(
+        self,
+        slims_url: str = SLIMS_URL,
+        username: str = SLIMS_USERNAME,
+        password: str = SLIMS_PASSWORD,
+    ) -> None:
         """
         Initializes the picker
         """
