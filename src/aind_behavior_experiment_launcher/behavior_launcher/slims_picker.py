@@ -65,15 +65,17 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
 
     @staticmethod
     def _connect_to_slims(
-        url: str = SLIMS_URL, username: str = SLIMS_USERNAME, password: str = SLIMS_PASSWORD
+        url: str = SLIMS_URL,
+        username: Optional[str] = SLIMS_USERNAME,
+        password: Optional[str] = SLIMS_PASSWORD,
     ) -> SlimsClient:
         """
         Connect to Slims with optional username and password or use environment variables
 
         Args:
-            url (str): slims url. Defaults to dev version of slims if not provided
-            username (str): slims username. Defaults to SLIMS_USERNAME environment variable if not provided
-            password (str): slims password. Defaults to SLIMS_PASSWORD environment variable if not provided
+            url (str): slims url. Defaults to sandbox version of slims if not provided
+            username (Optional[str]): slims username. Defaults to SLIMS_USERNAME environment variable if not provided
+            password (Optional[str]): slims password. Defaults to SLIMS_PASSWORD environment variable if not provided
 
         Returns:
             SlimsClient: slims client instance.
@@ -387,11 +389,16 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
     def initialize(
         self,
         slims_url: str = SLIMS_URL,
-        username: str = SLIMS_USERNAME,
-        password: str = SLIMS_PASSWORD,
+        username: Optional[str] = SLIMS_USERNAME,
+        password: Optional[str] = SLIMS_PASSWORD,
     ) -> None:
         """
         Initializes the picker
+
+        Args:
+            slims_url (str): slims url. Defaults to dev version of slims if not provided
+            username (Optional[str]): slims username. Defaults to SLIMS_USERNAME environment variable if not provided
+            password (Optional[str]): slims password. Defaults to SLIMS_PASSWORD environment variable if not provided
         """
 
         self.slims_client = self._connect_to_slims(slims_url, username, password)

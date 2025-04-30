@@ -35,8 +35,6 @@ class TestSlimsPicker(unittest.TestCase):
         __init__=MagicMock(return_value=None),
         fetch_model=MagicMock(return_value=None),
     )
-    @patch("aind_behavior_experiment_launcher.behavior_launcher.slims_picker.SLIMS_USERNAME", "test")
-    @patch("aind_behavior_experiment_launcher.behavior_launcher.slims_picker.SLIMS_PASSWORD", "test")
     def setUp(self):
         self.services_factory_manager = create_autospec(BehaviorServicesFactoryManager)
 
