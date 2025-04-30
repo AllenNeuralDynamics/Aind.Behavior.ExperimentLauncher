@@ -80,7 +80,6 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             Exception: error in creation of client
         """
 
-        print(SLIMS_USERNAME, SLIMS_PASSWORD)
         try:
             logger.info("Attempting to connect to Slims")
             slims_client = SlimsClient(

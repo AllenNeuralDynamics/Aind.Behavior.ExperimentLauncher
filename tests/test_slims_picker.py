@@ -1,7 +1,6 @@
 import unittest
 from datetime import datetime
 from unittest.mock import MagicMock, create_autospec, patch
-import os
 
 from aind_behavior_services import AindBehaviorRigModel, AindBehaviorSessionModel, AindBehaviorTaskLogicModel
 from aind_slims_api.exceptions import SlimsRecordNotFound
@@ -36,9 +35,11 @@ class TestSlimsPicker(unittest.TestCase):
         __init__=MagicMock(return_value=None),
         fetch_model=MagicMock(return_value=None),
     )
-    @patch.dict(os.environ, {"SLIMS_USERNAME": "test", "SLIMS_PASSWORD": "test", "COMPUTERNAME": "test"}, clear=True)
+    @patch("aind_behavior_experiment_launcher.behavior_launcher.slims_picker.SLIMS_USERNAME", "test")
+    @patch("aind_behavior_experiment_launcher.behavior_launcher.slims_picker.SLIMS_PASSWORD", "test")
     def setUp(self):
         self.services_factory_manager = create_autospec(BehaviorServicesFactoryManager)
+
         self.launcher = BehaviorLauncher(
             rig_schema_model=MagicMock(),
             task_logic_schema_model=MagicMock(),
