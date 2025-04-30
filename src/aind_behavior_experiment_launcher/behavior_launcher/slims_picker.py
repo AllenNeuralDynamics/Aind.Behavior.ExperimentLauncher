@@ -20,6 +20,8 @@ try:
     SLIMS_USERNAME = os.environ["SLIMS_USERNAME"]
     SLIMS_PASSWORD = os.environ["SLIMS_PASSWORD"]
 except KeyError:
+    SLIMS_USERNAME = None
+    SLIMS_PASSWORD = None
     logger.warning("SLIMS_USERNAME and/or SLIMS_PASSWORD not found in environment variables.")
 
 try:
