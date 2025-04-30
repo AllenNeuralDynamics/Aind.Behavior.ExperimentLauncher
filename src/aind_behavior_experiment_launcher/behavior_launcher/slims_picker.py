@@ -20,8 +20,13 @@ try:
     SLIMS_USERNAME = os.environ["SLIMS_USERNAME"]
     SLIMS_PASSWORD = os.environ["SLIMS_PASSWORD"]
 except KeyError:
-    pass
+    logger.warning("SLIMS_USERNAME and/or SLIMS_PASSWORD not found in environment variables.")
 
+try:
+    SLIMS_URL = os.environ["SLIMS_URL"]
+except KeyError:
+    logger.warning("SLIMS_URL not found in environment variables. Defaulting to the Sandbox instance of Slims.")
+    SLIMS_URL = "https://aind-test.us.slims.agilent.com/slimsrest/"
 
 class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
     """
@@ -33,9 +38,6 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         launcher: Optional[BehaviorLauncher] = None,
         *,
         ui_helper: Optional[ui.DefaultUIHelper] = None,
-        slims_url: Optional[str] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -44,33 +46,31 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         Args:
             launcher (Optional[BehaviorLauncher]): The launcher instance.
             ui_helper (Optional[_UiHelperBase]): The UI helper instance
-            slims_url(Optional[str]): slims url. Defaults to dev version of slims if not provided
-            username (Optional[str]): slims username. Defaults to SLIMS_USERNAME environment variable if not provided
-            password (Optional[str]): slims password. Default sto SLIMS_PASSWORD environment variable if not provided
+            slims_url(str): slims url. Defaults to dev version of slims if not provided
+            username (str): slims username. Defaults to SLIMS_USERNAME environment variable if not provided
+            password (str): slims password. Default sto SLIMS_PASSWORD environment variable if not provided
             **kwargs: Additional keyword arguments.
         """
 
         super().__init__(launcher, ui_helper=ui_helper, **kwargs)
 
-        self.slims_client = self.connect_to_slims(slims_url, username, password)
-        self.test_client_connection()
-
         # initialize properties
-        self._slims_mouse = None
-        self._slims_session = None
-        self._slims_rig = None
+        self.slims_client: SlimsClient = None
+        self._slims_mouse: SlimsMouseContent = None
+        self._slims_session: SlimsBehaviorSession = None
+        self._slims_rig: SlimsInstrument = None
 
     @staticmethod
-    def connect_to_slims(
-        url: Optional[str] = None, username: Optional[str] = None, password: Optional[str] = None
+    def _connect_to_slims(
+        url: str = SLIMS_URL, username: str = SLIMS_USERNAME, password: str = SLIMS_PASSWORD
     ) -> SlimsClient:
         """
         Connect to Slims with optional username and password or use environment variables
 
         Args:
-            url (Optional[str]): slims url. Defaults to dev version of slims if not provided
-            username (Optional[str]): slims username. Defaults to SLIMS_USERNAME environment variable if not provided
-            password (Optional[str]): slims password. Defaults to SLIMS_PASSWORD environment variable if not provided
+            url (str): slims url. Defaults to dev version of slims if not provided
+            username (str): slims username. Defaults to SLIMS_USERNAME environment variable if not provided
+            password (str): slims password. Defaults to SLIMS_PASSWORD environment variable if not provided
 
         Returns:
             SlimsClient: slims client instance.
@@ -83,19 +83,20 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             logger.info("Attempting to connect to Slims")
             slims_client = SlimsClient(
                 url=url,
-                username=username if username else SLIMS_USERNAME,
-                password=password if password else SLIMS_PASSWORD,
+                username=username,
+                password=password,
             )
-            slims_client.fetch_model(SlimsMouseContent, barcode="00000000")
 
         except Exception as e:
             raise Exception(f"Exception trying to create Slims client: {e}.\n")
 
         return slims_client
 
-    def test_client_connection(self) -> bool:
+    def _test_client_connection(self) -> bool:
         """
-        Test client connection by querying mouse id. Ignore exception if mouse id does not exist
+        Test client connection by querying mouse id. Slims will fail silently if a client is initialized with bad
+        credentials. This method checks if credentials are correct or if there are any other issues pulling Slims
+        content. Ignore exception if mouse id does not exist
 
         Returns:
             Boolean if connection works
@@ -106,6 +107,10 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
 
         try:
             self.slims_client.fetch_model(SlimsMouseContent, barcode="00000000")
+            logger.info("Successfully connected to Slims")
+            return True
+
+        except exceptions.SlimsRecordNotFound:  # bypass exception if mouse doesn't exist
             logger.info("Successfully connected to Slims")
             return True
 
@@ -122,6 +127,9 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             SlimsMouseContent: slims mouse model object
         """
 
+        if self._slims_mouse is None:
+            raise ValueError("Slims mouse instance not set.")
+
         return self._slims_mouse
 
     @property
@@ -132,6 +140,9 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         Returns:
            SlimsBehaviorSession: slims session model object
         """
+
+        if self._slims_session is None:
+            raise ValueError("Slims session instance not set.")
 
         return self._slims_session
 
@@ -144,9 +155,12 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
            SlimsInstrument: slims instrument model object
         """
 
+        if self._slims_rig is None:
+            raise ValueError("Slims rig instance not set.")
+
         return self._slims_rig
 
-    def add_waterlog(
+    def write_waterlog(
         self,
         weight_g: float,
         water_earned_ml: float,
@@ -167,7 +181,7 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         if self.launcher.session_schema is not None:
             # create model
             model = SlimsWaterlogResult(
-                mouse_pk=self._slims_mouse.pk,
+                mouse_pk=self.slims_mouse.pk,
                 date=self.launcher.session_schema.date,
                 weight_g=weight_g,
                 operator=", ".join(self.launcher.session_schema.experimenter),
@@ -176,7 +190,7 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
                 water_supplement_recommended_ml=water_supplement_recommended_ml,
                 total_water_ml=water_earned_ml + water_supplement_delivered_ml,
                 comments=self.launcher.session_schema.notes,
-                workstation=self.launcher.rig_schema.name,
+                workstation=self.launcher.rig_schema.rig_name,
                 test_pk=self.slims_client.fetch_pk("Test", test_name="test_waterlog"),
             )
 
@@ -206,12 +220,12 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
                     rig = None
 
             i = slice(-1, None)
-            attachments = self.slims_client.fetch_attachments(self._slims_rig)
+            attachments = self.slims_client.fetch_attachments(self.slims_rig)
             while True:
                 # attempt to fetch rig_model attachment from slims
                 try:
                     attachment = attachments[i]
-                    if not attachment:
+                    if not attachment:  # catch empy list
                         raise IndexError
                     elif len(attachment) > 1:
                         att_names = [attachment.name for attachment in attachment]
@@ -270,7 +284,7 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
                     subject = None
             self.launcher.subject = subject
 
-        sessions = self.slims_client.fetch_models(SlimsBehaviorSession, mouse_pk=self._slims_mouse.pk)
+        sessions = self.slims_client.fetch_models(SlimsBehaviorSession, mouse_pk=self.slims_mouse.pk)
         try:
             self._slims_session = sessions[-1]
         except IndexError:  # empty list returned from slims
@@ -284,7 +298,7 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             if not self.launcher.group_by_subject_log
             else str(self.launcher.data_dir.resolve() / subject),
             subject=subject,
-            notes=notes + "\n" + (self._slims_session.notes if self._slims_session.notes else ""),
+            notes=notes + "\n" + (self.slims_session.notes if self.slims_session.notes else ""),
             experimenter=experimenter if experimenter is not None else [],
             commit_hash=self.launcher.repository.head.commit.hexsha,
             allow_dirty_repo=self.launcher.is_debug_mode or self.launcher.allow_dirty,
@@ -303,16 +317,12 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             ValueError: If no valid task logic attachment is found.
         """
 
-        try:  # If the task logic is already set (e.g. from CLI), skip the prompt
-            task_logic = self.launcher.task_logic_schema
-            assert task_logic is not None
-            return task_logic
-        except ValueError:
-            task_logic = None
+        try:
+            return self.launcher.task_logic_schema
 
-        if self._slims_session is not None:
+        except ValueError:
             # check attachments from loaded session
-            attachments = self.slims_client.fetch_attachments(self._slims_session)
+            attachments = self.slims_client.fetch_attachments(self.slims_session)
             try:  # get most recently added task_logic
                 response = [
                     self.slims_client.fetch_attachment_content(attach).json()
@@ -327,10 +337,7 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
 
             return self.launcher.task_logic_schema_model(**response)
 
-        else:
-            logger.info("No Slims session loaded.")
-
-    def push_session(
+    def write_behavior_session(
         self,
         task_logic: TTaskLogic,
         notes: Optional[str] = None,
@@ -356,10 +363,10 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         # create session
         added_session = self.slims_client.add_model(
             SlimsBehaviorSession(
-                mouse_pk=self._slims_mouse.pk,
+                mouse_pk=self.slims_mouse.pk,
                 task=session_schema.experiment,
                 task_schema_version=task_logic.version,
-                instrument_pk=self._slims_rig.pk,
+                instrument_pk=self.slims_rig.pk,
                 # trainer_pks   #   TODO: We could add this if we decided to look up experimenters on slims
                 is_curriculum_suggestion=is_curriculum_suggestion,
                 notes=notes,
@@ -374,10 +381,16 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         )
 
     @override
-    def initialize(self) -> None:
+    def initialize(self,
+                   slims_url: str = SLIMS_URL,
+                   username: str = SLIMS_USERNAME,
+                   password: str = SLIMS_PASSWORD,) -> None:
         """
         Initializes the picker
         """
+
+        self.slims_client = self._connect_to_slims(slims_url, username, password)
+        self._test_client_connection()
 
     def prompt_experimenter(self, strict: bool = True) -> Optional[List[str]]:
         """

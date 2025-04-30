@@ -19,10 +19,11 @@ from aind_behavior_experiment_launcher.behavior_launcher import (
     SlimsPicker,
 )
 
+# TODO: refactor this someday to use a common module
+
 logger = logging.getLogger(__name__)
 
 TASK_NAME = "RandomTask"
-LIB_CONFIG = rf"local\AindBehavior.db\{TASK_NAME}"
 
 
 class RigModel(AindBehaviorRigModel):

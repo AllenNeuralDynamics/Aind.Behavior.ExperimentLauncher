@@ -176,8 +176,9 @@ class TestSlimsPicker(unittest.TestCase):
     def test_pick_task_logic_no_session(self):
         # test no session picked
         self.picker._slims_session = None
-        task_logic = self.picker.pick_task_logic()
-        self.assertIsNone(task_logic)
+        with self.assertRaises(ValueError) as context:
+            self.picker.pick_task_logic()
+            self.assertTrue("Slims session instance not set." in str(context.exception))
 
     @patch.multiple(
         "aind_behavior_experiment_launcher.behavior_launcher.slims_picker.SlimsClient",
@@ -194,10 +195,10 @@ class TestSlimsPicker(unittest.TestCase):
         task_logic = AindBehaviorTaskLogicModel(name="test", task_parameters={}, version="0.0.0")
 
         # test successful push with only required args
-        self.picker.push_session(task_logic=task_logic)
+        self.picker.write_behavior_session(task_logic=task_logic)
 
         # test all args
-        self.picker.push_session(
+        self.picker.write_behavior_session(
             task_logic=task_logic,
             notes="BlahBlahBlah",
             is_curriculum_suggestion=True,
