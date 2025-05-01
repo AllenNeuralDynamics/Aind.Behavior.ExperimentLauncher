@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 VISUALIZERS_DIR = "VisualizerLayouts"
 
 if TYPE_CHECKING:
-    from aind_behavior_experiment_launcher.launcher.behavior_launcher import BehaviorLauncher
+    from aind_behavior_experiment_launcher.behavior_launcher import BehaviorLauncher
 else:
     BehaviorLauncher = Any
 
