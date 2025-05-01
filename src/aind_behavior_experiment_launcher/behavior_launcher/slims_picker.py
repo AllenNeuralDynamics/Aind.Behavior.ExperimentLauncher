@@ -16,7 +16,6 @@ _BehaviorPickerAlias = ui.PickerBase[BehaviorLauncher[TRig, TSession, TTaskLogic
 
 logger = logging.getLogger(__name__)
 
-
 SLIMS_USERNAME = os.environ.get("SLIMS_USERNAME", None)
 SLIMS_PASSWORD = os.environ.get("SLIMS_PASSWORD", None)
 SLIMS_URL: str = os.environ.get("SLIMS_URL", None)
@@ -233,7 +232,8 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
                 try:
                     attachment = attachments[i]
                     if not attachment:  # catch empty list
-                        raise IndexError
+                        ValueError("No attachments exist ([]).")
+
                     elif len(attachment) > 1:
                         att_names = [attachment.name for attachment in attachment]
                         att = self.ui_helper.prompt_pick_from_list(
@@ -244,7 +244,7 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
                         attachment = [attachment[att_names.index(att)]]
 
                     rig_model = self.slims_client.fetch_attachment_content(attachment[0]).json()
-                except IndexError as exc:
+                except (IndexError, ValueError) as exc:
                     raise ValueError(f"No rig configuration found attached to rig model {rig}") from exc
 
                 # validate and return model and retry if validation fails
@@ -346,7 +346,7 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
 
     def write_behavior_session(
         self,
-        task_logic: TTaskLogic,
+        task_logic: TTaskLogic,  # TODO: use curriculum state instead of task logic down the road
         notes: Optional[str] = None,
         is_curriculum_suggestion: Optional[bool] = None,
         software_version: Optional[str] = None,
