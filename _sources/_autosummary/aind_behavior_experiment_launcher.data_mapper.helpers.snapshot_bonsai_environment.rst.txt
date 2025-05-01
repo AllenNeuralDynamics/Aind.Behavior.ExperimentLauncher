@@ -1,0 +1,6 @@
+aind\_behavior\_experiment\_launcher.data\_mapper.helpers.snapshot\_bonsai\_environment
+=======================================================================================
+
+.. currentmodule:: aind_behavior_experiment_launcher.data_mapper.helpers
+
+.. autofunction:: snapshot_bonsai_environment

@@ -1,0 +1,38 @@
+aind\_behavior\_experiment\_launcher.services.ServicesFactoryManager
+====================================================================
+
+.. currentmodule:: aind_behavior_experiment_launcher.services
+
+.. autoclass:: ServicesFactoryManager
+   :members:
+   :show-inheritance:
+   :inherited-members:
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ServicesFactoryManager.__init__
+      ~ServicesFactoryManager.attach_service_factory
+      ~ServicesFactoryManager.detach_service_factory
+      ~ServicesFactoryManager.get_services_of_type
+      ~ServicesFactoryManager.map
+      ~ServicesFactoryManager.register_launcher
+      ~ServicesFactoryManager.try_get_service
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ServicesFactoryManager.launcher
+      ~ServicesFactoryManager.services
+   
+   

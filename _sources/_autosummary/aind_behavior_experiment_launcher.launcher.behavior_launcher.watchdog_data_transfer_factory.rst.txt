@@ -1,0 +1,6 @@
+aind\_behavior\_experiment\_launcher.launcher.behavior\_launcher.watchdog\_data\_transfer\_factory
+==================================================================================================
+
+.. currentmodule:: aind_behavior_experiment_launcher.launcher.behavior_launcher
+
+.. autofunction:: watchdog_data_transfer_factory

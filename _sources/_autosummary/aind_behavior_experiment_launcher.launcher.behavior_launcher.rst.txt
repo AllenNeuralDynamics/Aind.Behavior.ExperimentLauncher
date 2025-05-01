@@ -1,0 +1,42 @@
+aind\_behavior\_experiment\_launcher.launcher.behavior\_launcher
+================================================================
+
+.. automodule:: aind_behavior_experiment_launcher.launcher.behavior_launcher
+  
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+   
+      robocopy_data_transfer_factory
+      watchdog_data_transfer_factory
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst               
+   
+      BehaviorLauncher
+      BehaviorServicesFactoryManager
+      ByAnimalFiles
+      DefaultBehaviorPicker
+   
+   
+
+   
+   
+   
+
+
+

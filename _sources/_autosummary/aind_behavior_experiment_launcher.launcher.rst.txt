@@ -1,0 +1,34 @@
+aind\_behavior\_experiment\_launcher.launcher
+=============================================
+
+.. automodule:: aind_behavior_experiment_launcher.launcher
+  
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst                 
+   :recursive:
+
+   aind_behavior_experiment_launcher.launcher.behavior_launcher
+   aind_behavior_experiment_launcher.launcher.cli
+   aind_behavior_experiment_launcher.launcher.git_manager
+

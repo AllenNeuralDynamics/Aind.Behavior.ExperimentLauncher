@@ -1,0 +1,6 @@
+aind\_behavior\_experiment\_launcher.logging\_helper.shutdown\_logger
+=====================================================================
+
+.. currentmodule:: aind_behavior_experiment_launcher.logging_helper
+
+.. autofunction:: shutdown_logger
