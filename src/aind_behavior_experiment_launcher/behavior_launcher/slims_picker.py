@@ -16,17 +16,19 @@ _BehaviorPickerAlias = ui.PickerBase[BehaviorLauncher[TRig, TSession, TTaskLogic
 
 logger = logging.getLogger(__name__)
 
-try:
-    SLIMS_USERNAME = os.environ["SLIMS_USERNAME"]
-    SLIMS_PASSWORD = os.environ["SLIMS_PASSWORD"]
-except KeyError:
-    SLIMS_USERNAME = None
-    SLIMS_PASSWORD = None
+
+SLIMS_USERNAME = os.environ.get("SLIMS_USERNAME", None)
+SLIMS_PASSWORD = os.environ.get("SLIMS_PASSWORD", None)
+SLIMS_URL: str = os.environ.get("SLIMS_URL", None)
+
+logger.debug("SLIMS_USERNAME: %s", SLIMS_USERNAME)
+logger.debug("SLIMS_PASSWORD: %s", SLIMS_PASSWORD)
+logger.debug("SLIMS_URL: %s", SLIMS_URL)
+
+if (SLIMS_USERNAME is None) or (SLIMS_PASSWORD is None):
     logger.warning("SLIMS_USERNAME and/or SLIMS_PASSWORD not found in environment variables.")
 
-try:
-    SLIMS_URL = os.environ["SLIMS_URL"]
-except KeyError:
+if SLIMS_URL is None:
     logger.warning("SLIMS_URL not found in environment variables. Defaulting to the Sandbox instance of Slims.")
     SLIMS_URL = "https://aind-test.us.slims.agilent.com/slimsrest/"
 
@@ -93,7 +95,7 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             )
 
         except Exception as e:
-            raise Exception(f"Exception trying to create Slims client: {e}.\n")
+            raise RuntimeError(f"Exception trying to create Slims client: {e}.\n") from e
 
         return slims_client
 
@@ -242,8 +244,8 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
                         attachment = [attachment[att_names.index(att)]]
 
                     rig_model = self.slims_client.fetch_attachment_content(attachment[0]).json()
-                except IndexError:
-                    raise ValueError(f"No rig configuration found attached to rig model {rig}")
+                except IndexError as exc:
+                    raise ValueError(f"No rig configuration found attached to rig model {rig}") from exc
 
                 # validate and return model and retry if validation fails
                 try:
@@ -255,7 +257,7 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
                     del attachments[index]
 
                     if not attachments:  # attachment list empty
-                        raise ValueError(f"No valid rig configuration found attached to rig model {rig}")
+                        raise ValueError(f"No valid rig configuration found attached to rig model {rig}") from e
                     else:
                         logger.error(
                             f"Validation error for last rig configuration found attached to rig model {rig}: "
@@ -334,11 +336,11 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
                     for attach in attachments
                     if attach.name == ByAnimalFiles.TASK_LOGIC.value
                 ][0]
-            except IndexError:  # empty attachment list with loaded session
+            except IndexError as exc:  # empty attachment list with loaded session
                 raise ValueError(
                     "No task_logic model found on with loaded slims session for mouse"
                     f" {self.launcher.subject}. Please add before continuing."
-                )
+                ) from exc
 
             return self.launcher.task_logic_schema_model(**response)
 
