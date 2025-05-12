@@ -1,14 +1,14 @@
 import logging
 import os
 from datetime import datetime
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 from aind_slims_api import SlimsClient, exceptions
 from aind_slims_api.models import SlimsBehaviorSession, SlimsInstrument, SlimsMouseContent, SlimsWaterlogResult
 from pydantic import ValidationError
 from typing_extensions import override
 
-from .. import ui
+from .. import __version__, ui
 from ..behavior_launcher._launcher import BehaviorLauncher, ByAnimalFiles
 from ..launcher._base import TRig, TSession, TTaskLogic
 
@@ -39,9 +39,13 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
 
     def __init__(
         self,
-        launcher: Optional[BehaviorLauncher] = None,
+        launcher: Optional[BehaviorLauncher[TRig, TSession, TTaskLogic]] = None,
         *,
         ui_helper: Optional[ui.DefaultUIHelper] = None,
+        slims_url: str = SLIMS_URL,
+        username: Optional[str] = SLIMS_USERNAME,
+        password: Optional[str] = SLIMS_PASSWORD,
+        water_calculator: Optional[Callable[["SlimsPicker"], float]] = None,
         **kwargs,
     ):
         """
@@ -52,17 +56,23 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             ui_helper (Optional[_UiHelperBase]): The UI helper instance
             slims_url(str): slims url. Defaults to dev version of slims if not provided
             username (str): slims username. Defaults to SLIMS_USERNAME environment variable if not provided
-            password (str): slims password. Default sto SLIMS_PASSWORD environment variable if not provided
+            password (str): slims password. Defaults to SLIMS_PASSWORD environment variable if not provided
+            water_calculator (Callable): Function to calculate water amount. If None, the user will be prompted for the amount.
             **kwargs: Additional keyword arguments.
         """
 
         super().__init__(launcher, ui_helper=ui_helper, **kwargs)
-
         # initialize properties
-        self.slims_client: SlimsClient = None
+
+        self._slims_username = username
+        self._slims_password = password
+        self._slims_url = slims_url
+        self._slims_client: SlimsClient = None
         self._slims_mouse: SlimsMouseContent = None
         self._slims_session: SlimsBehaviorSession = None
         self._slims_rig: SlimsInstrument = None
+
+        self._water_calculator = water_calculator
 
     @staticmethod
     def _connect_to_slims(
@@ -123,6 +133,15 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         except exceptions.SlimsAPIException as e:
             logger.warning(f"Exception trying to read from Slims: {e}.\n")
             return False
+
+    @property
+    def slims_client(self) -> SlimsClient:
+        """
+        Returns slims client being used to load session
+        Returns:
+            SlimsClient: slims client object
+        """
+        return self._slims_client
 
     @property
     def slims_mouse(self) -> SlimsMouseContent:
@@ -197,7 +216,9 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
                 total_water_ml=water_earned_ml + water_supplement_delivered_ml,
                 comments=self.launcher.session_schema.notes,
                 workstation=self.launcher.rig_schema.rig_name,
-                test_pk=self.slims_client.fetch_pk("Test", test_name="test_waterlog"),
+                sw_source="aind_behavior_experiment_launcher",
+                sw_version=__version__,
+                test_pk=self._slims_client.fetch_pk("Test", test_name="test_waterlog"),
             )
 
             self.slims_client.add_model(model)
@@ -285,17 +306,19 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             while subject is None:
                 subject = self.ui_helper.input("Enter subject name: ")
                 try:
-                    self._slims_mouse = self.slims_client.fetch_model(SlimsMouseContent, barcode=subject)
+                    self._slims_mouse = self._slims_client.fetch_model(SlimsMouseContent, barcode=subject)
                 except exceptions.SlimsRecordNotFound:
-                    logger.info(f"No Slims mouse with barcode {subject}. Please re-enter.")
+                    logger.warning("No Slims mouse with barcode %s. Please re-enter.", subject)
                     subject = None
             self.launcher.subject = subject
+
+        assert subject is not None
 
         sessions = self.slims_client.fetch_models(SlimsBehaviorSession, mouse_pk=self.slims_mouse.pk)
         try:
             self._slims_session = sessions[-1]
-        except IndexError:  # empty list returned from slims
-            raise ValueError(f"No session found on slims for mouse {subject}.")
+        except IndexError as exc:  # empty list returned from slims
+            raise ValueError(f"No session found on slims for mouse {subject}.") from exc
 
         notes = self.ui_helper.prompt_text("Enter notes: ")
 
@@ -383,27 +406,17 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         )
 
         # add trainer_state as an attachment
-        self.slims_client.add_attachment_content(
+        self._slims_client.add_attachment_content(
             record=added_session, name=ByAnimalFiles.TASK_LOGIC.value, content=task_logic.model_dump()
         )
 
     @override
-    def initialize(
-        self,
-        slims_url: str = SLIMS_URL,
-        username: Optional[str] = SLIMS_USERNAME,
-        password: Optional[str] = SLIMS_PASSWORD,
-    ) -> None:
+    def initialize(self) -> None:
         """
-        Initializes the picker
-
-        Args:
-            slims_url (str): slims url. Defaults to dev version of slims if not provided
-            username (Optional[str]): slims username. Defaults to SLIMS_USERNAME environment variable if not provided
-            password (Optional[str]): slims password. Defaults to SLIMS_PASSWORD environment variable if not provided
+        Initializes the picker by connecting to SLIMS and testing the connection.
         """
 
-        self.slims_client = self._connect_to_slims(slims_url, username, password)
+        self._slims_client = self._connect_to_slims(self._slims_url, self._slims_username, self._slims_password)
         self._test_client_connection()
 
     def prompt_experimenter(self, strict: bool = True) -> Optional[List[str]]:
@@ -426,3 +439,55 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             else:
                 return experimenter
         return experimenter  # This line should be unreachable
+
+    @staticmethod
+    def _calculate_suggested_water(
+        weight_g: float, water_earned_ml: float, baseline_weight_g: float, minimum_daily_water: float = 1.0
+    ):
+        weight_difference = max(0, baseline_weight_g - weight_g)
+        return max(weight_difference, minimum_daily_water - water_earned_ml, 0)
+
+    def suggest_water(self) -> None:
+        """
+        Calculates the suggested water amount based on the current weight and water earned.
+
+        Returns:
+            float: The suggested water amount in mL.
+        """
+        if self.slims_mouse is None:
+            raise ValueError("Slims mouse instance not set.")
+
+        # Get the baseline weight from the mouse model, should in theory be handled
+        # by the user asynchronously
+        baseline_weight_g = self.slims_mouse.baseline_weight_g
+
+        if self._water_calculator is None:
+
+            def _water_prompt(launcher: "SlimsPicker", /) -> float:
+                return self.ui_helper.prompt_float("Enter water amount (mL): ")
+
+            water_calculator = _water_prompt
+
+        else:
+            water_calculator = self._water_calculator
+
+        water_earned_ml = water_calculator(self)
+
+        # I guess we cant automate this for now, so we just prompt the user
+        # for the current weight
+        weight_g = float(self.ui_helper.input("Enter current weight (g): "))
+
+        suggested_water_ml = self._calculate_suggested_water(weight_g, water_earned_ml, baseline_weight_g)
+        logger.info("Suggested water amount: %s mL", suggested_water_ml)
+        _is_upload = self.ui_helper.prompt_yes_no_question("Do you want to write the waterlog to SLIMS? (Y/N): ")
+        if _is_upload:
+            self.write_waterlog(
+                weight_g=weight_g,
+                water_earned_ml=water_earned_ml,
+                water_supplement_delivered_ml=suggested_water_ml,
+                water_supplement_recommended_ml=suggested_water_ml,
+            )
+        return
+
+    def finalize(self):
+        self.suggest_water()
