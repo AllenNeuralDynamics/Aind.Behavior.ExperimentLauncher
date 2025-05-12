@@ -8,7 +8,7 @@ from aind_behavior_services.task_logic import AindBehaviorTaskLogicModel
 from .ui_helper import _UiHelperBase
 
 if TYPE_CHECKING:
-    from aind_behavior_experiment_launcher.launcher import BaseLauncher
+    from ..launcher import BaseLauncher
 else:
     BaseLauncher = "BaseLauncher"
 

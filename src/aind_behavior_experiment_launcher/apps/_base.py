@@ -3,7 +3,7 @@ import logging
 import subprocess
 from typing import Optional, Self
 
-from aind_behavior_experiment_launcher.services import IService
+from ..services import IService
 
 logger = logging.getLogger(__name__)
 

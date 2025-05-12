@@ -5,7 +5,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Callable, Dict, Generic, Iterable, List, Optional, Self, Type, TypeVar, overload
 
 if TYPE_CHECKING:
-    from aind_behavior_experiment_launcher.launcher import BaseLauncher
+    from .launcher import BaseLauncher
 else:
     BaseLauncher = Any
 

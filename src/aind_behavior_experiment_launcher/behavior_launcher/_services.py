@@ -12,19 +12,19 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Type, TypeAlias
 import ldap3
 import ms_active_directory
 
-from aind_behavior_experiment_launcher.apps import App
-from aind_behavior_experiment_launcher.data_mapper import DataMapper
-from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
-from aind_behavior_experiment_launcher.data_transfer import DataTransfer
-from aind_behavior_experiment_launcher.data_transfer.aind_watchdog import WatchdogDataTransferService
-from aind_behavior_experiment_launcher.data_transfer.robocopy import RobocopyService
-from aind_behavior_experiment_launcher.resource_monitor import ResourceMonitor
-from aind_behavior_experiment_launcher.services import IService, ServiceFactory, ServicesFactoryManager
+from ..apps import App
+from ..data_mapper import DataMapper
+from ..data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
+from ..data_transfer import DataTransfer
+from ..data_transfer.aind_watchdog import WatchdogDataTransferService
+from ..data_transfer.robocopy import RobocopyService
+from ..resource_monitor import ResourceMonitor
+from ..services import IService, ServiceFactory, ServicesFactoryManager
 
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from aind_behavior_experiment_launcher.behavior_launcher import BehaviorLauncher
+    from ..behavior_launcher import BehaviorLauncher
 else:
     BehaviorLauncher = object
 

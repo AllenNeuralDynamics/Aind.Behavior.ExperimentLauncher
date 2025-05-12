@@ -8,8 +8,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Self
 from aind_behavior_services.utils import run_bonsai_process
 from typing_extensions import overload, override
 
-from aind_behavior_experiment_launcher.ui import DefaultUIHelper, UiHelper
-
+from ..ui import DefaultUIHelper, UiHelper
 from ._base import App
 
 logger = logging.getLogger(__name__)
@@ -17,7 +16,7 @@ logger = logging.getLogger(__name__)
 VISUALIZERS_DIR = "VisualizerLayouts"
 
 if TYPE_CHECKING:
-    from aind_behavior_experiment_launcher.behavior_launcher import BehaviorLauncher
+    from ..behavior_launcher import BehaviorLauncher
 else:
     BehaviorLauncher = Any
 

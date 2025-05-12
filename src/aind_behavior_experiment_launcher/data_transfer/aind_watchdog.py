@@ -32,9 +32,8 @@ from aind_watchdog_service.models.watch_config import WatchConfig
 from pydantic import BaseModel
 from requests.exceptions import HTTPError
 
-from aind_behavior_experiment_launcher import ui
-from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
-
+from .. import ui
+from ..data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
 from ._base import DataTransfer
 
 logger = logging.getLogger(__name__)

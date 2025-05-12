@@ -3,7 +3,7 @@ from __future__ import annotations
 import abc
 import logging
 
-from aind_behavior_experiment_launcher.services import IService
+from ..services import IService
 
 logger = logging.getLogger(__name__)
 

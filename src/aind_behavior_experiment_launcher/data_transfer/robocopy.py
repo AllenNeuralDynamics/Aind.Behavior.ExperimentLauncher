@@ -5,8 +5,7 @@ from os import PathLike, makedirs
 from pathlib import Path
 from typing import Dict, Optional
 
-from aind_behavior_experiment_launcher import ui
-
+from .. import ui
 from ._base import DataTransfer
 
 logger = logging.getLogger(__name__)

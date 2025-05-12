@@ -1,7 +1,7 @@
 from pydantic import Field
 from pydantic_settings import CliImplicitFlag
 
-from aind_behavior_experiment_launcher.launcher.cli import BaseCliArgs
+from ..launcher.cli import BaseCliArgs
 
 
 class BehaviorCliArgs(BaseCliArgs):

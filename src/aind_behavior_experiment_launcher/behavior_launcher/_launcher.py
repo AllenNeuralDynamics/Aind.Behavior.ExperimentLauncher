@@ -12,10 +12,8 @@ import pydantic
 from aind_behavior_services.utils import model_from_json_file
 from typing_extensions import override
 
-import aind_behavior_experiment_launcher.ui as ui
-from aind_behavior_experiment_launcher import logging_helper
-from aind_behavior_experiment_launcher.launcher._base import BaseLauncher, TRig, TSession, TTaskLogic
-
+from .. import logging_helper, ui
+from ..launcher._base import BaseLauncher, TRig, TSession, TTaskLogic
 from ._cli import BehaviorCliArgs
 from ._model_modifiers import BySubjectModifierManager
 from ._services import validate_aind_username

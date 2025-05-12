@@ -16,7 +16,7 @@ from typing import TypeVar, Union
 from aind_data_schema.core import rig as ads_rig
 from aind_data_schema.core import session as ads_session
 
-from aind_behavior_experiment_launcher.data_mapper import _base
+from ..data_mapper import _base
 
 logger = logging.getLogger(__name__)
 
