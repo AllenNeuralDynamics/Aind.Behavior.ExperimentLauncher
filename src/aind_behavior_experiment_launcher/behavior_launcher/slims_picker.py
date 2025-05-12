@@ -454,8 +454,6 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         Returns:
             float: The suggested water amount in mL.
         """
-        if self.slims_mouse is None:
-            raise ValueError("Slims mouse instance not set.")
 
         # Get the baseline weight from the mouse model, should in theory be handled
         # by the user asynchronously
