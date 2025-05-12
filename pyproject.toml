@@ -40,7 +40,9 @@ aind-services = [
     "aind-data-schema<2",
     "ms-active-directory",
     "cryptography",
-    "winkerberos"
+    "requests-kerberos",
+    "kerberos; sys_platform != 'win32'",
+    "winkerberos; sys_platform == 'win32'",
 ]
 
 dev = [
