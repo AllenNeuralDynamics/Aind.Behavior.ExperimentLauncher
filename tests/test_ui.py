@@ -39,6 +39,8 @@ class TestDefaultBehaviorPicker(unittest.TestCase):
 
     @patch("builtins.input", side_effect=["John Doe"])
     def test_prompt_experimenter(self, mock_input):
+        self.assertIsInstance(self.picker, DefaultBehaviorPicker)
+        self.picker._experimenter_validator = lambda x: x in ["John", "Doe"]
         result = self.picker.prompt_experimenter()
         self.assertEqual(result, ["John", "Doe"])
 

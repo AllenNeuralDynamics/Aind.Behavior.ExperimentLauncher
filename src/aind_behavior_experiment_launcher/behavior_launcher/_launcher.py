@@ -6,7 +6,7 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List, Optional, Self, Union
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Self, Union
 
 import pydantic
 from aind_behavior_services.utils import model_from_json_file
@@ -18,6 +18,7 @@ from aind_behavior_experiment_launcher.launcher._base import BaseLauncher, TRig,
 
 from ._cli import BehaviorCliArgs
 from ._model_modifiers import BySubjectModifierManager
+from ._services import validate_aind_username
 
 logger = logging.getLogger(__name__)
 
@@ -209,19 +210,22 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         *,
         ui_helper: Optional[ui.DefaultUIHelper] = None,
         config_library_dir: os.PathLike,
+        experimenter_validator: Optional[Callable[[str], bool]] = validate_aind_username,
         **kwargs,
     ):
         """
         Initializes the DefaultBehaviorPicker.
 
         Args:
-            launcher (Optional[BehaviorLauncher]): The launcher instance associated with the picker.
+            launcher (Optional[BehaviorLauncher[TRig, TSession, TTaskLogic]]): The launcher instance associated with the picker.
             ui_helper (Optional[ui.DefaultUIHelper]): Helper for user interface interactions.
             config_library_dir (os.PathLike): Path to the configuration library directory.
+            experimenter_validator (Optional[Callable[[str], bool]]): Function to validate the experimenter's username. If None, no validation is performed.
             **kwargs: Additional keyword arguments.
         """
         super().__init__(launcher, ui_helper=ui_helper, **kwargs)
         self._config_library_dir = Path(config_library_dir)
+        self._experimenter_validator = experimenter_validator
 
     @property
     def config_library_dir(self) -> Path:
@@ -431,7 +435,7 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
 
     def prompt_experimenter(self, strict: bool = True) -> Optional[List[str]]:
         """
-        Prompts the user to enter the experimenter's name(s).
+        Prompts the user to enter the experimenter's name(s). Multiple names can be separated by commas.
 
         Args:
             strict (bool): Whether to enforce non-empty input.
@@ -444,8 +448,13 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             _user_input = self.ui_helper.prompt_text("Experimenter name: ")
             experimenter = _user_input.replace(",", " ").split()
             if strict & (len(experimenter) == 0):
-                logger.error("Experimenter name is not valid.")
+                logger.error("Experimenter name is not valid. Try again.")
                 experimenter = None
             else:
-                return experimenter
-        return experimenter  # This line should be unreachable
+                if self._experimenter_validator:
+                    for name in experimenter:
+                        if not self._experimenter_validator(name):
+                            logger.warning("Experimenter name: %s, is not valid. Try again", name)
+                            experimenter = None
+                            break
+        return experimenter
