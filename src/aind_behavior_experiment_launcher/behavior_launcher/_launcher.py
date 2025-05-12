@@ -134,6 +134,12 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
         """
         logger.info("Post-run hook started.")
 
+        try:
+            self.picker.finalize()
+            logger.info("Picker finalized successfully.")
+        except Exception as e:
+            logger.error("Picker finalized with errors: %s", e)
+
         if (not self.settings.skip_data_mapping) and (self.services_factory_manager.data_mapper is not None):
             try:
                 self.services_factory_manager.data_mapper.map()
@@ -456,3 +462,6 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
                             experimenter = None
                             break
         return experimenter
+
+    def finalize(self) -> None:
+        return
