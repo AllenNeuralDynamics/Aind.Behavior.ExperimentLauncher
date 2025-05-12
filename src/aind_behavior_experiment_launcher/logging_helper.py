@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import TypeVar
 
 import aind_behavior_services.utils as utils
-import rich.highlighter
 import rich.logging
 import rich.style
 

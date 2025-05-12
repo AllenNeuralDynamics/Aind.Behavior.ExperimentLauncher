@@ -8,9 +8,9 @@ from aind_slims_api.models import SlimsBehaviorSession, SlimsInstrument, SlimsMo
 from pydantic import ValidationError
 from typing_extensions import override
 
-import aind_behavior_experiment_launcher.ui as ui
-from aind_behavior_experiment_launcher.behavior_launcher._launcher import BehaviorLauncher, ByAnimalFiles
-from aind_behavior_experiment_launcher.launcher._base import TRig, TSession, TTaskLogic
+from .. import ui
+from ..behavior_launcher._launcher import BehaviorLauncher, ByAnimalFiles
+from ..launcher._base import TRig, TSession, TTaskLogic
 
 _BehaviorPickerAlias = ui.PickerBase[BehaviorLauncher[TRig, TSession, TTaskLogic], TRig, TSession, TTaskLogic]
 

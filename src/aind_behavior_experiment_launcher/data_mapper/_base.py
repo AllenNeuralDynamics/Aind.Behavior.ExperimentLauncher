@@ -4,7 +4,7 @@ import abc
 import logging
 from typing import Any, Generic, Optional, TypeVar
 
-from aind_behavior_experiment_launcher.services import IService
+from ..services import IService
 
 logger = logging.getLogger(__name__)
 

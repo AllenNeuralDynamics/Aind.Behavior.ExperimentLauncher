@@ -1,8 +1,6 @@
 from typing import Any, Generic, List, Optional, Protocol, Self, TypeVar
 
-from aind_behavior_services.rig import AindBehaviorRigModel
-from aind_behavior_services.session import AindBehaviorSessionModel
-from aind_behavior_services.task_logic import AindBehaviorTaskLogicModel
+from aind_behavior_services import AindBehaviorRigModel, AindBehaviorSessionModel, AindBehaviorTaskLogicModel
 
 _R = TypeVar("_R", bound=AindBehaviorRigModel, contravariant=True)
 _S = TypeVar("_S", bound=AindBehaviorSessionModel, contravariant=True)
