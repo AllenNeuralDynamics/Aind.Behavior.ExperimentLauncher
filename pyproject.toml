@@ -37,7 +37,10 @@ Changelog = "https://github.com/AllenNeuralDynamics/Aind.Behavior.ExperimentLaun
 [project.optional-dependencies]
 aind-services = [
     "aind-watchdog-service",
-    "aind-data-schema<2"
+    "aind-data-schema<2",
+    "ms-active-directory",
+    "cryptography",
+    "winkerberos"
 ]
 
 dev = [
