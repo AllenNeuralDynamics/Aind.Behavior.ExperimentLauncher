@@ -5,10 +5,17 @@ from pathlib import Path
 from typing import TypeVar
 
 import aind_behavior_services.utils as utils
-
-from aind_behavior_experiment_launcher import fmt
+import rich.highlighter
+import rich.logging
 
 TLogger = TypeVar("TLogger", bound=logging.Logger)
+
+fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+datetime_fmt = "%Y-%m-%dT%H%M%S%z"
+
+rich_handler = rich.logging.RichHandler(
+    rich_tracebacks=True, show_time=False, highlighter=rich.highlighter.NullHighlighter()
+)
 
 
 class _TzFormatter(logging.Formatter):
