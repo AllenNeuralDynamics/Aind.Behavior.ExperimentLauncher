@@ -41,8 +41,8 @@ aind-services = [
     "ms-active-directory",
     "cryptography",
     "requests-kerberos",
-    "kerberos; sys_platform != 'win32'",
-    "winkerberos; sys_platform == 'win32'",
+    "pykerberos; sys_platform != 'win32'",
+    "pyspnego; sys_platform != 'win32'",
 ]
 
 dev = [
