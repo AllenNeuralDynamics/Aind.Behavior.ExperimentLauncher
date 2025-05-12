@@ -62,6 +62,8 @@ class WatchdogDataTransferService(DataTransfer):
         mount: Optional[str] = None,
         force_cloud_sync: bool = True,
         transfer_endpoint: str = "http://aind-data-transfer-service/api/v1/submit_jobs",
+        delete_modalities_source_after_success: bool = False,
+        extra_identifying_info: Optional[dict] = None,
         validate: bool = True,
         session_name: Optional[str] = None,
         upload_job_configs: Optional[List[_JobConfigs]] = None,
@@ -83,6 +85,7 @@ class WatchdogDataTransferService(DataTransfer):
             mount: Mount point for the destination.
             force_cloud_sync: Whether to force synchronization with the cloud.
             transfer_endpoint: Endpoint for the transfer service.
+            delete_modalities_source_after_success: Whether to delete source modalities after success.
             validate: Whether to validate the project name.
             session_name: Name of the session.
             upload_job_configs: List of job configurations for the transfer.
@@ -99,6 +102,8 @@ class WatchdogDataTransferService(DataTransfer):
         self.mount = mount
         self.force_cloud_sync = force_cloud_sync
         self.transfer_endpoint = transfer_endpoint
+        self.delete_modalities_source_after_success = delete_modalities_source_after_success
+        self.extra_identifying_info = extra_identifying_info
         self._aind_session_data_mapper = aind_session_data_mapper
         self._session_name = session_name
         self.upload_job_configs = upload_job_configs or []
@@ -327,6 +332,8 @@ class WatchdogDataTransferService(DataTransfer):
             script=self.script if self.script else {},
             force_cloud_sync=self.force_cloud_sync,
             transfer_endpoint=self.transfer_endpoint,
+            delete_modalities_source_after_success=self.delete_modalities_source_after_success,
+            extra_identifying_info=self.extra_identifying_info,
         )
         _manifest_config = self.add_transfer_service_args(_manifest_config, jobs=self.upload_job_configs)
         return _manifest_config
