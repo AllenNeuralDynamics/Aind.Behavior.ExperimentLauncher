@@ -136,7 +136,7 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
         """
         logger.info("Post-run hook started.")
 
-        if (self.services_factory_manager.data_mapper is not None) and (not self.settings.skip_data_mapping):
+        if (not self.settings.skip_data_mapping) and (self.services_factory_manager.data_mapper is not None):
             try:
                 self.services_factory_manager.data_mapper.map()
                 logger.info("Mapping successful.")
@@ -150,7 +150,7 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
         except ValueError:
             logger.error("Failed to copy temporary logs directory to session directory.")
 
-        if (self.services_factory_manager.data_transfer is not None) and (not self.settings.skip_data_transfer):
+        if (not self.settings.skip_data_transfer) and (self.services_factory_manager.data_transfer is not None):
             try:
                 if not self.services_factory_manager.data_transfer.validate():
                     raise ValueError("Data transfer service failed validation.")
