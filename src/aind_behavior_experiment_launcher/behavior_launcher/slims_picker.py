@@ -473,7 +473,7 @@ class SlimsPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
 
         water_earned_ml = water_calculator(self)
 
-        # I guess we cant automate this for now, so we just prompt the user
+        # I guess we can't automate this for now, so we just prompt the user
         # for the current weight
         weight_g = float(self.ui_helper.input("Enter current weight (g): "))
 
