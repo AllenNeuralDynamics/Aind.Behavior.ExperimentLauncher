@@ -33,6 +33,9 @@ class MockUiHelper(ui.UiHelper):
     def prompt_text(self, prompt: str) -> str:
         return ""
 
+    def prompt_float(self, prompt):
+        return 0.0
+
 
 class TestWatchdogDataTransferService(unittest.TestCase):
     def setUp(self):

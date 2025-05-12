@@ -208,5 +208,17 @@ class TestSlimsPicker(unittest.TestCase):
         )
 
 
+class SlimsWaterCalculation(unittest.TestCase):
+    def test_calculated_suggested_water(self):
+        result = SlimsPicker._calculate_suggested_water(weight_g=20.0, water_earned_ml=1.0, baseline_weight_g=25)
+        self.assertEqual(result, 5.0)
+
+    def test_calculated_suggested_water_minimum(self):
+        result = SlimsPicker._calculate_suggested_water(
+            weight_g=20.0, water_earned_ml=1.0, baseline_weight_g=18, minimum_daily_water=2.0
+        )
+        self.assertEqual(result, 1.0)
+
+
 if __name__ == "__main__":
     unittest.main()
