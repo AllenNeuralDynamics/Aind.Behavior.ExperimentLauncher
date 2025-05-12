@@ -7,15 +7,37 @@ from typing import TypeVar
 import aind_behavior_services.utils as utils
 import rich.highlighter
 import rich.logging
+import rich.style
 
 TLogger = TypeVar("TLogger", bound=logging.Logger)
 
 fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 datetime_fmt = "%Y-%m-%dT%H%M%S%z"
 
-rich_handler = rich.logging.RichHandler(
-    rich_tracebacks=True, show_time=False, highlighter=rich.highlighter.NullHighlighter()
-)
+
+class _SeverityHighlightingHandler(rich.logging.RichHandler):
+    """A hacky implementation of a custom logging handler that highlights log messages based on severity.
+    Since the highlighter does not have access to the log object, we do everything in the handler instead."""
+
+    def __init__(self, *args, **kwargs):
+        # I don't think this is necessary, but just in case, better to fail early
+        if "highlighter" in kwargs:
+            del kwargs["highlighter"]
+        super().__init__(*args, **kwargs)
+
+        self.error_style = rich.style.Style(color="white", bgcolor="red")
+        self.critical_style = rich.style.Style(color="white", bgcolor="red", bold=True)
+
+    def render_message(self, record, message):
+        if record.levelno >= logging.CRITICAL:
+            return f"[{self.critical_style}]{message}[/]"
+        elif record.levelno >= logging.ERROR:
+            return f"[{self.error_style}]{message}[/]"
+        else:
+            return message
+
+
+rich_handler = _SeverityHighlightingHandler(rich_tracebacks=True, show_time=False)
 
 
 class _TzFormatter(logging.Formatter):
