@@ -99,7 +99,9 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         self._session_schema: Optional[TSession] = None
         self._task_logic_schema: Optional[TTaskLogic] = None
         self._solve_schema_instances(
-            rig_path_path=self.settings.rig_path, task_logic_path=self.settings.task_logic_path
+            rig_path_path=self.settings.rig_path,
+            session_path=self.settings.session_path,
+            task_logic_path=self.settings.task_logic_path,
         )
         self._subject: Optional[str] = self.settings.subject
 
@@ -259,7 +261,8 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
             return
 
     def _ui_prompt(self) -> Self:
-        self._session_schema = self.picker.pick_session()
+        if self._session_schema is None:
+            self._session_schema = self.picker.pick_session()
         if self._task_logic_schema is None:
             self._task_logic_schema = self.picker.pick_task_logic()
         if self._rig_schema is None:
@@ -435,7 +438,10 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         return self._services_factory_manager
 
     def _solve_schema_instances(
-        self, rig_path_path: Optional[os.PathLike] = None, task_logic_path: Optional[os.PathLike] = None
+        self,
+        rig_path_path: Optional[os.PathLike] = None,
+        session_path: Optional[os.PathLike] = None,
+        task_logic_path: Optional[os.PathLike] = None,
     ) -> None:
         """
         Resolves and loads schema instances for the rig and task logic.
@@ -447,6 +453,9 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
             rig_path_path (Optional[os.PathLike]): Path to the JSON file containing
                 the rig schema. If provided, the rig schema will be loaded and
                 assigned to `_rig_schema`.
+            session_path (Optional[os.PathLike]): Path to the JSON file containing
+                the session schema. If provided, the session schema will be loaded
+                and assigned to `_session_schema`.
             task_logic_path (Optional[os.PathLike]): Path to the JSON file containing
                 the task logic schema. If provided, the task logic schema will be
                 loaded and assigned to `_task_logic_schema`.
@@ -457,6 +466,9 @@ class BaseLauncher(ABC, Generic[TRig, TSession, TTaskLogic]):
         if rig_path_path is not None:
             logging.info("Loading rig schema from %s", self.settings.rig_path)
             self._rig_schema = model_from_json_file(rig_path_path, self.rig_schema_model)
+        if session_path is not None:
+            logging.info("Loading session schema from %s", self.settings.session_path)
+            self._session_schema = model_from_json_file(session_path, self.session_schema_model)
         if task_logic_path is not None:
             logging.info("Loading task logic schema from %s", self._settings.task_logic_path)
             self._task_logic_schema = model_from_json_file(task_logic_path, self.task_logic_schema_model)
