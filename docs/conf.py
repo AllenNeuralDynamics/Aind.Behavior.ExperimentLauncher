@@ -17,7 +17,7 @@ SOURCE_ROOT = "https://github.com/AllenNeuralDynamics/Aind.Behavior.ExperimentLa
 
 
 project = "AIND Behavior Experiment Launcher"
-copyright = "2024, Allen Institute for Neural Dynamics"
+copyright = "2025, Allen Institute for Neural Dynamics"
 author = "Bruno Cruz"
 release = aind_behavior_experiment_launcher.__version__
 
