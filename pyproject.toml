@@ -21,7 +21,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "pydantic>=2.7, <3.0",
+    "pydantic>=2.7",
     "pydantic-settings",
     "gitpython",
     "semver",
