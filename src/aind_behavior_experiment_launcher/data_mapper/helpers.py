@@ -11,7 +11,7 @@ import pydantic
 from aind_behavior_services import (
     AindBehaviorRigModel,
 )
-from aind_behavior_services.rig import CameraController, CameraTypes
+from aind_behavior_services.rig.cameras import CameraController, CameraTypes
 from aind_behavior_services.utils import get_fields_of_type
 
 logger = logging.getLogger(__name__)

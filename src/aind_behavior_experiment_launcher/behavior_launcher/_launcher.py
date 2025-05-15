@@ -1,48 +1,29 @@
 from __future__ import annotations
 
-import datetime
 import enum
 import glob
 import logging
 import os
 import subprocess
-from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Self, Type, TypeAlias, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Self, Union
 
 import pydantic
 from aind_behavior_services.utils import model_from_json_file
-from pydantic_settings import CliImplicitFlag
 from typing_extensions import override
 
-import aind_behavior_experiment_launcher.ui as ui
-from aind_behavior_experiment_launcher import logging_helper
-from aind_behavior_experiment_launcher.apps import App
-from aind_behavior_experiment_launcher.data_mapper import DataMapper
-from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
-from aind_behavior_experiment_launcher.data_transfer import DataTransfer
-from aind_behavior_experiment_launcher.data_transfer.aind_watchdog import WatchdogDataTransferService
-from aind_behavior_experiment_launcher.data_transfer.robocopy import RobocopyService
-from aind_behavior_experiment_launcher.resource_monitor import ResourceMonitor
-from aind_behavior_experiment_launcher.services import IService, ServiceFactory, ServicesFactoryManager
-
-from ._base import BaseLauncher, TRig, TSession, TTaskLogic
-from .cli import BaseCliArgs
-
-TService = TypeVar("TService", bound=IService)
+from .. import logging_helper, ui
+from ..launcher._base import BaseLauncher, TRig, TSession, TTaskLogic
+from ._cli import BehaviorCliArgs
+from ._model_modifiers import BySubjectModifierManager
+from ._services import validate_aind_username
 
 logger = logging.getLogger(__name__)
 
-
-class BehaviorCliArgs(BaseCliArgs):
-    """Extends the base"""
-
-    skip_data_transfer: CliImplicitFlag[bool] = pydantic.Field(
-        default=False, description="Whether to skip data transfer after the experiment"
-    )
-    skip_data_mapping: CliImplicitFlag[bool] = pydantic.Field(
-        default=False, description="Whether to skip data mapping after the experiment"
-    )
+if TYPE_CHECKING:
+    from aind_behavior_experiment_launcher.behavior_launcher._services import BehaviorServicesFactoryManager
+else:
+    BehaviorServicesFactoryManager = Any
 
 
 class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
@@ -53,6 +34,7 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
 
     settings: BehaviorCliArgs
     services_factory_manager: BehaviorServicesFactoryManager
+    _by_subject_modifiers_manager: BySubjectModifierManager[TRig, TSession, TTaskLogic]
 
     def __init__(  # pylint: disable=useless-parent-delegation
         self,
@@ -64,6 +46,7 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
         picker,
         services=None,
         attached_logger=None,
+        by_subject_modifiers_manager: Optional[BySubjectModifierManager[TRig, TSession, TTaskLogic]] = None,
         **kwargs,
     ):
         super().__init__(
@@ -76,18 +59,19 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
             attached_logger=attached_logger,
             **kwargs,
         )
+        self._by_subject_modifiers_manager = (
+            by_subject_modifiers_manager or BySubjectModifierManager[TRig, TSession, TTaskLogic]()
+        )
 
-    def _post_init(self, validate: bool = True) -> None:
+    @property
+    def by_subject_modifiers_manager(self) -> BySubjectModifierManager[TRig, TSession, TTaskLogic]:
         """
-        Performs additional initialization after the constructor.
+        Returns the manager for by-subject modifiers.
 
-        Args:
-            validate (bool): Whether to validate the launcher state.
+        Returns:
+            BySubjectModifierManager: The by-subject modifiers manager.
         """
-        super()._post_init(validate=validate)
-        if validate:
-            if self.services_factory_manager.resource_monitor is not None:
-                self.services_factory_manager.resource_monitor.evaluate_constraints()
+        return self._by_subject_modifiers_manager
 
     @override
     def _pre_run_hook(self, *args, **kwargs) -> Self:
@@ -98,8 +82,20 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
             Self: The current instance for method chaining.
         """
         logger.info("Pre-run hook started.")
+
+        if self.settings.validate_init:
+            logger.debug("Validating initialization.")
+            if self.services_factory_manager.resource_monitor is not None:
+                logger.debug("Evaluating resource monitor constraints.")
+                if not self.services_factory_manager.resource_monitor.evaluate_constraints():
+                    logger.critical("Resource monitor constraints failed.")
+                    self._exit(-1)
+
         self.session_schema.experiment = self.task_logic_schema.name
         self.session_schema.experiment_version = self.task_logic_schema.version
+        self.by_subject_modifiers_manager.apply_modifiers(
+            rig_schema=self.rig_schema, session_schema=self.session_schema, task_logic_schema=self.task_logic_schema
+        )
         return self
 
     @override
@@ -124,7 +120,7 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
             self.services_factory_manager.app.run()
             _ = self.services_factory_manager.app.output_from_result(allow_stderr=True)
         except subprocess.CalledProcessError as e:
-            logger.error("Bonsai app failed to run. %s", e)
+            logger.critical("Bonsai app failed to run. %s", e)
             self._exit(-1)
         return self
 
@@ -138,7 +134,13 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
         """
         logger.info("Post-run hook started.")
 
-        if (self.services_factory_manager.data_mapper is not None) and (not self.settings.skip_data_mapping):
+        try:
+            self.picker.finalize()
+            logger.info("Picker finalized successfully.")
+        except Exception as e:
+            logger.error("Picker finalized with errors: %s", e)
+
+        if (not self.settings.skip_data_mapping) and (self.services_factory_manager.data_mapper is not None):
             try:
                 self.services_factory_manager.data_mapper.map()
                 logger.info("Mapping successful.")
@@ -152,7 +154,7 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
         except ValueError:
             logger.error("Failed to copy temporary logs directory to session directory.")
 
-        if (self.services_factory_manager.data_transfer is not None) and (not self.settings.skip_data_transfer):
+        if (not self.settings.skip_data_transfer) and (self.services_factory_manager.data_transfer is not None):
             try:
                 if not self.services_factory_manager.data_transfer.validate():
                     raise ValueError("Data transfer service failed validation.")
@@ -182,252 +184,7 @@ class BehaviorLauncher(BaseLauncher[TRig, TSession, TTaskLogic]):
         return fpath
 
 
-_ServiceFactoryIsh: TypeAlias = Union[
-    ServiceFactory[TService, BehaviorLauncher], Callable[[BehaviorLauncher], TService], TService
-]
-
-
-class BehaviorServicesFactoryManager(ServicesFactoryManager[BehaviorLauncher]):
-    """
-    Manages the creation and attachment of services for the BehaviorLauncher.
-
-    This class provides methods to attach and retrieve various services such as
-    app, data transfer, resource monitor, and data mapper. It ensures that the
-    services are of the correct type and properly initialized.
-    """
-
-    def __init__(self, launcher: Optional[BehaviorLauncher] = None, **kwargs) -> None:
-        """
-        Initializes the BehaviorServicesFactoryManager.
-
-        Args:
-            launcher (Optional[BehaviorLauncher]): The launcher instance to associate with the services.
-            **kwargs: Additional keyword arguments for service initialization.
-        """
-        super().__init__(launcher, **kwargs)
-        self._add_to_services("app", kwargs)
-        self._add_to_services("data_transfer", kwargs)
-        self._add_to_services("resource_monitor", kwargs)
-        self._add_to_services("data_mapper", kwargs)
-
-    def _add_to_services(self, name: str, input_kwargs: Dict[str, Any]) -> Optional[ServiceFactory]:
-        """
-        Adds a service to the manager by attaching it to the appropriate factory.
-
-        Args:
-            name (str): The name of the service to add.
-            input_kwargs (Dict[str, Any]): The keyword arguments containing the service instance or factory.
-
-        Returns:
-            Optional[ServiceFactory]: The attached service factory, if any.
-        """
-        srv = input_kwargs.pop(name, None)
-        if srv is not None:
-            self.attach_service_factory(name, srv)
-        return srv
-
-    @property
-    def app(self) -> App:
-        """
-        Retrieves the app service.
-
-        Returns:
-            App: The app service instance.
-
-        Raises:
-            ValueError: If the app service is not set.
-        """
-        srv = self.try_get_service("app")
-        srv = self._validate_service_type(srv, App)
-        if srv is None:
-            raise ValueError("App is not set.")
-        return srv
-
-    def attach_app(self, value: _ServiceFactoryIsh[App, BehaviorLauncher]) -> None:
-        """
-        Attaches an app service factory.
-
-        Args:
-            value (_ServiceFactoryIsh[App]): The app service factory or instance.
-        """
-        self.attach_service_factory("app", value)
-
-    @property
-    def data_mapper(self) -> Optional[DataMapper]:
-        """
-        Retrieves the data mapper service.
-
-        Returns:
-            Optional[DataMapper]: The data mapper service instance.
-        """
-        srv = self.try_get_service("data_mapper")
-        return self._validate_service_type(srv, DataMapper)
-
-    def attach_data_mapper(self, value: _ServiceFactoryIsh[DataMapper, BehaviorLauncher]) -> None:
-        """
-        Attaches a data mapper service factory.
-
-        Args:
-            value (_ServiceFactoryIsh[DataMapper]): The data mapper service factory or instance.
-        """
-        self.attach_service_factory("data_mapper", value)
-
-    @property
-    def resource_monitor(self) -> Optional[ResourceMonitor]:
-        """
-        Retrieves the resource monitor service.
-
-        Returns:
-            Optional[ResourceMonitor]: The resource monitor service instance.
-        """
-        srv = self.try_get_service("resource_monitor")
-        return self._validate_service_type(srv, ResourceMonitor)
-
-    def attach_resource_monitor(self, value: _ServiceFactoryIsh[ResourceMonitor, BehaviorLauncher]) -> None:
-        """
-        Attaches a resource monitor service factory.
-
-        Args:
-            value (_ServiceFactoryIsh[ResourceMonitor]): The resource monitor service factory or instance.
-        """
-        self.attach_service_factory("resource_monitor", value)
-
-    @property
-    def data_transfer(self) -> Optional[DataTransfer]:
-        """
-        Retrieves the data transfer service.
-
-        Returns:
-            Optional[DataTransfer]: The data transfer service instance.
-        """
-        srv = self.try_get_service("data_transfer")
-        return self._validate_service_type(srv, DataTransfer)
-
-    def attach_data_transfer(self, value: _ServiceFactoryIsh[DataTransfer, BehaviorLauncher]) -> None:
-        """
-        Attaches a data transfer service factory.
-
-        Args:
-            value (_ServiceFactoryIsh[DataTransfer]): The data transfer service factory or instance.
-        """
-        self.attach_service_factory("data_transfer", value)
-
-    @staticmethod
-    def _validate_service_type(value: Any, type_of: Type) -> Optional[TService]:
-        """
-        Validates the type of a service.
-
-        Args:
-            value (Any): The service instance to validate.
-            type_of (Type): The expected type of the service.
-
-        Returns:
-            Optional[TService]: The validated service instance.
-
-        Raises:
-            ValueError: If the service is not of the expected type.
-        """
-        if value is None:
-            return None
-        if not isinstance(value, type_of):
-            raise ValueError(f"{type(value).__name__} is not of the correct type. Expected {type_of.__name__}.")
-        return value
-
-
-def watchdog_data_transfer_factory(
-    *,
-    destination: os.PathLike,
-    schedule_time: Optional[datetime.time] = datetime.time(hour=20),
-    project_name: Optional[str] = None,
-    **watchdog_kwargs,
-) -> Callable[[BehaviorLauncher], WatchdogDataTransferService]:
-    """
-    Creates a factory for the WatchdogDataTransferService.
-
-    Args:
-        destination (os.PathLike): The destination path for data transfer.
-        schedule_time (Optional[datetime.time]): The scheduled time for data transfer.
-        project_name (Optional[str]): The project name.
-        **watchdog_kwargs: Additional keyword arguments for the watchdog service.
-
-    Returns:
-        Callable[[BehaviorLauncher], WatchdogDataTransferService]: A callable factory for the watchdog service.
-    """
-    return partial(
-        _watchdog_data_transfer_factory,
-        destination=destination,
-        schedule_time=schedule_time,
-        project_name=project_name,
-        **watchdog_kwargs,
-    )
-
-
-def _watchdog_data_transfer_factory(launcher: BehaviorLauncher, **watchdog_kwargs) -> WatchdogDataTransferService:
-    """
-    Internal factory function for creating a WatchdogDataTransferService.
-
-    Args:
-        launcher (BehaviorLauncher): The launcher instance.
-        **watchdog_kwargs: Additional keyword arguments for the watchdog service.
-
-    Returns:
-        WatchdogDataTransferService: The created watchdog service.
-
-    Raises:
-        ValueError: If the data mapper service is not set or is of the wrong type.
-    """
-    if launcher.services_factory_manager.data_mapper is None:
-        raise ValueError("Data mapper service is not set. Cannot create watchdog.")
-    if not isinstance(launcher.services_factory_manager.data_mapper, AindDataSchemaSessionDataMapper):
-        raise ValueError(
-            "Data mapper service is not of the correct type (AindDataSchemaSessionDataMapper). Cannot create watchdog."
-        )
-
-    watchdog = WatchdogDataTransferService(
-        source=launcher.session_directory,
-        aind_session_data_mapper=launcher.services_factory_manager.data_mapper,
-        session_name=launcher.session_schema.session_name,
-        **watchdog_kwargs,
-    )
-    return watchdog
-
-
-def robocopy_data_transfer_factory(
-    destination: os.PathLike,
-    **robocopy_kwargs,
-) -> Callable[[BehaviorLauncher], RobocopyService]:
-    """
-    Creates a factory for the RobocopyService.
-
-    Args:
-        destination (os.PathLike): The destination path for data transfer.
-        **robocopy_kwargs: Additional keyword arguments for the robocopy service.
-
-    Returns:
-        Callable[[BehaviorLauncher], RobocopyService]: A callable factory for the robocopy service.
-    """
-    return partial(_robocopy_data_transfer_factory, destination=destination, **robocopy_kwargs)
-
-
-def _robocopy_data_transfer_factory(
-    launcher: BehaviorLauncher, destination: os.PathLike, **robocopy_kwargs
-) -> RobocopyService:
-    """
-    Internal factory function for creating a RobocopyService.
-
-    Args:
-        launcher (BehaviorLauncher): The launcher instance.
-        destination (os.PathLike): The destination path for data transfer.
-        **robocopy_kwargs: Additional keyword arguments for the robocopy service.
-
-    Returns:
-        RobocopyService: The created robocopy service.
-    """
-    if launcher.group_by_subject_log:
-        dst = Path(destination) / launcher.session_schema.subject / launcher.session_schema.session_name
-    else:
-        dst = Path(destination) / launcher.session_schema.session_name
-    return RobocopyService(source=launcher.session_directory, destination=dst, **robocopy_kwargs)
+_BehaviorPickerAlias = ui.PickerBase[BehaviorLauncher[TRig, TSession, TTaskLogic], TRig, TSession, TTaskLogic]
 
 
 class ByAnimalFiles(enum.StrEnum):
@@ -436,9 +193,6 @@ class ByAnimalFiles(enum.StrEnum):
     """
 
     TASK_LOGIC = "task_logic"
-
-
-_BehaviorPickerAlias = ui.PickerBase[BehaviorLauncher[TRig, TSession, TTaskLogic], TRig, TSession, TTaskLogic]
 
 
 class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
@@ -460,19 +214,22 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
         *,
         ui_helper: Optional[ui.DefaultUIHelper] = None,
         config_library_dir: os.PathLike,
+        experimenter_validator: Optional[Callable[[str], bool]] = validate_aind_username,
         **kwargs,
     ):
         """
         Initializes the DefaultBehaviorPicker.
 
         Args:
-            launcher (Optional[BehaviorLauncher]): The launcher instance associated with the picker.
+            launcher (Optional[BehaviorLauncher[TRig, TSession, TTaskLogic]]): The launcher instance associated with the picker.
             ui_helper (Optional[ui.DefaultUIHelper]): Helper for user interface interactions.
             config_library_dir (os.PathLike): Path to the configuration library directory.
+            experimenter_validator (Optional[Callable[[str], bool]]): Function to validate the experimenter's username. If None, no validation is performed.
             **kwargs: Additional keyword arguments.
         """
         super().__init__(launcher, ui_helper=ui_helper, **kwargs)
         self._config_library_dir = Path(config_library_dir)
+        self._experimenter_validator = experimenter_validator
 
     @property
     def config_library_dir(self) -> Path:
@@ -577,7 +334,7 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             subject = self.choose_subject(self.subject_dir)
             self.launcher.subject = subject
             if not (self.subject_dir / subject).exists():
-                logger.warning("Directory for subject %s does not exist. Creating a new one.", subject)
+                logger.info("Directory for subject %s does not exist. Creating a new one.", subject)
                 os.makedirs(self.subject_dir / subject)
 
         notes = self.ui_helper.prompt_text("Enter notes: ")
@@ -682,7 +439,7 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
 
     def prompt_experimenter(self, strict: bool = True) -> Optional[List[str]]:
         """
-        Prompts the user to enter the experimenter's name(s).
+        Prompts the user to enter the experimenter's name(s). Multiple names can be separated by commas.
 
         Args:
             strict (bool): Whether to enforce non-empty input.
@@ -695,8 +452,16 @@ class DefaultBehaviorPicker(_BehaviorPickerAlias[TRig, TSession, TTaskLogic]):
             _user_input = self.ui_helper.prompt_text("Experimenter name: ")
             experimenter = _user_input.replace(",", " ").split()
             if strict & (len(experimenter) == 0):
-                logger.error("Experimenter name is not valid.")
+                logger.error("Experimenter name is not valid. Try again.")
                 experimenter = None
             else:
-                return experimenter
-        return experimenter  # This line should be unreachable
+                if self._experimenter_validator:
+                    for name in experimenter:
+                        if not self._experimenter_validator(name):
+                            logger.warning("Experimenter name: %s, is not valid. Try again", name)
+                            experimenter = None
+                            break
+        return experimenter
+
+    def finalize(self) -> None:
+        return

@@ -50,10 +50,13 @@ class BaseCliArgs(BaseSettings, cli_prog_name="clabe", cli_kebab_case=True):
     )
     subject: Optional[str] = Field(default=None, description="The name of the subject. If None, will be prompted later")
     task_logic_path: Optional[os.PathLike] = Field(
-        default=None, description="The path to the task logic schema. If None, will be prompted later"
+        default=None, description="The path to the task logic schema instance. If None, will be prompted later"
     )
     rig_path: Optional[os.PathLike] = Field(
-        default=None, description="The path to the rig schema. If None, will be prompted later"
+        default=None, description="The path to the rig schema instance. If None, will be prompted later"
+    )
+    session_path: Optional[os.PathLike] = Field(
+        default=None, description="The path to the session schema instance. If None, will be prompted later"
     )
     validate_init: CliExplicitFlag[bool] = Field(
         default=True, description="Whether to validate the launcher state during initialization"

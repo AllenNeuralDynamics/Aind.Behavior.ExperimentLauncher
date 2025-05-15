@@ -96,6 +96,19 @@ class _UiHelperBase(abc.ABC):
             str: The user input.
         """
 
+    @abc.abstractmethod
+    def prompt_float(self, prompt: str) -> float:
+        """
+        Abstract method to prompt the user for a float input.
+
+        Args:
+            prompt (str): The prompt message.
+
+        Returns:
+            float: The parsed user input.
+        """
+        pass
+
 
 UiHelper: TypeAlias = _UiHelperBase
 
@@ -169,6 +182,23 @@ class DefaultUIHelper(_UiHelperBase):
         """
         notes = str(input(prompt))
         return notes
+
+    def prompt_float(self, prompt: str) -> float:
+        """
+        Prompts the user for a float input.
+
+        Args:
+            prompt (str): The prompt message.
+
+        Returns:
+            float: The parsed user input.
+        """
+        while True:
+            try:
+                value = float(input(prompt))
+                return value
+            except ValueError:
+                self.print("Invalid input. Please enter a valid float.")
 
 
 def prompt_field_from_input(model: Type[_TModel], field_name: str, default: Optional[_T] = None) -> Optional[_T]:

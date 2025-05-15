@@ -32,9 +32,8 @@ from aind_watchdog_service.models.watch_config import WatchConfig
 from pydantic import BaseModel
 from requests.exceptions import HTTPError
 
-from aind_behavior_experiment_launcher import ui
-from aind_behavior_experiment_launcher.data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
-
+from .. import ui
+from ..data_mapper.aind_data_schema import AindDataSchemaSessionDataMapper
 from ._base import DataTransfer
 
 logger = logging.getLogger(__name__)
@@ -223,23 +222,22 @@ class WatchdogDataTransferService(DataTransfer):
         else:
             self._watch_config = WatchConfig.model_validate(self._read_yaml(self.config_path))
 
-        is_running = True
         if not self.is_running():
-            is_running = False
             logger.warning(
                 "Watchdog service is not running. \
                                 After the session is over, \
                                 the launcher will attempt to forcefully restart it"
             )
+            return False
 
-        if not self.is_valid_project_name():
-            is_running = False
-            try:
+        try:
+            _valid_proj = self.is_valid_project_name()
+            if not _valid_proj:
                 logger.warning("Watchdog project name is not valid.")
-            except HTTPError as e:
-                logger.error("Failed to fetch project names from endpoint. %s", e)
-                raise e
-        return is_running
+        except HTTPError as e:
+            logger.error("Failed to fetch project names from endpoint. %s", e)
+            raise e
+        return _valid_proj
 
     @staticmethod
     def create_watch_config(
@@ -485,7 +483,7 @@ class WatchdogDataTransferService(DataTransfer):
 
         path = (Path(path) if path else Path(watch_config.flag_dir) / f"manifest_{manifest_config.name}.yaml").resolve()
         if "manifest" not in path.name:
-            logger.warning("Prefix manifest_ not found in file name. Appending it.")
+            logger.info("Prefix manifest_ not found in file name. Appending it.")
             path = path.with_name(f"manifest_{path.name}.yaml")
 
         if make_dir and not path.parent.exists():

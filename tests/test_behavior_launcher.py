@@ -3,16 +3,19 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, create_autospec, patch
 
-from aind_behavior_experiment_launcher.apps.bonsai import BonsaiApp
-from aind_behavior_experiment_launcher.launcher.behavior_launcher import (
+from aind_behavior_services.session import AindBehaviorSessionModel
+
+from aind_behavior_experiment_launcher.apps._bonsai import BonsaiApp
+from aind_behavior_experiment_launcher.behavior_launcher import (
     BehaviorLauncher,
     BehaviorServicesFactoryManager,
-    DataMapper,
-    DataTransfer,
+    BySubjectModifierManager,
     DefaultBehaviorPicker,
-    ResourceMonitor,
 )
+from aind_behavior_experiment_launcher.data_mapper import DataMapper
+from aind_behavior_experiment_launcher.data_transfer import DataTransfer
 from aind_behavior_experiment_launcher.launcher.cli import BaseCliArgs
+from aind_behavior_experiment_launcher.resource_monitor import ResourceMonitor
 
 
 class TestBehaviorLauncher(unittest.TestCase):
@@ -42,7 +45,7 @@ class TestBehaviorLauncher(unittest.TestCase):
             attached_logger=None,
         )
 
-    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
+    @patch("aind_behavior_experiment_launcher.behavior_launcher._launcher.os.makedirs")
     def test_save_temp_model(self, mock_makedirs):
         model = MagicMock()
         model.__class__.__name__ = "TestModel"
@@ -50,7 +53,7 @@ class TestBehaviorLauncher(unittest.TestCase):
         path = self.launcher.save_temp_model(model, "/path/to/temp")
         self.assertTrue(path.endswith("TestModel.json"))
 
-    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
+    @patch("aind_behavior_experiment_launcher.behavior_launcher._launcher.os.makedirs")
     def test_save_temp_model_default_directory(self, mock_makedirs):
         model = MagicMock()
         model.__class__.__name__ = "TestModel"
@@ -58,7 +61,7 @@ class TestBehaviorLauncher(unittest.TestCase):
         path = self.launcher.save_temp_model(model, None)
         self.assertTrue(path.endswith("TestModel.json"))
 
-    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
+    @patch("aind_behavior_experiment_launcher.behavior_launcher._launcher.os.makedirs")
     def test_save_temp_model_creates_directory(self, mock_makedirs):
         model = MagicMock()
         model.__class__.__name__ = "TestModel"
@@ -143,7 +146,7 @@ class TestBehaviorLauncherSaveTempModel(unittest.TestCase):
             settings=self.args,
         )
 
-    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
+    @patch("aind_behavior_experiment_launcher.behavior_launcher._launcher.os.makedirs")
     def test_save_temp_model_creates_directory(self, mock_makedirs):
         model = MagicMock()
         model.__class__.__name__ = "TestModel"
@@ -151,7 +154,7 @@ class TestBehaviorLauncherSaveTempModel(unittest.TestCase):
         self.launcher.save_temp_model(model, "/path/to/temp")
         mock_makedirs.assert_called_once_with(Path("/path/to/temp"), exist_ok=True)
 
-    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
+    @patch("aind_behavior_experiment_launcher.behavior_launcher._launcher.os.makedirs")
     def test_save_temp_model_default_directory(self, mock_makedirs):
         model = MagicMock()
         model.__class__.__name__ = "TestModel"
@@ -159,7 +162,7 @@ class TestBehaviorLauncherSaveTempModel(unittest.TestCase):
         path = self.launcher.save_temp_model(model, None)
         self.assertTrue(path.endswith("TestModel.json"))
 
-    @patch("aind_behavior_experiment_launcher.launcher.behavior_launcher.os.makedirs")
+    @patch("aind_behavior_experiment_launcher.behavior_launcher._launcher.os.makedirs")
     @patch("builtins.open", new_callable=unittest.mock.mock_open)
     def test_save_temp_model_returns_correct_path(self, mock_open, mock_makedirs):
         model = MagicMock()
@@ -168,6 +171,27 @@ class TestBehaviorLauncherSaveTempModel(unittest.TestCase):
         path = self.launcher.save_temp_model(model, Path("/path/to/temp"))
         expected_path = os.path.join(Path("/path/to/temp"), "TestModel.json")
         self.assertEqual(path, expected_path)
+
+
+class TestBySubjectModifierManager(unittest.TestCase):
+    @staticmethod
+    def my_modifier(*, session_schema: AindBehaviorSessionModel, **kwargs) -> None:
+        session_schema.subject += "na"
+        session_schema.experiment = "1"
+
+    def setUp(self):
+        self.manager = BySubjectModifierManager()
+        self.mock_session = AindBehaviorSessionModel(
+            experiment="", root_path="", subject="", experiment_version="1.1.1"
+        )
+
+    def test_register_modifier_run_twice(self):
+        self.manager.register_modifier(self.my_modifier)
+        self.manager.register_modifier(self.my_modifier)
+        self.assertEqual(len(self.manager._modifiers), 2)
+        self.manager.apply_modifiers(session_schema=self.mock_session)
+        self.assertEqual(self.mock_session.subject, "nana")
+        self.assertEqual(self.mock_session.experiment, "1")
 
 
 if __name__ == "__main__":

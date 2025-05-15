@@ -8,7 +8,7 @@ from aind_behavior_services.task_logic import AindBehaviorTaskLogicModel
 from .ui_helper import _UiHelperBase
 
 if TYPE_CHECKING:
-    from aind_behavior_experiment_launcher.launcher import BaseLauncher
+    from ..launcher import BaseLauncher
 else:
     BaseLauncher = "BaseLauncher"
 
@@ -153,6 +153,13 @@ class PickerBase(abc.ABC, Generic[_L, _R, _S, _T]):
         """
         ...
 
+    @abc.abstractmethod
+    def finalize(self) -> None:
+        """
+        Placeholder implementation for finalization.
+        """
+        ...
+
 
 class DefaultPicker(PickerBase[_L, _R, _S, _T]):
     """
@@ -180,5 +187,11 @@ class DefaultPicker(PickerBase[_L, _R, _S, _T]):
     def initialize(self) -> None:
         """
         Placeholder implementation for initialization.
+        """
+        return
+
+    def finalize(self) -> None:
+        """
+        Placeholder implementation for finalization.
         """
         return

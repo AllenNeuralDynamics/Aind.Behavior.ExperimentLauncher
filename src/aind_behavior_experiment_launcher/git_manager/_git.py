@@ -4,7 +4,7 @@ from typing import List, Self
 
 from git import Repo
 
-import aind_behavior_experiment_launcher.ui as ui
+from .. import ui
 
 logger = logging.getLogger(__name__)
 
@@ -56,17 +56,23 @@ class GitRepository(Repo):
             return True
         return any([submodule.repo.is_dirty(untracked_files=True) for submodule in self.submodules])
 
-    def untracked_files_with_submodules(self) -> List[str]:
+    @staticmethod
+    def _get_changes(repo: Repo) -> List[str]:
+        return [item.a_path for item in (repo.index.diff(None) + repo.index.diff("HEAD")) if item.a_path]
+
+    def uncommitted_changes(self) -> List[str]:
         """
-        Retrieves a list of untracked files in the repository and its submodules.
+        Retrieves a list of unstaged and untracked files in the repository and its submodules.
 
         Returns:
-            List[str]: A list of untracked file paths.
+            List[str]: A list of unstaged file paths.
         """
-        _untracked_files = self.untracked_files
+        untracked_files = self.untracked_files
+        changes = self._get_changes(self)
         for submodule in self.submodules:
-            _untracked_files.extend(submodule.repo.untracked_files)
-        return _untracked_files
+            changes.extend(self._get_changes(submodule.repo))
+            untracked_files.extend(submodule.repo.untracked_files)
+        return list(set(changes + untracked_files))
 
     def force_update_submodules(self) -> Self:
         """
@@ -115,13 +121,13 @@ class GitRepository(Repo):
             return self
         if self.is_dirty_with_submodules():
             logger.info("Repository is dirty! %s", self.working_dir)
-            logger.info("Untracked files: %s", self.untracked_files_with_submodules())
+            logger.info("Uncommitted files: %s", self.uncommitted_changes())
             if not force_reset:
                 is_reset = ui_helper.prompt_yes_no_question(prompt="Do you want to reset the repository?")
             else:
                 is_reset = True
             if is_reset:
-                logging.info("Full reset of repository and submodules: %s", self.working_dir)
+                logger.info("Full reset of repository and submodules: %s", self.working_dir)
                 self.full_reset()
         return self
 
@@ -137,8 +143,11 @@ class GitRepository(Repo):
             bool: True if Git is installed.
         """
         if not _HAS_GIT:
-            logging.error("git executable not detected.")
+            logger.error("git executable not detected.")
             raise RuntimeError(
                 "git is not installed in this computer. Please install git. https://git-scm.com/downloads"
             )
         return True
+
+
+__all__ = [GitRepository]
