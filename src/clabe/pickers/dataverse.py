@@ -2,8 +2,9 @@
 # under the MIT license, with modifications. (thanks patricklatimer for the original code!)
 
 import logging
+import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from html import unescape
 from typing import Callable, ClassVar, Optional, Type
 
@@ -175,6 +176,7 @@ class _DataverseRestClient:
         top: Optional[int] = None,
         count: Optional[bool] = None,
         select: Optional[str | list[str]] = None,
+        apply: Optional[str] = None,
     ) -> str:
         """
         Format query parameters for a Dataverse API request.
@@ -185,11 +187,16 @@ class _DataverseRestClient:
             top: OData top value. Defaults to None
             count: Include "@odata.count" in the response, counting matches. Defaults to None
             select: OData select clause. Defaults to None
+            apply: OData $apply query (aggregation/grouping), e.g. "filter(...)/groupby((column))"
+                or "groupby((navProperty/attribute))" for distinct values through a lookup.
+                Defaults to None
 
         Returns:
             str: Formatted query string
         """
         queries = []
+        if apply:
+            queries.append(f"$apply={apply}")
         if filter:
             queries.append(f"$filter={filter}")
         if order_by:
@@ -215,6 +222,7 @@ class _DataverseRestClient:
         top: Optional[int] = None,
         count: Optional[bool] = None,
         select: Optional[str | list[str]] = None,
+        apply: Optional[str] = None,
     ) -> str:
         """
         Construct the URL for a Dataverse table entry.
@@ -227,6 +235,7 @@ class _DataverseRestClient:
             top: Return the top n results. Defaults to None
             count: Include "@odata.count" in the response, counting matches. Defaults to None
             select: Columns to include in the response. Defaults to None
+            apply: OData $apply query (aggregation/grouping). Defaults to None
 
         Returns:
             str: Constructed URL for the entry
@@ -251,6 +260,7 @@ class _DataverseRestClient:
             top=top,
             count=count,
             select=select,
+            apply=apply,
         )
 
         url = self.config.api_url + table + identifier + queries
@@ -343,6 +353,7 @@ class _DataverseRestClient:
         order_by: Optional[str] = None,
         top: Optional[int] = None,
         select: Optional[list[str]] = None,
+        apply: Optional[str] = None,
     ) -> list[dict]:
         """
         Query a Dataverse table for multiple entries based on filters.
@@ -356,6 +367,8 @@ class _DataverseRestClient:
             order_by: Column or list of columns to order by. Defaults to None
             top: Return the top n results. Defaults to None
             select: Columns to include in the response. Defaults to None
+            apply: OData $apply query, e.g. "filter(...)/groupby((navProperty/attribute))" to get
+                distinct values through a lookup, optionally pre-filtered. Defaults to None
 
         Returns:
             list[dict]: Query results from Dataverse
@@ -366,6 +379,7 @@ class _DataverseRestClient:
             order_by=order_by,
             top=top,
             select=select,
+            apply=apply,
         )
         # Note: Could also provide `count`, but it's not useful for this method as this
         # returns a list of values, and wouldn't include the "@odata.count" property anyway
@@ -385,6 +399,66 @@ class _DataverseRestClient:
 
 _MICE_TABLE = "aibs_dim_mices"
 _SUGGESTIONS_TABLE = "aibs_fact_mouse_proposed_behavior_sessionses"
+_ACQUISITION_TYPE_FIELD = "aibs_task_name"
+_SUGGESTION_CREATED_ON_FIELD = "createdon"
+_MOUSE_LOOKUP_NAV_PROPERTY = "aibs_mouse_id"
+_MOUSE_ID_ATTRIBUTE = "aibs_mouse_id"
+_LATEST_CREATED_ALIAS = "latest_created"
+
+DEFAULT_MAX_SUBJECTS = 100
+
+
+def _get_subjects_by_acquisition_type(
+    client: _DataverseRestClient,
+    acquisition_type: Optional[str],
+    created_after: Optional[datetime] = None,
+    max_subjects: Optional[int] = DEFAULT_MAX_SUBJECTS,
+) -> list[str]:
+    """
+    Get all distinct subject IDs from Dataverse that have a recorded suggestion matching
+    `acquisition_type` (or any acquisition type, if None), optionally restricted to suggestions
+    created on/after `created_after`, capped to the `max_subjects` most recently active animals.
+
+    Distinctness is computed server-side via Dataverse's OData $apply/groupby aggregation
+    extension, grouping through the mouse lookup's navigation property straight to the mouse's
+    readable ID column. This returns one row per matching mouse instead of one per suggestion,
+    and needs no separate lookup per mouse. Grouping directly on the raw lookup value (e.g.
+    "_aibs_mouse_id_value") is not valid Dataverse syntax; it must traverse the navigation
+    property, per https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/query/aggregate-data
+
+    Each group's most recent suggestion date is computed server-side in the same call via
+    aggregate(createdon with max as ...) - Dataverse doesn't support $orderby on an aggregated
+    value, so the actual sort-by-recency and max_subjects cap happen in Python, but only over
+    this already distinct, small (one row per matching animal) result set - not over raw
+    suggestion rows.
+    """
+    filter_clauses = []
+    if acquisition_type is not None:
+        filter_clauses.append(f"{_ACQUISITION_TYPE_FIELD} eq '{acquisition_type}'")
+    if created_after is not None:
+        filter_clauses.append(f"{_SUGGESTION_CREATED_ON_FIELD} ge {created_after.strftime('%Y-%m-%dT%H:%M:%SZ')}")
+    groupby_key = f"({_MOUSE_LOOKUP_NAV_PROPERTY}/{_MOUSE_ID_ATTRIBUTE})"
+    aggregate = f"aggregate({_SUGGESTION_CREATED_ON_FIELD} with max as {_LATEST_CREATED_ALIAS})"
+    groupby = f"groupby({groupby_key},{aggregate})"
+    apply = f"filter({' and '.join(filter_clauses)})/{groupby}" if filter_clauses else groupby
+
+    rows = client.query(_SUGGESTIONS_TABLE, apply=apply)
+
+    latest_created_by_subject: dict[str, str] = {}
+    for row in rows:
+        latest_created = row.get(_LATEST_CREATED_ALIAS) or ""
+        subject_id = next(
+            (value for key, value in row.items() if key != _LATEST_CREATED_ALIAS and "@" not in key and value),
+            None,
+        )
+        if subject_id and latest_created > latest_created_by_subject.get(subject_id, ""):
+            latest_created_by_subject[subject_id] = latest_created
+
+    subjects_by_recency = sorted(latest_created_by_subject.items(), key=lambda item: item[1], reverse=True)
+    if max_subjects is not None:
+        subjects_by_recency = subjects_by_recency[:max_subjects]
+
+    return sorted(subject_id for subject_id, _ in subjects_by_recency)
 
 
 def _get_last_suggestions(client: _DataverseRestClient, subject_name: str, task_name: str, history: int = 10):
@@ -501,11 +575,19 @@ class DataversePicker(DefaultBehaviorPicker):
         frontend: Optional[ui.Frontend] = None,
         experimenter_validator: Optional[Callable[[str], bool]] = validate_username,
         rig_validator: Optional[Callable[[Rig], Rig]] = validate_rig_computer_name,
+        acquisition_type: Optional[str] = None,
+        lookback_time: Optional[timedelta] = timedelta(days=60),
+        max_subjects: Optional[int] = DEFAULT_MAX_SUBJECTS,
     ):
         """
         Initializes the DataversePicker.
 
         Args:
+            acquisition_type: The acquisition type (e.g. "AindVrForaging") used to filter which
+                subjects choose_subject offers. If None, subjects are not filtered by acquisition
+                type, only by lookback_time
+            lookback_time: Only offer subjects with a suggestion created within this window before now. Pass None to disable the time bound. Defaults to 60 days
+            max_subjects: Only offer the this many most-recently-active subjects. Pass None to disable the cap. Defaults to 100
             dataverse_client: Optional Dataverse REST client for making API calls. If not provided, a new client will be created using settings from KeePass.
             settings: Settings containing configuration including config_library_dir
             frontend: Frontend mediating user interaction
@@ -519,12 +601,59 @@ class DataversePicker(DefaultBehaviorPicker):
             experimenter_validator=experimenter_validator,
             rig_validator=rig_validator,
         )
+        self._acquisition_type = acquisition_type
+        self._lookback_time = lookback_time
+        self._max_subjects = max_subjects
         self._dataverse_client = (
             dataverse_client
             if dataverse_client is not None
             else _DataverseRestClient(_DataverseRestClientSettings.from_keepass())
         )
         self._dataverse_suggestion: Optional[DataverseSuggestion] = None
+
+    def choose_subject(self, directory: str | os.PathLike) -> str:
+        """
+        Prompts the user to select or manually enter a subject name, offering autocomplete
+        suggestions from Dataverse for all animals matching this picker's acquisition type
+        (restricted to `lookback_time` and `max_subjects`, if set).
+
+        If the Dataverse query fails, no autocomplete options are offered and the user must
+        enter the subject name manually.
+
+        Args:
+            directory: Path to the directory containing subject folders. Unused, kept for
+                interface compatibility with DefaultBehaviorPicker.choose_subject
+
+        Returns:
+            str: The selected or entered subject name.
+        """
+        created_after = datetime.now(timezone.utc) - self._lookback_time if self._lookback_time else None
+        try:
+            options = _get_subjects_by_acquisition_type(
+                self._dataverse_client,
+                self._acquisition_type,
+                created_after=created_after,
+                max_subjects=self._max_subjects,
+            )
+        except (requests.exceptions.RequestException, ValueError) as e:
+            logger.error(
+                "Failed to fetch subjects from Dataverse for acquisition type %s: %s", self._acquisition_type, e
+            )
+            self.frontend.notify(
+                "Failed to fetch subjects from Dataverse. Enter the subject manually.", ui.MessageLevel.WARNING
+            )
+            options = []
+
+        subject: Optional[str] = None
+        while not subject:
+            subject = self.frontend.prompt_autocomplete(
+                ui.AutoCompleteRequest(
+                    label="Subject (type to filter, or enter a new one)",
+                    options=options,
+                    field="subject",
+                )
+            )
+        return subject
 
     def pick_trainer_state(self, task_model: Type[TTask]) -> tuple[TrainerState, TTask]:
         """
