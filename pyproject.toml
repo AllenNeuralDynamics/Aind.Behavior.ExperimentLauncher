@@ -29,6 +29,7 @@ dependencies = [
     "rich",
     "aind_behavior_services>=0.13.0",
     "textual>=8.2.7",
+    "opentelemetry-api>=1.24",
 ]
 
 [project.urls]
@@ -40,6 +41,11 @@ Changelog = "https://github.com/AllenNeuralDynamics/clabe/releases"
 [project.optional-dependencies]
 web = [
     "textual-serve",
+]
+otel = [
+    "opentelemetry-sdk",
+    "opentelemetry-exporter-otlp-proto-http",
+    "pyyaml",
 ]
 aind-services = [
     "requests",

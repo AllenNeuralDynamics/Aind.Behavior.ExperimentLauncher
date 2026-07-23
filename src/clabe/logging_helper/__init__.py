@@ -1,4 +1,3 @@
-from . import aibs
 from ._stdlib import (
     _DEFAULT_CONSOLE_LEVEL,
     _TRANSCRIPT_LOGGER_NAME,
@@ -21,7 +20,6 @@ __all__ = [
     "clabe_console",
     "datetime_fmt",
     "log_fmt",
-    "aibs",
     "_DEFAULT_CONSOLE_LEVEL",
     "_TRANSCRIPT_LOGGER_NAME",
 ]

@@ -15,6 +15,7 @@ from aind_behavior_services import Session
 from .. import __version__, logging_helper
 from ..constants import TMP_DIR
 from ..git_manager import GitRepository
+from ..otel import bind_session, run_span
 from ..runnable import set_include_timing
 from ..ui import Frontend, MessageLevel, TextRequest, make_frontend, set_current_frontend
 from ..utils import abspath, format_datetime, utcnow
@@ -153,6 +154,7 @@ class Launcher:
             self._data_directory = Path(data_directory)
             self._ensure_directory_structure()
             logger.debug("Creating session directory at: %s", self.session_directory)
+            bind_session(session)
         else:
             raise ValueError("Session already registered.")
         return self
@@ -200,18 +202,21 @@ class Launcher:
         """
         _code = 0
         try:
-            self.frontend.header(self.make_header())
-            set_experiment = getattr(self.frontend, "set_experiment", None)
-            if callable(set_experiment):
-                set_experiment(getattr(experiment, "__name__", None) or "experiment")
-            logger.info(self._generate_diagnostic_info())
+            # run_span installs telemetry (if enabled in clabe.yml) and opens the root
+            # span; @runnable app spans nest under it. It is a no-op when otel is off.
+            with run_span(self):
+                self.frontend.header(self.make_header())
+                set_experiment = getattr(self.frontend, "set_experiment", None)
+                if callable(set_experiment):
+                    set_experiment(getattr(experiment, "__name__", None) or "experiment")
+                logger.info(self._generate_diagnostic_info())
 
-            if not self.settings.debug_mode:
-                self.validate()
+                if not self.settings.debug_mode:
+                    self.validate()
 
-            result = experiment(self)
-            if asyncio.iscoroutine(result):
-                asyncio.run(result)
+                result = experiment(self)
+                if asyncio.iscoroutine(result):
+                    asyncio.run(result)
 
         except KeyboardInterrupt:
             logger.error("User interrupted the process.")

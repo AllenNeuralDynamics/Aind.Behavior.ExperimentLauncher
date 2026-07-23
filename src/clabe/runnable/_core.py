@@ -7,11 +7,14 @@ import logging
 import time
 from typing import Any, Callable, Optional, TypeVar, overload
 
+from opentelemetry import trace
+
 from ..ui._messages import MessageLevel
 from ._activity import get_activity_indicator
 from ._settings import RunnableSpec, _include_timing
 
 logger = logging.getLogger(__name__)
+_tracer = trace.get_tracer("clabe.runnable")
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -79,7 +82,9 @@ def _lifecycle(spec: RunnableSpec, name: str):
         get_activity_indicator().activity(name) if eff.show_activity and not reentrant else contextlib.nullcontext()
     )
     try:
-        with display:
+        # The span records the exception and sets ERROR status on its own when one
+        # propagates, so failures surface in the trace without extra bookkeeping.
+        with _tracer.start_as_current_span(name), display:
             yield
     except Exception as exc:
         if not reentrant and eff.notify_fail:
@@ -167,7 +172,7 @@ def runnable(
     notify_fail=None,
 ):
     """Wrap a callable with the shared runnable lifecycle (logging, activity
-    spinner, notifications, and a future OTEL span).
+    spinner, notifications, and an OpenTelemetry span).
 
     Use it as a decorator at definition time (``@runnable`` or
     ``@runnable(name=..., notify=...)``) or to rewrap an existing callable at

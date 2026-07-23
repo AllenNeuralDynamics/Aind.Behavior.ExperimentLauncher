@@ -18,6 +18,27 @@ logger = logging.getLogger(__name__)
 
 _ACTIVEDIRECTORY_ENDPOINT = "http://aind-metadata-service/api/v2/active_directory"
 
+_RIG_NAME_ENV_VAR = "aibs_comp_id"
+
+
+def get_aind_rig_name(*, required: bool = False) -> Optional[str]:
+    """Return the AIND rig name from the ``aibs_comp_id`` environment variable.
+
+    Single source of truth for reading the rig identifier from the environment; prefer this
+    over reading ``aibs_comp_id`` directly so the variable name lives in exactly one place.
+
+    Args:
+        required: When True, raise :class:`ValueError` if the variable is unset instead of
+            returning ``None``.
+
+    Returns:
+        The rig name, or ``None`` if the variable is unset and ``required`` is False.
+    """
+    rig_name = os.environ.get(_RIG_NAME_ENV_VAR)
+    if rig_name is None and required:
+        raise ValueError(f"Environment variable '{_RIG_NAME_ENV_VAR}' is not set.")
+    return rig_name
+
 
 def validate_username(
     username: str,
@@ -52,13 +73,13 @@ def validate_username(
 
 def validate_rig_computer_name(rig: TRig) -> TRig:
     """Ensures rig and computer name are set from environment variables if available, otherwise defaults to rig configuration values."""
-    rig_name = os.environ.get("aibs_comp_id", None)
+    rig_name = get_aind_rig_name()
     computer_name = os.environ.get("hostname", None)
 
     if rig_name is None:
         logger.warning(
             "'%s' environment variable not set. Defaulting to rig name from configuration. %s",
-            "aibs_comp_id",
+            _RIG_NAME_ENV_VAR,
             rig.rig_name,
         )
         rig_name = rig.rig_name

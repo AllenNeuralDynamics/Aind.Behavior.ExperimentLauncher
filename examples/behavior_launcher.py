@@ -16,7 +16,7 @@ from _mocks import (
 from pydantic import BaseModel, Field
 from pydantic_settings import CliApp
 
-from clabe import resource_monitor
+from clabe import otel, resource_monitor
 from clabe.apps import CurriculumApp, CurriculumSettings, PythonScriptApp
 from clabe.cache_manager import CacheManager
 from clabe.launcher import Launcher, LauncherCliArgs, experiment
@@ -88,6 +88,12 @@ async def demo_experiment(launcher: Launcher) -> None:
 
     logger.info("Starting the demo experiment")
     notify("Welcome to the CLABE demo experiment!", MessageLevel.INFO)
+
+    # A custom span, in addition to the automatic root span and the per-@runnable spans.
+    # Look for "demo-preflight" under the run's trace in OpenObserve.
+    with otel.span("demo-preflight", attributes={"example": "behavior_launcher"}) as preflight:
+        preflight.set_attribute("rig.subjects", len(["demo"]))
+        otel.event("preflight-checks-started")
 
     # --- AcknowledgeRequest demo: modal acknowledgement gate --------------
     launcher.frontend.prompt_acknowledge(
