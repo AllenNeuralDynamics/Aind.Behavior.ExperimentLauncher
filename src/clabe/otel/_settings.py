@@ -45,6 +45,10 @@ class OtelSettings(ServiceSettings):
     )
     run_name: str = Field(default="experiment", description="Operation name of the run's root span.")
 
+    def resolved_service_name(self) -> str:
+        """The ``service.name`` resource attribute — the "Service" every span and log is tagged with."""
+        return self.service_name
+
     def initial_attributes(self) -> Dict[str, AttributeValue]:
         """Attributes known at process start: config values plus auto-resolved defaults.
 
@@ -101,6 +105,15 @@ class AindOtelSettings(OtelSettings):
         default=None,
         description="Experimenter(s). Left None in config; filled from the session when registered.",
     )
+
+    def resolved_service_name(self) -> str:
+        """Use the log-schema ``software_name`` as the "Service", falling back to ``service_name``.
+
+        ``software_name`` is the producing application, which is exactly what ``service.name``
+        should identify. It is also emitted as the explicit ``software_name`` attribute (see
+        :meth:`initial_attributes`) for log-schema consumers that key on that field by name.
+        """
+        return self.software_name or self.service_name
 
     def initial_attributes(self) -> Dict[str, AttributeValue]:
         """Resolve the log-schema fields, applying auto-defaults to any left unset in config."""

@@ -1,5 +1,4 @@
 import logging
-import uuid
 from typing import TYPE_CHECKING, Dict
 
 from opentelemetry.util.types import AttributeValue
@@ -49,39 +48,30 @@ def merge_attributes(attributes: Dict[str, AttributeValue]) -> None:
     _attributes.update(attributes)
 
 
-def _build_resource(experiment_id: str, settings: OtelSettings) -> "Resource":
+def _build_resource(settings: OtelSettings) -> "Resource":
     """Build the resource shared by every span and log of the run.
 
-    The resource holds only the two attributes that must be immutable for the run: the
-    service identity and the correlation id. All log-schema identity travels in the attribute
-    bag instead (see :data:`_attributes`), so it can be populated before or after the resource
-    is frozen.
+    The resource holds only the service identity. Runs are correlated by trace/span id, and
+    all log-schema identity travels in the attribute bag instead (see :data:`_attributes`),
+    so it can be populated before or after the resource is frozen.
     """
     from opentelemetry.sdk.resources import Resource
 
-    return Resource.create(
-        {
-            "service.name": settings.service_name,
-            "experiment.id": experiment_id,
-        }
-    )
+    return Resource.create({"service.name": settings.resolved_service_name()})
 
 
-def configure(settings: OtelSettings) -> str:
+def configure(settings: OtelSettings) -> None:
     """Install the trace and log SDKs, exporting OTLP to the configured endpoint.
 
     The OpenTelemetry SDK is imported lazily so base clabe does not require it (only the
-    optional ``otel`` extra). Spans and logs share one resource (including ``experiment.id``).
-    A logging handler bridges stdlib ``logging`` to OTLP with the active trace context and the
+    optional ``otel`` extra). Spans and logs share one resource (the service identity). A
+    logging handler bridges stdlib ``logging`` to OTLP with the active trace context and the
     run's resource attached; it rides alongside clabe's existing console/file handlers, which
     are untouched. Both spans and logs are enriched from the run's attribute bag (see
     :data:`_attributes`) so backend telemetry is filterable by subject, rig, session, etc.
 
     Args:
         settings: The resolved :class:`~clabe.otel._settings.OtelSettings`.
-
-    Returns:
-        The generated experiment id (UUID) for the run.
     """
     from opentelemetry import trace
     from opentelemetry._logs import set_logger_provider
@@ -100,8 +90,7 @@ def configure(settings: OtelSettings) -> str:
             for key, value in _attributes.items():
                 span.set_attribute(key, value)
 
-    experiment_id = str(uuid.uuid4())
-    resource = _build_resource(experiment_id, settings)
+    resource = _build_resource(settings)
     endpoint = settings.endpoint
     headers = settings.headers or None  # None lets the exporter fall back to OTEL_* env headers
 
@@ -121,5 +110,3 @@ def configure(settings: OtelSettings) -> str:
     handler.addFilter(_ExcludeInternalLogs())
     handler.addFilter(_AttributeLogEnricher())
     logging.getLogger().addHandler(handler)
-
-    return experiment_id

@@ -23,14 +23,12 @@ __all__ = [
     "event",
     "set_attribute",
     "record_exception",
-    "current_experiment_id",
     "OtelSettings",
     "AindOtelSettings",
 ]
 
 logger = logging.getLogger(__name__)
 _tracer = trace.get_tracer("clabe.launcher")
-_current_experiment_id: Optional[str] = None
 _active_span: Optional[Span] = None
 _active_settings: Optional[OtelSettings] = None
 
@@ -53,7 +51,7 @@ def run_span(launcher: "Launcher") -> Iterator[Span]:
     Yields:
         The root span for the run.
     """
-    global _current_experiment_id, _active_span, _active_settings
+    global _active_span, _active_settings
     try:
         settings: Optional[OtelSettings] = AindOtelSettings()
     except Exception:  # observability must never break a run
@@ -64,7 +62,7 @@ def run_span(launcher: "Launcher") -> Iterator[Span]:
         try:
             from ._setup import configure
 
-            _current_experiment_id = configure(settings)
+            configure(settings)
             set_attributes(settings.initial_attributes())
         except Exception:  # observability must never break a run
             logger.warning("Failed to set up telemetry; continuing without it", exc_info=True)
@@ -121,8 +119,3 @@ def _enrich(attributes: Dict[str, AttributeValue]) -> None:
     if _active_span is not None:
         for key, value in attributes.items():
             _active_span.set_attribute(key, value)
-
-
-def current_experiment_id() -> Optional[str]:
-    """Return the experiment id from the current run, or ``None`` if telemetry is off."""
-    return _current_experiment_id
