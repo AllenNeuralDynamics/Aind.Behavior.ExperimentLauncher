@@ -14,7 +14,7 @@ import logging
 import sys
 import tempfile
 from pathlib import Path
-from typing import IO, Iterator
+from typing import IO, Generator
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ def _release(handle: IO[str]) -> None:
 
 
 @contextlib.contextmanager
-def single_session_lock(path: Path = SESSION_LOCK_PATH) -> Iterator[None]:
+def single_session_lock(path: Path = SESSION_LOCK_PATH) -> Generator[None, None, None]:
     """
     Holds a process-wide lock so only one launcher session runs at a time.
 

@@ -69,6 +69,7 @@ dev = [
     'interrogate',
     "aind-clabe[aind-services]",
     "aind-clabe[web]",
+    "aind-clabe[otel]",
 ]
 
 docs = [

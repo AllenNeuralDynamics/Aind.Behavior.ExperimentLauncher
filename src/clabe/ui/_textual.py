@@ -7,7 +7,7 @@ import queue
 import re
 import threading
 from pathlib import Path
-from typing import Iterator, List, Optional
+from typing import Generator, List, Optional
 
 from rich.text import Text
 from textual.app import App, ComposeResult
@@ -423,7 +423,7 @@ class _TuiActivitySink:
         self._app = app
 
     @contextlib.contextmanager
-    def activity(self, description: str) -> Iterator[None]:
+    def activity(self, description: str) -> Generator[None, None, None]:
         """Show an activity row in the Processes pane for the duration of the block."""
         row = self._app.call_from_thread(self._app.add_activity, description)
         try:

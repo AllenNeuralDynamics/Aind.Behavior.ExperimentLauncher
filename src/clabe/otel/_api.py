@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from typing import Iterator
+from typing import Generator
 
 from opentelemetry import trace
 from opentelemetry.trace import Span, Status, StatusCode
@@ -9,7 +9,7 @@ _TRACER_NAME = "clabe.otel"
 
 
 @contextmanager
-def span(name: str, attributes: Attributes = None) -> Iterator[Span]:
+def span(name: str, attributes: Attributes = None) -> Generator[Span, None, None]:
     """Open a span nested under the current experiment trace.
 
     Args:

@@ -1,6 +1,6 @@
 import contextlib
 import threading
-from typing import ContextManager, Iterator, Optional, Protocol
+from typing import ContextManager, Generator, Optional, Protocol
 
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
@@ -99,7 +99,7 @@ class ActivityIndicator:
         )
 
     @contextlib.contextmanager
-    def activity(self, description: str) -> Iterator[None]:
+    def activity(self, description: str) -> Generator[None, None, None]:
         """
         Display a spinner with elapsed time for the duration of the block.
 

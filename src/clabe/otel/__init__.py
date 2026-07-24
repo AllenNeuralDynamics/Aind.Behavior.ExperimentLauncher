@@ -1,6 +1,6 @@
 import contextlib
 import logging
-from typing import TYPE_CHECKING, Dict, Iterator, Optional
+from typing import TYPE_CHECKING, Dict, Generator, Optional
 
 from opentelemetry import trace
 from opentelemetry.trace import Span
@@ -34,7 +34,7 @@ _active_settings: Optional[OtelSettings] = None
 
 
 @contextlib.contextmanager
-def run_span(launcher: "Launcher") -> Iterator[Span]:
+def run_span(launcher: "Launcher") -> Generator[Span, None, None]:
     """Instrument a launcher run: install telemetry if enabled, then open the root span.
 
     Reads :class:`AindOtelSettings` from clabe.yml. When enabled, the SDK is configured
