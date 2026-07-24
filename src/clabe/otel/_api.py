@@ -33,8 +33,12 @@ def set_attribute(key: str, value: AttributeValue) -> None:
     trace.get_current_span().set_attribute(key, value)
 
 
-def record_exception(exception: Exception) -> None:
-    """Record an exception on the current span and mark it as failed."""
+def record_exception(exception: BaseException) -> None:
+    """Record an exception on the current span and mark it as failed.
+
+    Takes ``BaseException`` so interrupts (``KeyboardInterrupt``), which OTel's own span
+    handling skips, can be recorded as failures too.
+    """
     current = trace.get_current_span()
     current.record_exception(exception)
     current.set_status(Status(StatusCode.ERROR))

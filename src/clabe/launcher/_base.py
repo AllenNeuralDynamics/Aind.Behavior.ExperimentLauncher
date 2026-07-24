@@ -15,7 +15,7 @@ from aind_behavior_services import Session
 from .. import __version__, logging_helper
 from ..constants import TMP_DIR
 from ..git_manager import GitRepository
-from ..otel import bind_session, run_span
+from ..otel import bind_session, record_exception, run_span
 from ..runnable import set_include_timing
 from ..ui import Frontend, MessageLevel, TextRequest, make_frontend, set_current_frontend
 from ..utils import abspath, format_datetime, utcnow
@@ -201,10 +201,10 @@ class Launcher:
             ```
         """
         _code = 0
-        try:
-            # run_span installs telemetry (if enabled in clabe.yml) and opens the root
-            # span; @runnable app spans nest under it. It is a no-op when otel is off.
-            with run_span(self):
+        # Handle inside run_span so teardown logs stay under the root span (and its attributes).
+        # The exception no longer escapes the span, so status is set explicitly below.
+        with run_span(self):
+            try:
                 self.frontend.header(self.make_header())
                 set_experiment = getattr(self.frontend, "set_experiment", None)
                 if callable(set_experiment):
@@ -218,22 +218,26 @@ class Launcher:
                 if asyncio.iscoroutine(result):
                     asyncio.run(result)
 
-        except KeyboardInterrupt:
-            logger.error("User interrupted the process.")
-            self.frontend.notify("Interrupted by user.", MessageLevel.WARNING)
-            _code = -1
-        except Exception as e:  # pylint: disable=broad-except
-            logger.error("Launcher failed: %s", e, exc_info=True)
-            self.frontend.notify(f"Launcher failed: {e}", MessageLevel.ERROR)
-            _code = -1
-        finally:
-            try:
-                self.copy_logs()
-            except ValueError as ve:  # In the case session_directory fails
-                self.frontend.notify(f"Failed to copy logs from {self.temp_dir}: {ve}", MessageLevel.ERROR)
-                self._exit(-1)
-            else:
-                self._exit(_code)
+            except KeyboardInterrupt as e:
+                # An interrupt aborts the run: record it so the trace is red (OTel skips
+                # BaseException, so this must be explicit) while keeping it filterable by type.
+                logger.error("User interrupted the process.")
+                self.frontend.notify("Interrupted by user.", MessageLevel.WARNING)
+                record_exception(e)
+                _code = -1
+            except Exception as e:  # pylint: disable=broad-except
+                logger.error("Launcher failed: %s", e, exc_info=True)
+                self.frontend.notify(f"Launcher failed: {e}", MessageLevel.ERROR)
+                record_exception(e)
+                _code = -1
+            finally:
+                try:
+                    self.copy_logs()
+                except ValueError as ve:  # In the case session_directory fails
+                    self.frontend.notify(f"Failed to copy logs from {self.temp_dir}: {ve}", MessageLevel.ERROR)
+                    self._exit(-1)
+                else:
+                    self._exit(_code)
 
     def copy_logs(self, dst: Optional[os.PathLike] = None, suffix: str = "Behavior/Logs") -> None:
         """
