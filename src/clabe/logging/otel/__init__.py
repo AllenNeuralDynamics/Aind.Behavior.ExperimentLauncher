@@ -14,7 +14,7 @@ from ._setup import merge_attributes, set_attributes
 if TYPE_CHECKING:
     from aind_behavior_services.session import Session
 
-    from ..launcher import Launcher
+    from ...launcher import Launcher
 
 __all__ = [
     "AindOtelSettings",
@@ -41,7 +41,7 @@ def run_span(launcher: "Launcher") -> Generator[Span, None, None]:
     Reads :class:`AindOtelSettings` from clabe.yml. When enabled, the SDK is configured
     before the span opens (so ``@runnable`` app spans nest under it) and the OTLP log bridge
     is attached. The run's attribute bag is seeded from the profile's config-and-defaults
-    (:meth:`~clabe.otel._settings.OtelSettings.initial_attributes`) before the root span
+    (:meth:`~clabe.logging.otel._settings.OtelSettings.initial_attributes`) before the root span
     starts, so the root span and every child carry it. Telemetry is best effort — a missing
     SDK or bad config is logged and the run proceeds untraced. The span is ended on exit,
     before the caller's cleanup.

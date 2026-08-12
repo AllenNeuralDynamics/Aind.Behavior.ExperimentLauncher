@@ -16,10 +16,11 @@ from _mocks import (
 from pydantic import BaseModel, Field
 from pydantic_settings import CliApp
 
-from clabe import otel, resource_monitor
+from clabe import resource_monitor
 from clabe.apps import CurriculumApp, CurriculumSettings, PythonScriptApp
 from clabe.cache_manager import CacheManager
 from clabe.launcher import Launcher, LauncherCliArgs, experiment
+from clabe.logging import otel
 from clabe.pickers import DefaultBehaviorPicker, DefaultBehaviorPickerSettings
 from clabe.runnable import runnable
 from clabe.ui import (

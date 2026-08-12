@@ -17,7 +17,7 @@ from .. import __version__
 from .. import logging as clabe_logging
 from ..constants import TMP_DIR
 from ..git_manager import GitRepository
-from ..otel import bind_session, record_exception, run_span
+from ..logging.otel import bind_session, record_exception, run_span
 from ..runnable import set_include_timing
 from ..ui import Frontend, MessageLevel, TextRequest, make_frontend, set_current_frontend
 from ..utils import abspath, format_datetime, utcnow

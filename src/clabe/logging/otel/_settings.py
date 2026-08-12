@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar, Literal
 from opentelemetry.util.types import AttributeValue
 from pydantic import Field
 
-from ..services import ServiceSettings
+from ...services import ServiceSettings
 
 if TYPE_CHECKING:
     from aind_behavior_services.session import Session
@@ -22,7 +22,7 @@ class OtelSettings(ServiceSettings):
     * :meth:`session_attributes` — values derived from the session, once it is registered.
 
     Both feed a single attribute bag that is stamped on every span and log. Attributes may
-    also be set at any time during a run via :func:`clabe.otel.enrich_attribute`.
+    also be set at any time during a run via :func:`clabe.logging.otel.enrich_attribute`.
     """
 
     __yml_section__: ClassVar[str] = "otel"
@@ -83,7 +83,7 @@ class AindOtelSettings(OtelSettings):
     Every field is optional and settable in clabe.yml. Fields left unset are auto-populated
     at creation time where a default exists (``hostname``, ``rig_id``, ``software_version``);
     ``subject_id`` and ``user_id`` stay ``None`` until the session is registered. Any field
-    can also be overridden at any time via :func:`clabe.otel.enrich_attribute` (this is also
+    can also be overridden at any time via :func:`clabe.logging.otel.enrich_attribute` (this is also
     how one-off attributes such as ``instrument_id`` are set — they have no dedicated field).
 
     See https://github.com/AllenNeuralDynamics/log-schema for the field definitions.
@@ -125,7 +125,7 @@ class AindOtelSettings(OtelSettings):
 
     def initial_attributes(self) -> dict[str, AttributeValue]:
         """Resolve the log-schema fields, applying auto-defaults to any left unset in config."""
-        from ..utils.aind_validators import get_aind_rig_name
+        from ...utils.aind_validators import get_aind_rig_name
 
         resolved: dict[str, str | None] = {
             "hostname": self.hostname or _default_hostname(),

@@ -1,7 +1,7 @@
 import pydantic
 import pytest
 
-from clabe.otel import OtelSettings
+from clabe.logging.otel import OtelSettings
 
 
 def test_protocol_defaults_to_grpc():

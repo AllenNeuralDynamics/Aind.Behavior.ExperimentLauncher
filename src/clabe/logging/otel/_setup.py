@@ -13,7 +13,7 @@ _INTERNAL_LOGGERS = ("opentelemetry", "urllib3")
 # The single attribute bag for a run. Every stage of population (config defaults, session
 # registration, ad-hoc enrichment) writes here; the span and log enrichers replay it onto
 # every span and log. This is what makes the four write points behave consistently — see
-# :class:`clabe.otel._settings.OtelSettings`.
+# :class:`clabe.logging.otel._settings.OtelSettings`.
 _attributes: dict[str, AttributeValue] = {}
 
 
@@ -71,11 +71,11 @@ def configure(settings: OtelSettings) -> None:
     :data:`_attributes`) so backend telemetry is filterable by subject, rig, session, etc.
 
     ``settings.protocol`` selects the wire protocol (see
-    :attr:`~clabe.otel._settings.OtelSettings.protocol`); the matching exporter package
+    :attr:`~clabe.logging.otel._settings.OtelSettings.protocol`); the matching exporter package
     (``opentelemetry-exporter-otlp-proto-http`` or ``-grpc``) must be installed.
 
     Args:
-        settings: The resolved :class:`~clabe.otel._settings.OtelSettings`.
+        settings: The resolved :class:`~clabe.logging.otel._settings.OtelSettings`.
     """
     from opentelemetry import trace
     from opentelemetry._logs import set_logger_provider
@@ -102,7 +102,7 @@ def configure(settings: OtelSettings) -> None:
             traces_endpoint = settings.endpoint
             logs_endpoint = settings.endpoint
             # Passed explicitly rather than inferred from endpoint's scheme — see the ``insecure``
-            # field docstring on :class:`~clabe.otel._settings.OtelSettings`.
+            # field docstring on :class:`~clabe.logging.otel._settings.OtelSettings`.
             exporter_kwargs = {"insecure": settings.insecure}
         case "http":
             from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter

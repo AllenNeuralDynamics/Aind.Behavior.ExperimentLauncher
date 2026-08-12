@@ -3,8 +3,8 @@ from unittest.mock import patch
 
 import pytest
 
-from clabe.otel._settings import OtelSettings
-from clabe.otel._setup import configure
+from clabe.logging.otel._settings import OtelSettings
+from clabe.logging.otel._setup import configure
 
 
 @pytest.fixture(autouse=True)
