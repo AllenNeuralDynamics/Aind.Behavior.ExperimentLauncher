@@ -1,5 +1,6 @@
 import logging
-from typing import Callable, Generic, Optional, Protocol, Self, TypeAlias, TypeVar, runtime_checkable
+from collections.abc import Callable
+from typing import Generic, Protocol, Self, TypeAlias, TypeVar, runtime_checkable
 
 from pydantic import BaseModel
 
@@ -31,7 +32,7 @@ class CommandError(Exception):
         ```
     """
 
-    def __init__(self, exit_code: int, stdout: Optional[str] = None, stderr: Optional[str] = None):
+    def __init__(self, exit_code: int, stdout: str | None = None, stderr: str | None = None):
         """
         Initialize the CommandError.
 
@@ -67,8 +68,8 @@ class CommandError(Exception):
 class CommandResult(BaseModel):
     """Represents the result of a process execution."""
 
-    stdout: Optional[str]
-    stderr: Optional[str]
+    stdout: str | None
+    stderr: str | None
     exit_code: int
 
     @property
@@ -224,7 +225,7 @@ class Command(Generic[TOutput]):
         """
         self._cmd: list[str] = cmd
         self._output_parser = output_parser
-        self._result: Optional[CommandResult] = None
+        self._result: CommandResult | None = None
 
     @property
     def result(self) -> CommandResult:

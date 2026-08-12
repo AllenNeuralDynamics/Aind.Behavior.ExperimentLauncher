@@ -66,7 +66,7 @@ def test_server(temp_transfer_dir):
 @pytest.fixture
 def client_settings(test_server):
     """Create client settings for the test server."""
-    server, port, token = test_server
+    _server, port, token = test_server
     return XmlRpcClientSettings(
         server_url=HttpUrl(f"http://127.0.0.1:{port}"),
         token=SecretStr(token),

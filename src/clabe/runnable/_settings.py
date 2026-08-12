@@ -1,6 +1,5 @@
 import logging
 from dataclasses import dataclass, replace
-from typing import Optional
 
 #: When True, success notifications include elapsed time. Toggled by --debug-mode.
 _include_timing: bool = False
@@ -21,12 +20,12 @@ class RunnableSpec:
     fills unset flags with ``True`` before storing the spec on the wrapper.
     """
 
-    name: Optional[str] = None
-    notify: Optional[str] = None  # custom start message
-    show_activity: Optional[bool] = None
-    notify_start: Optional[bool] = None
-    notify_success: Optional[bool] = None
-    notify_fail: Optional[bool] = None
+    name: str | None = None
+    notify: str | None = None  # custom start message
+    show_activity: bool | None = None
+    notify_start: bool | None = None
+    notify_success: bool | None = None
+    notify_fail: bool | None = None
     log_level: int = logging.INFO
 
     def merge(self, other: "RunnableSpec") -> "RunnableSpec":

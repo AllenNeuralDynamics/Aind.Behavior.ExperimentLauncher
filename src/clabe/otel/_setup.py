@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING
 
 from opentelemetry.util.types import AttributeValue
 
@@ -14,7 +14,7 @@ _INTERNAL_LOGGERS = ("opentelemetry", "urllib3")
 # registration, ad-hoc enrichment) writes here; the span and log enrichers replay it onto
 # every span and log. This is what makes the four write points behave consistently — see
 # :class:`clabe.otel._settings.OtelSettings`.
-_attributes: Dict[str, AttributeValue] = {}
+_attributes: dict[str, AttributeValue] = {}
 
 
 class _ExcludeInternalLogs(logging.Filter):
@@ -37,13 +37,13 @@ class _AttributeLogEnricher(logging.Filter):
         return True
 
 
-def set_attributes(attributes: Dict[str, AttributeValue]) -> None:
+def set_attributes(attributes: dict[str, AttributeValue]) -> None:
     """Replace the run's attribute bag (used to seed at run start and clear at run end)."""
     _attributes.clear()
     _attributes.update(attributes)
 
 
-def merge_attributes(attributes: Dict[str, AttributeValue]) -> None:
+def merge_attributes(attributes: dict[str, AttributeValue]) -> None:
     """Merge attributes into the run's bag, overriding any same-named values."""
     _attributes.update(attributes)
 

@@ -8,6 +8,6 @@ except PackageNotFoundError:
 
 logger = logging.getLogger(__name__)
 
-from .logging import configure_console_logging  # noqa: E402
+from .logging import configure_console_logging
 
 configure_console_logging()

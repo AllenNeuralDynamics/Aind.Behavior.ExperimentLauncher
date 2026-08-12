@@ -1,15 +1,14 @@
 import logging
-from typing import Optional
 
 from ._frontend import Frontend
 from ._messages import MessageLevel
 
 logger = logging.getLogger(__name__)
 
-_current_frontend: Optional[Frontend] = None
+_current_frontend: Frontend | None = None
 
 
-def set_current_frontend(frontend: Optional[Frontend]) -> None:
+def set_current_frontend(frontend: Frontend | None) -> None:
     """
     Registers the process-wide frontend used by :func:`notify`.
 
@@ -24,7 +23,7 @@ def set_current_frontend(frontend: Optional[Frontend]) -> None:
     _current_frontend = frontend
 
 
-def current_frontend() -> Optional[Frontend]:
+def current_frontend() -> Frontend | None:
     """Returns the currently registered frontend, or ``None`` if unset."""
     return _current_frontend
 

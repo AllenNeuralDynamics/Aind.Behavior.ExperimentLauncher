@@ -1,19 +1,23 @@
+import logging
 import os
 import re
 import typing
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Any, Literal, Optional, get_args, get_origin
+from typing import Annotated, Any, ClassVar, Literal, get_args, get_origin
 
 from pydantic import TypeAdapter, ValidationError
 from pydantic_core import PydanticUndefined
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, ScrollableContainer, Vertical
+from textual.css.query import QueryError
 from textual.screen import ModalScreen
 from textual.widgets import Button, DataTable, DirectoryTree, Footer, Input, Label, OptionList, Select, Switch
 
 from ._requests import AcknowledgeRequest, FormRequest, ReadOnlyTable
+
+logger = logging.getLogger(__name__)
 
 
 def _humanize(name: str) -> str:
@@ -189,7 +193,7 @@ class _HelpPopup(ModalScreen):
     """Field-help dialog shown on F1; dismissed with Enter, Space, Escape, or F1."""
 
     DEFAULT_CSS = _HELP_POPUP_CSS
-    BINDINGS = [
+    BINDINGS: ClassVar[list[Binding]] = [
         Binding("enter", "ok", "", show=False),
         Binding("space", "ok", "", show=False),
         Binding("escape", "ok", "", show=False),
@@ -222,7 +226,7 @@ class _AcknowledgeScreen(ModalScreen):
     """Modal acknowledgement dialog — blocks until the user dismisses it."""
 
     DEFAULT_CSS = _ACKNOWLEDGE_CSS
-    BINDINGS = [
+    BINDINGS: ClassVar[list[Binding]] = [
         Binding("enter", "ok", "", show=False),
         Binding("space", "ok", "", show=False),
         Binding("escape", "ok", "", show=False),
@@ -262,7 +266,7 @@ class _ReadOnlyTableScreen(ModalScreen):
     """Modal that displays read-only tabular data and collects an OK/Cancel answer."""
 
     DEFAULT_CSS = _READ_ONLY_TABLE_CSS
-    BINDINGS = [Binding("escape", "cancel", "Cancel")]
+    BINDINGS: ClassVar[list[Binding]] = [Binding("escape", "cancel", "Cancel")]
 
     def __init__(self, request: ReadOnlyTable) -> None:
         """Initialize with the declarative read-only-table request."""
@@ -306,7 +310,7 @@ class _FilePickerScreen(ModalScreen):
     """Modal for browsing and selecting a filesystem path."""
 
     DEFAULT_CSS = _FILE_PICKER_CSS
-    BINDINGS = [Binding("escape", "cancel_picker", "Cancel")]
+    BINDINGS: ClassVar[list[Binding]] = [Binding("escape", "cancel_picker", "Cancel")]
 
     def __init__(self, start: str = "") -> None:
         """Initialize with the directory to open first."""
@@ -348,7 +352,7 @@ class _FormScreen(ModalScreen):
     """Modal form that renders and validates a Pydantic BaseModel."""
 
     DEFAULT_CSS = _FORM_CSS
-    BINDINGS = [
+    BINDINGS: ClassVar[list[Binding]] = [
         Binding("f1", "show_help", "Field help"),
         Binding("f5", "submit_form", "Submit"),
         Binding("escape", "close_form", "Close"),
@@ -396,8 +400,8 @@ class _FormScreen(ModalScreen):
                 self._path_fields.add(name)
             try:
                 self._field_widgets[name] = self.query_one(f"#field-{name}")
-            except Exception:
-                pass
+            except QueryError as exc:
+                logger.debug("No widget mounted for field %r: %s", name, exc)
         if self._field_order and (first := self._field_widgets.get(self._field_order[0])):
             first.focus()
 
@@ -436,7 +440,7 @@ class _FormScreen(ModalScreen):
         """Refresh the path completion list for a path field."""
         try:
             opts = self.query_one(f"#complete-{field_name}", OptionList)
-        except Exception:
+        except QueryError:
             return
         completions = _path_completions(partial)
         opts.clear_options()
@@ -467,8 +471,8 @@ class _FormScreen(ModalScreen):
             lbl = self.query_one(f"#error-{field_name}", Label)
             lbl.update(f"⚠ {message}")
             lbl.add_class("--active")
-        except Exception:
-            pass
+        except QueryError as exc:
+            logger.debug("No error label mounted for field %r: %s", field_name, exc)
 
     def _clear_field_error(self, field_name: str) -> None:
         """Clear the inline error label for a field."""
@@ -476,8 +480,8 @@ class _FormScreen(ModalScreen):
             lbl = self.query_one(f"#error-{field_name}", Label)
             lbl.update("")
             lbl.remove_class("--active")
-        except Exception:
-            pass
+        except QueryError as exc:
+            logger.debug("No error label mounted for field %r: %s", field_name, exc)
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle Browse and close button presses."""
@@ -487,7 +491,7 @@ class _FormScreen(ModalScreen):
             path_input = self.query_one(f"#field-{field_name}", Input)
             start = _resolve_start_dir(path_input.value.strip())
 
-            def _on_pick(result: Optional[Path]) -> None:
+            def _on_pick(result: Path | None) -> None:
                 """Apply the file picker result to the path input."""
                 if result is not None:
                     path_input.value = str(result)
@@ -504,7 +508,7 @@ class _FormScreen(ModalScreen):
         """Close the form without submitting."""
         self.dismiss(None)
 
-    def _current_field_name(self) -> Optional[str]:
+    def _current_field_name(self) -> str | None:
         """Return the field name whose widget currently has focus, or None."""
         focused = self.focused
         if focused is None:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import TYPE_CHECKING, Optional, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 from urllib.parse import quote
 
 import requests
@@ -21,7 +21,7 @@ _ACTIVEDIRECTORY_ENDPOINT = "http://aind-metadata-service/api/v2/active_director
 _RIG_NAME_ENV_VAR = "aibs_comp_id"
 
 
-def get_aind_rig_name(*, required: bool = False) -> Optional[str]:
+def get_aind_rig_name(*, required: bool = False) -> str | None:
     """Return the AIND rig name from the ``aibs_comp_id`` environment variable.
 
     Single source of truth for reading the rig identifier from the environment; prefer this
@@ -42,7 +42,7 @@ def get_aind_rig_name(*, required: bool = False) -> Optional[str]:
 
 def validate_username(
     username: str,
-    timeout: Optional[float] = 2,
+    timeout: float | None = 2,
 ) -> bool:
     """
     Validates if the given username exists in the AIND Active Directory.

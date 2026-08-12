@@ -5,8 +5,9 @@ import os
 import random
 import shutil
 import threading
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Awaitable, Callable, Optional, Self, TypeVar, Union
+from typing import Self, TypeVar
 
 import git.exc
 import pydantic
@@ -56,7 +57,7 @@ class Launcher:
         self,
         *,
         settings: LauncherCliArgs,
-        attached_logger: Optional[logging.Logger] = None,
+        attached_logger: logging.Logger | None = None,
         frontend: None | Frontend = None,
     ) -> None:
         """
@@ -106,7 +107,7 @@ class Launcher:
 
         self._logger = _logger
 
-        self._session: Optional[Session] = None
+        self._session: Session | None = None
         self._has_copied_logs = False
 
     @property
@@ -176,7 +177,7 @@ class Launcher:
         else:
             return self._session
 
-    def run_experiment(self, experiment: Callable[["Launcher"], Union[None, Awaitable[None]]]) -> None:
+    def run_experiment(self, experiment: Callable[["Launcher"], None | Awaitable[None]]) -> None:
         """
         Main entry point for the launcher execution.
 
@@ -227,7 +228,7 @@ class Launcher:
                 record_exception(e)
                 _code = -1
             except Exception as e:  # pylint: disable=broad-except
-                logger.error("Launcher failed: %s", e, exc_info=True)
+                logger.exception("Launcher failed")
                 self.frontend.notify(f"Launcher failed: {e}", MessageLevel.ERROR)
                 record_exception(e)
                 _code = -1
@@ -240,7 +241,7 @@ class Launcher:
                 else:
                     self._exit(_code)
 
-    def copy_logs(self, dst: Optional[os.PathLike] = None, suffix: str = "Behavior/Logs") -> None:
+    def copy_logs(self, dst: os.PathLike | None = None, suffix: str = "Behavior/Logs") -> None:
         """
         Closes the file handlers of the launcher and copies the temporary data to the session directory.
 
@@ -251,7 +252,7 @@ class Launcher:
             suffix: Suffix to append to session directory path. Defaults to "Behavior/Logs"
         """
         if self._has_copied_logs:
-            return None
+            return
 
         clabe_logging.close_file_handlers(self._logger)
         if dst is not None:
@@ -406,10 +407,9 @@ class Launcher:
         # Note: This function should be idempotent!!!
 
         try:
-            if self._data_directory is not None:
-                if not os.path.exists(self._data_directory):
-                    # if _data_directory exists, session_directory is guaranteed to exist as well
-                    self.create_directory(self.session_directory)
+            if self._data_directory is not None and not os.path.exists(self._data_directory):
+                # if _data_directory exists, session_directory is guaranteed to exist as well
+                self.create_directory(self.session_directory)
 
             if not os.path.exists(self.temp_dir):
                 self.create_directory(self.temp_dir)
@@ -475,7 +475,7 @@ class Launcher:
         shutil.copytree(self.temp_dir, dst, dirs_exist_ok=True, copy_function=_copy_with_log_append)
         return dst
 
-    def save_temp_model(self, model: pydantic.BaseModel, directory: Optional[os.PathLike] = None) -> Path:
+    def save_temp_model(self, model: pydantic.BaseModel, directory: os.PathLike | None = None) -> Path:
         """
         Saves a temporary JSON representation of a schema model.
 

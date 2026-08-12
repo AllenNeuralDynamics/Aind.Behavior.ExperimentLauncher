@@ -42,8 +42,8 @@ In code, build one with the factory:
 ```python
 from clabe.ui import make_frontend, default_frontend
 
-frontend = make_frontend("auto")   # or "tui" / "console"
-frontend = default_frontend()      # the auto choice directly
+frontend = make_frontend("auto")  # or "tui" / "console"
+frontend = default_frontend()  # the auto choice directly
 ```
 
 A `Launcher` does this for you from `settings.frontend` and registers the result
@@ -94,6 +94,7 @@ number-prompt loop for you:
 
 ```python
 from clabe.ui import FrontendBase
+
 
 class MyFrontend(FrontendBase):
     def _render(self, message, level): ...

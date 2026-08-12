@@ -1,11 +1,12 @@
 import dataclasses
-from typing import Any, Callable, List, Mapping, Optional, Sequence, Union
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any
 
 from pydantic import BaseModel
 
 #: A validator takes a candidate answer and returns ``None`` when the value is
 #: acceptable, or an error message (to surface to the user) when it is not.
-Validator = Callable[[str], Optional[str]]
+Validator = Callable[[str], str | None]
 
 
 @dataclasses.dataclass
@@ -19,7 +20,7 @@ class Choice:
     """
 
     value: str
-    label: Optional[str] = None
+    label: str | None = None
 
     @property
     def display(self) -> str:
@@ -47,14 +48,14 @@ class PickRequest:
     """
 
     label: str
-    options: Sequence[Union[str, Choice]]
-    default: Optional[str] = None
+    options: Sequence[str | Choice]
+    default: str | None = None
     allow_none: bool = True
     none_label: str = "None"
-    field: Optional[str] = None
-    help: Optional[str] = None
+    field: str | None = None
+    help: str | None = None
 
-    def choices(self) -> List[Choice]:
+    def choices(self) -> list[Choice]:
         """Normalize ``options`` into a list of :class:`Choice`."""
         return [opt if isinstance(opt, Choice) else Choice(value=opt) for opt in self.options]
 
@@ -72,7 +73,7 @@ class ConfirmRequest:
 
     label: str
     default: bool = False
-    field: Optional[str] = None
+    field: str | None = None
 
 
 @dataclasses.dataclass
@@ -94,7 +95,7 @@ class AcknowledgeRequest:
     message: str
     title: str = "Notice"
     button_label: str = "OK"
-    field: Optional[str] = None
+    field: str | None = None
 
 
 @dataclasses.dataclass
@@ -112,10 +113,10 @@ class TextRequest:
     """
 
     label: str
-    default: Optional[str] = None
+    default: str | None = None
     multiline: bool = False
-    validators: List[Validator] = dataclasses.field(default_factory=list)
-    field: Optional[str] = None
+    validators: list[Validator] = dataclasses.field(default_factory=list)
+    field: str | None = None
 
 
 @dataclasses.dataclass
@@ -141,13 +142,13 @@ class AutoCompleteRequest:
 
     label: str
     options: Sequence[str]
-    default: Optional[str] = None
+    default: str | None = None
     strict: bool = False
-    validators: List[Validator] = dataclasses.field(default_factory=list)
-    field: Optional[str] = None
-    help: Optional[str] = None
+    validators: list[Validator] = dataclasses.field(default_factory=list)
+    field: str | None = None
+    help: str | None = None
 
-    def suggestions(self) -> List[str]:
+    def suggestions(self) -> list[str]:
         """Return ``options`` normalized to a list of strings."""
         return [str(option) for option in self.options]
 
@@ -164,8 +165,8 @@ class NumberRequest:
     """
 
     label: str
-    default: Optional[float] = None
-    field: Optional[str] = None
+    default: float | None = None
+    field: str | None = None
 
 
 @dataclasses.dataclass
@@ -181,9 +182,9 @@ class FormRequest:
     """
 
     model: type
-    title: Optional[str] = None
-    initial: Optional[object] = None
-    field: Optional[str] = None
+    title: str | None = None
+    initial: object | None = None
+    field: str | None = None
 
 
 @dataclasses.dataclass
@@ -204,7 +205,7 @@ class FieldRequest:
 
     model: type
     field_name: str
-    initial: Optional[object] = None
+    initial: object | None = None
 
 
 @dataclasses.dataclass
@@ -235,18 +236,18 @@ class ReadOnlyTable:
 
     columns: Sequence[str]
     rows: Sequence[Sequence[Any]]
-    title: Optional[str] = None
-    prompt: Optional[str] = None
+    title: str | None = None
+    prompt: str | None = None
     confirm_label: str = "OK"
     cancel_label: str = "Cancel"
-    field: Optional[str] = None
+    field: str | None = None
 
     @classmethod
     def from_records(
         cls,
         records: Sequence[Mapping[str, Any]],
         *,
-        columns: Optional[Sequence[str]] = None,
+        columns: Sequence[str] | None = None,
         **kwargs: Any,
     ) -> "ReadOnlyTable":
         """
@@ -271,7 +272,7 @@ class ReadOnlyTable:
     @classmethod
     def from_object(
         cls,
-        obj: Union[Mapping[str, Any], BaseModel],
+        obj: Mapping[str, Any] | BaseModel,
         *,
         key_header: str = "Parameter",
         value_header: str = "Value",

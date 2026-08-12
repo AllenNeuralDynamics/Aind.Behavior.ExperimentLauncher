@@ -1,6 +1,6 @@
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional
 
 from ..runnable import runnable
 from ..services import Service
@@ -24,7 +24,7 @@ class ResourceMonitor(Service):
 
     def __init__(
         self,
-        constrains: Optional[List["Constraint"]] = None,
+        constrains: list["Constraint"] | None = None,
     ) -> None:
         """
         Initializes the ResourceMonitor.
@@ -177,9 +177,9 @@ class Constraint:
 
     name: str
     constraint: Callable[..., bool]
-    args: List = field(default_factory=list)
+    args: list = field(default_factory=list)
     kwargs: dict = field(default_factory=dict)
-    fail_msg_handler: Optional[Callable[..., str]] = field(default=None)
+    fail_msg_handler: Callable[..., str] | None = field(default=None)
 
     def __call__(self) -> bool | Exception:
         """

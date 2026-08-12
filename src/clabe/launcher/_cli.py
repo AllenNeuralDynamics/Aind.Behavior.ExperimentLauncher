@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import (
@@ -16,7 +16,7 @@ class LauncherCliArgs(ServiceSettings, cli_prog_name="clabe", cli_kebab_case=Tru
     Provides command-line argument parsing and validation for launcher operations.
     """
 
-    repository_directory: Optional[Path] = Field(
+    repository_directory: Path | None = Field(
         default=None, description="The repository root directory. If None will be auto-detected."
     )
     debug_mode: CliImplicitFlag[bool] = Field(default=False, description="Whether to run in debug mode")

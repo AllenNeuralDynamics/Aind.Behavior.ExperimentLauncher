@@ -6,8 +6,9 @@ import platform as _platform
 import queue
 import re
 import threading
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator, List, Optional
+from typing import ClassVar
 
 from rich.text import Text
 from textual.app import App, ComposeResult
@@ -29,6 +30,8 @@ from ._requests import (
     TextRequest,
 )
 from ._textual_form import _AcknowledgeScreen, _FormScreen, _ReadOnlyTableScreen
+
+logger = logging.getLogger(__name__)
 
 #: Sentinel pushed back to the caller when a prompt is cancelled (e.g. Ctrl+C).
 _CANCELLED = object()
@@ -63,7 +66,7 @@ def _log_style(levelno: int) -> str:
 
 def _local_time() -> str:
     """Return the current local time formatted as HH:MM:SS."""
-    return datetime.datetime.now().strftime("%H:%M:%S")
+    return datetime.datetime.now(datetime.UTC).astimezone().strftime("%H:%M:%S")
 
 
 #: Matches drive-rooted, absolute, or multi-segment relative paths.
@@ -174,7 +177,7 @@ class _LauncherApp(App):
     """
 
     CSS = _APP_CSS
-    BINDINGS = [
+    BINDINGS: ClassVar[list[Binding]] = [
         Binding("ctrl+c", "cancel", "Exit", priority=True),
         Binding("f2", "toggle_logs", "Toggle Logs"),
     ]
@@ -187,10 +190,10 @@ class _LauncherApp(App):
         super().__init__(driver_class=driver)
         self._show_logs = show_logs
         self.ready = threading.Event()
-        self._pending: Optional["queue.Queue"] = None
-        self._kind: Optional[str] = None
-        self._pick_values: List[object] = []
-        self._auto_all: List[str] = []
+        self._pending: queue.Queue | None = None
+        self._kind: str | None = None
+        self._pick_values: list[object] = []
+        self._auto_all: list[str] = []
         self._activity_count: int = 0
 
     def compose(self) -> ComposeResult:
@@ -280,7 +283,7 @@ class _LauncherApp(App):
         """Mount a pick list; deliver the answer via reply."""
         self._pending, self._kind = reply, "pick"
         self._pick_values = []
-        labels: List[str] = []
+        labels: list[str] = []
         if request.allow_none:
             labels.append(request.none_label)
             self._pick_values.append(_NONE)
@@ -446,7 +449,7 @@ class _TuiLogHandler(logging.Handler):
             return
         try:
             message = self.format(record)
-        except Exception:
+        except Exception:  # noqa: BLE001 -- formatting an arbitrary log record must never crash the log pane
             return
         self._frontend._write_log(_linkify(message, _log_style(record.levelno)))
 
@@ -471,10 +474,10 @@ class TextualFrontend(FrontendBase):
     def __init__(self) -> None:
         """Initialize the frontend."""
         super().__init__()
-        self._app: Optional[_LauncherApp] = None
-        self._thread: Optional[threading.Thread] = None
-        self._log_handler: Optional[_TuiLogHandler] = None
-        self._prev_console_level: Optional[int] = None
+        self._app: _LauncherApp | None = None
+        self._thread: threading.Thread | None = None
+        self._log_handler: _TuiLogHandler | None = None
+        self._prev_console_level: int | None = None
 
     def _ensure(self) -> _LauncherApp:
         """Start the TUI app on a background thread (once) and return it."""
@@ -521,8 +524,8 @@ class TextualFrontend(FrontendBase):
             self._prev_console_level = None
         try:
             self._app.call_from_thread(self._app.exit)
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 -- best-effort teardown; the thread join below still runs either way
+            logger.debug("Ignoring error while exiting the TUI app during close(): %s", exc)
         if self._thread is not None:
             self._thread.join(timeout=5)
         self._app = None
@@ -569,39 +572,39 @@ class TextualFrontend(FrontendBase):
     def _ask_text(self, request: TextRequest) -> str:
         """Request a text prompt from the app and block until answered."""
         app = self._ensure()
-        reply: "queue.Queue" = queue.Queue()
+        reply: queue.Queue = queue.Queue()
         app.call_from_thread(app.ask_text, request, reply)
         return _unwrap(reply.get()) or ""
 
     def _ask_autocomplete(self, request: AutoCompleteRequest) -> str:
         """Request an autocomplete prompt and block until answered."""
         app = self._ensure()
-        reply: "queue.Queue" = queue.Queue()
+        reply: queue.Queue = queue.Queue()
         app.call_from_thread(app.ask_autocomplete, request, reply)
         return _unwrap(reply.get()) or ""
 
-    def _ask_pick(self, request: PickRequest) -> Optional[str]:
+    def _ask_pick(self, request: PickRequest) -> str | None:
         """Request a pick prompt and block until answered."""
         app = self._ensure()
-        reply: "queue.Queue" = queue.Queue()
+        reply: queue.Queue = queue.Queue()
         app.call_from_thread(app.ask_pick, request, reply)
         return _unwrap(reply.get())
 
     def _ask_confirm(self, request: ConfirmRequest) -> bool:
         """Request a confirm prompt and block until answered."""
         app = self._ensure()
-        reply: "queue.Queue" = queue.Queue()
+        reply: queue.Queue = queue.Queue()
         app.call_from_thread(app.ask_confirm, request, reply)
         return bool(_unwrap(reply.get()))
 
-    def _ask_form(self, request: FormRequest) -> Optional[object]:
+    def _ask_form(self, request: FormRequest) -> object | None:
         """Push the form modal and block until the user submits or cancels."""
         app = self._ensure()
-        reply: "queue.Queue" = queue.Queue()
+        reply: queue.Queue = queue.Queue()
         app.call_from_thread(app.ask_form, request, reply)
         return _unwrap(reply.get())
 
-    def prompt_form(self, request: FormRequest) -> Optional[object]:
+    def prompt_form(self, request: FormRequest) -> object | None:
         """Present a Pydantic model form; return the filled instance or None if cancelled."""
         result = self._ask_form(request)
         if result is not None:
@@ -611,7 +614,7 @@ class TextualFrontend(FrontendBase):
     def _ask_read_only_table(self, request: ReadOnlyTable) -> bool:
         """Push the read-only table modal and block until the user answers."""
         app = self._ensure()
-        reply: "queue.Queue" = queue.Queue()
+        reply: queue.Queue = queue.Queue()
         app.call_from_thread(app.ask_read_only_table, request, reply)
         return bool(_unwrap(reply.get()))
 
@@ -624,6 +627,6 @@ class TextualFrontend(FrontendBase):
     def _ask_acknowledge(self, request: AcknowledgeRequest) -> None:
         """Push the acknowledge modal and block until the user dismisses it."""
         app = self._ensure()
-        reply: "queue.Queue" = queue.Queue()
+        reply: queue.Queue = queue.Queue()
         app.call_from_thread(app.ask_acknowledge, request, reply)
         _unwrap(reply.get())

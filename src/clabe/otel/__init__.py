@@ -1,6 +1,7 @@
 import contextlib
 import logging
-from typing import TYPE_CHECKING, Dict, Generator, Optional
+from collections.abc import Generator
+from typing import TYPE_CHECKING
 
 from opentelemetry import trace
 from opentelemetry.trace import Span
@@ -16,21 +17,21 @@ if TYPE_CHECKING:
     from ..launcher import Launcher
 
 __all__ = [
-    "run_span",
+    "AindOtelSettings",
+    "OtelSettings",
     "bind_session",
     "enrich_attribute",
-    "span",
     "event",
-    "set_attribute",
     "record_exception",
-    "OtelSettings",
-    "AindOtelSettings",
+    "run_span",
+    "set_attribute",
+    "span",
 ]
 
 logger = logging.getLogger(__name__)
 _tracer = trace.get_tracer("clabe.launcher")
-_active_span: Optional[Span] = None
-_active_settings: Optional[OtelSettings] = None
+_active_span: Span | None = None
+_active_settings: OtelSettings | None = None
 
 
 @contextlib.contextmanager
@@ -53,7 +54,7 @@ def run_span(launcher: "Launcher") -> Generator[Span, None, None]:
     """
     global _active_span, _active_settings
     try:
-        settings: Optional[OtelSettings] = AindOtelSettings()
+        settings: OtelSettings | None = AindOtelSettings()
     except Exception:  # observability must never break a run
         logger.warning("Failed to load otel settings; telemetry disabled", exc_info=True)
         settings = None
@@ -113,7 +114,7 @@ def enrich_attribute(name: str, value: AttributeValue) -> None:
     _enrich({name: value})
 
 
-def _enrich(attributes: Dict[str, AttributeValue]) -> None:
+def _enrich(attributes: dict[str, AttributeValue]) -> None:
     """Merge attributes into the run's bag and stamp them on the active root span."""
     merge_attributes(attributes)
     if _active_span is not None:

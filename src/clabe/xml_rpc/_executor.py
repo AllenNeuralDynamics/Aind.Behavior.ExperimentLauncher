@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from ..apps._base import Command, CommandResult
 from .models import JobStatus
@@ -49,8 +49,8 @@ class XmlRpcExecutor:
     def __init__(
         self,
         client: "XmlRpcClient",
-        timeout: Optional[float] = None,
-        poll_interval: Optional[float] = None,
+        timeout: float | None = None,
+        poll_interval: float | None = None,
         monitor: bool = True,
     ) -> None:
         """

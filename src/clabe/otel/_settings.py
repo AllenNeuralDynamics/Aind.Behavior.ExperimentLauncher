@@ -1,6 +1,6 @@
 import os
 import socket
-from typing import TYPE_CHECKING, ClassVar, Dict, Literal, Optional
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 from opentelemetry.util.types import AttributeValue
 from pydantic import Field
@@ -40,7 +40,7 @@ class OtelSettings(ServiceSettings):
         default=True,
         description="protocol='grpc' only: use a plaintext channel instead of TLS. Ignored for protocol='http'.",
     )
-    headers: Dict[str, str] = Field(
+    headers: dict[str, str] = Field(
         default_factory=dict,
         description=(
             "OTLP export headers, e.g. 'Authorization' for a backend reached without a collector. "
@@ -57,7 +57,7 @@ class OtelSettings(ServiceSettings):
         """The ``service.name`` resource attribute — the "Service" every span and log is tagged with."""
         return self.service_name
 
-    def initial_attributes(self) -> Dict[str, AttributeValue]:
+    def initial_attributes(self) -> dict[str, AttributeValue]:
         """Attributes known at process start: config values plus auto-resolved defaults.
 
         This is stages 1 and 2 of population. Auto-defaults fill only fields left ``None`` in
@@ -66,12 +66,12 @@ class OtelSettings(ServiceSettings):
         """
         return {}
 
-    def session_attributes(self, session: "Session") -> Dict[str, AttributeValue]:
+    def session_attributes(self, session: "Session") -> dict[str, AttributeValue]:
         """Attributes derived from the session, bound once the launcher registers it.
 
         This is stage 3 of population and overrides any same-named value set earlier.
         """
-        attributes: Dict[str, AttributeValue] = {}
+        attributes: dict[str, AttributeValue] = {}
         if session.session_name:
             attributes["session_name"] = session.session_name
         return attributes
@@ -89,27 +89,27 @@ class AindOtelSettings(OtelSettings):
     See https://github.com/AllenNeuralDynamics/log-schema for the field definitions.
     """
 
-    hostname: Optional[str] = Field(
+    hostname: str | None = Field(
         default=None,
         description="Machine name. Default: env COMPUTERNAME / HOSTNAME / the socket hostname.",
     )
-    software_name: Optional[str] = Field(
+    software_name: str | None = Field(
         default=None,
         description="The producing application. clabe orchestrates many, so it has no default — set per rig.",
     )
-    software_version: Optional[str] = Field(
+    software_version: str | None = Field(
         default=None,
         description="Version of software_name. Default: that distribution's installed package version.",
     )
-    rig_id: Optional[str] = Field(
+    rig_id: str | None = Field(
         default=None,
         description="Rig identifier. Default: env aibs_comp_id; None on rigs that do not export it.",
     )
-    subject_id: Optional[str] = Field(
+    subject_id: str | None = Field(
         default=None,
         description="Subject under test. Left None in config; filled from the session when registered.",
     )
-    user_id: Optional[str] = Field(
+    user_id: str | None = Field(
         default=None,
         description="Experimenter(s). Left None in config; filled from the session when registered.",
     )
@@ -123,11 +123,11 @@ class AindOtelSettings(OtelSettings):
         """
         return self.software_name or self.service_name
 
-    def initial_attributes(self) -> Dict[str, AttributeValue]:
+    def initial_attributes(self) -> dict[str, AttributeValue]:
         """Resolve the log-schema fields, applying auto-defaults to any left unset in config."""
         from ..utils.aind_validators import get_aind_rig_name
 
-        resolved: Dict[str, Optional[str]] = {
+        resolved: dict[str, str | None] = {
             "hostname": self.hostname or _default_hostname(),
             "software_name": self.software_name,
             "software_version": self.software_version
@@ -138,7 +138,7 @@ class AindOtelSettings(OtelSettings):
         }
         return {key: value for key, value in resolved.items() if value is not None}
 
-    def session_attributes(self, session: "Session") -> Dict[str, AttributeValue]:
+    def session_attributes(self, session: "Session") -> dict[str, AttributeValue]:
         """Fill ``subject_id`` and ``user_id`` from the session (plus the base session name)."""
         attributes = super().session_attributes(session)
         if session.subject:
@@ -153,11 +153,11 @@ def _default_hostname() -> str:
     return os.environ.get("COMPUTERNAME") or os.environ.get("HOSTNAME") or socket.gethostname()
 
 
-def _distribution_version(distribution: str) -> Optional[str]:
+def _distribution_version(distribution: str) -> str | None:
     """Return an installed distribution's version, or ``None`` if it is not installed."""
     try:
-        from importlib.metadata import version
+        from importlib.metadata import PackageNotFoundError, version
 
         return version(distribution)
-    except Exception:
+    except PackageNotFoundError:
         return None

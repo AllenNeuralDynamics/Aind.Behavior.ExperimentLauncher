@@ -1,6 +1,7 @@
 import contextlib
 import threading
-from typing import ContextManager, Generator, Optional, Protocol
+from collections.abc import Generator
+from typing import Protocol
 
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
@@ -17,7 +18,7 @@ class ActivitySink(Protocol):
     console-based spinner corrupt the TUI's display.
     """
 
-    def activity(self, description: str) -> ContextManager[None]:
+    def activity(self, description: str) -> contextlib.AbstractContextManager[None]:
         """Display activity for the duration of the returned context manager."""
         ...
 
@@ -54,7 +55,7 @@ class ActivityIndicator:
         ```
     """
 
-    def __init__(self, console: Optional[Console] = None, *, enabled: Optional[bool] = None) -> None:
+    def __init__(self, console: Console | None = None, *, enabled: bool | None = None) -> None:
         """
         Initialize the activity indicator.
 
@@ -68,16 +69,16 @@ class ActivityIndicator:
         self._console = console or _default_console
         self._enabled = self._console.is_terminal if enabled is None else enabled
         self._lock = threading.RLock()
-        self._progress: Optional[Progress] = None
+        self._progress: Progress | None = None
         self._active = 0
-        self._sink: Optional[ActivitySink] = None
+        self._sink: ActivitySink | None = None
 
     @property
     def enabled(self) -> bool:
         """Whether the activity display is active."""
         return self._enabled
 
-    def set_sink(self, sink: Optional[ActivitySink]) -> None:
+    def set_sink(self, sink: ActivitySink | None) -> None:
         """
         Routes activities through ``sink`` (e.g. a TUI) instead of the console.
 
@@ -142,7 +143,7 @@ class ActivityIndicator:
                     self._progress = None
 
 
-_default_indicator: Optional[ActivityIndicator] = None
+_default_indicator: ActivityIndicator | None = None
 _default_indicator_lock = threading.Lock()
 
 

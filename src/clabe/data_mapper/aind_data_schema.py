@@ -16,7 +16,7 @@ else:
 
 import abc
 import logging
-from typing import TypeAlias, TypeVar, Union
+from typing import TypeAlias, TypeVar
 
 from ..data_mapper import _base
 
@@ -39,7 +39,7 @@ else:
     Rig: TypeAlias = Instrument
 
 
-_TAdsObject = TypeVar("_TAdsObject", bound=Union[Session, Rig, Acquisition, Instrument])
+_TAdsObject = TypeVar("_TAdsObject", bound=Session | Rig | Acquisition | Instrument)
 
 
 class AindDataSchemaDataMapper(_base.DataMapper[_TAdsObject], abc.ABC):

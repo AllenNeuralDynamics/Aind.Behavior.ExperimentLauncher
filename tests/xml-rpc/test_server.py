@@ -58,7 +58,7 @@ def rpc_server(rpc_settings):
 @pytest.fixture
 def rpc_client(rpc_server):
     """Create an XML-RPC client connected to the test server."""
-    server, settings = rpc_server
+    _server, settings = rpc_server
     client = ServerProxy(f"http://{settings.address}:{settings.port}")
     return client, settings.token.get_secret_value()
 

@@ -1,16 +1,17 @@
 import importlib.util
 import logging
 import sys
+from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Awaitable, Callable, Iterable, Optional, Protocol, Union
+from typing import Any, Protocol
 
 from ..ui import Frontend, PickRequest, default_frontend
 from ._base import Launcher
 
 logger = logging.getLogger(__name__)
-ExperimentCallable = Callable[[Launcher], Union[None, Awaitable[None]]]
+ExperimentCallable = Callable[[Launcher], None | Awaitable[None]]
 
 
 @dataclass
@@ -34,15 +35,9 @@ class _IExperiment(Protocol):
     __name__: str
 
 
-class _ITaggedExperiment(_IExperiment, Protocol):
-    """Protocol for experiments tagged with metadata."""
-
-    __clabe_experiment_metadata__: ExperimentMetadata
-
-
 def experiment(
     *,
-    name: Optional[str] = None,
+    name: str | None = None,
 ) -> Callable[[_IExperiment], _IExperiment]:
     """Decorator to mark a function as a CLABE experiment.
 
@@ -69,7 +64,7 @@ def experiment(
             name=exp_name,
             func=func,  # type: ignore[arg-type]
         )
-        setattr(func, "__clabe_experiment_metadata__", metadata)
+        func.__clabe_experiment_metadata__ = metadata
         return func
 
     return decorator
@@ -78,7 +73,7 @@ def experiment(
 def collect_clabe_experiments(module: ModuleType) -> Iterable[ExperimentMetadata]:
     """Yield all `@experiment` experiments defined in the target module."""
 
-    for _, value in vars(module).items():
+    for value in vars(module).values():
         metadata = getattr(value, "__clabe_experiment_metadata__", None)
         if isinstance(metadata, ExperimentMetadata):
             logger.debug("Discovered CLABE experiment: %s in module %s", metadata.name, module.__name__)
@@ -138,7 +133,7 @@ def _select_experiment(file_path: Path, frontend: Frontend | None = None) -> Exp
     module = _load_module_from_path(file_path)
     experiments = list(collect_clabe_experiments(module))
 
-    if len(set(e.name for e in experiments)) != len(experiments):
+    if len({e.name for e in experiments}) != len(experiments):
         raise ValueError("Experiment names must be unique within a module.")
 
     if not experiments:
@@ -160,5 +155,5 @@ def _select_experiment(file_path: Path, frontend: Frontend | None = None) -> Exp
         if choice is None:
             raise SystemExit("No experiment selected; exiting.")
         selected = callable_str_converter[choice]
-    logging.info("Selected experiment: %s", selected.name)
+    logger.info("Selected experiment: %s", selected.name)
     return selected

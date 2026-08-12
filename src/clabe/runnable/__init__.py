@@ -3,10 +3,10 @@ from ._core import runnable
 from ._settings import RunnableSpec, set_include_timing
 
 __all__ = [
-    "runnable",
-    "set_include_timing",
-    "RunnableSpec",
     "ActivityIndicator",
     "ActivitySink",
+    "RunnableSpec",
     "get_activity_indicator",
+    "runnable",
+    "set_include_timing",
 ]

@@ -3,9 +3,10 @@
 
 import logging
 import re
+from collections.abc import Callable
 from datetime import datetime
 from html import unescape
-from typing import Callable, ClassVar, Optional, Type
+from typing import ClassVar
 
 import msal
 import pydantic
@@ -40,12 +41,12 @@ class _DataverseRestClientSettings(ServiceSettings):
         scope: Scope string for the Dataverse API
     """
 
-    __yml_section__: ClassVar[Optional[str]] = "dataverse"
+    __yml_section__: ClassVar[str | None] = "dataverse"
 
     tenant_id: str
     client_id: str
     org: str
-    additional_scopes: list[str] = ["offline_access"]
+    additional_scopes: list[str] = pydantic.Field(default_factory=lambda: ["offline_access"])
     username: str
     password: SecretStr
     domain: str = "alleninstitute.org"
@@ -84,7 +85,7 @@ class _DataverseRestClientSettings(ServiceSettings):
 
     @classmethod
     def from_keepass(
-        cls, entry_title: str = "svc_sipe", keepass: Optional[KeePass] = None, **kwargs
+        cls, entry_title: str = "svc_sipe", keepass: KeePass | None = None, **kwargs
     ) -> "_DataverseRestClientSettings":
         """
         Create a DataverseSettings instance getting the password from a KeePass entry.
@@ -170,11 +171,11 @@ class _DataverseRestClient:
 
     @staticmethod
     def _format_queries(
-        filter: Optional[str] = None,
-        order_by: Optional[str | list[str]] = None,
-        top: Optional[int] = None,
-        count: Optional[bool] = None,
-        select: Optional[str | list[str]] = None,
+        filter: str | None = None,
+        order_by: str | list[str] | None = None,
+        top: int | None = None,
+        count: bool | None = None,
+        select: str | list[str] | None = None,
     ) -> str:
         """
         Format query parameters for a Dataverse API request.
@@ -209,12 +210,12 @@ class _DataverseRestClient:
     def _construct_url(
         self,
         table: str,
-        entry_id: Optional[str | dict] = None,
-        filter: Optional[str] = None,
-        order_by: Optional[str | list[str]] = None,
-        top: Optional[int] = None,
-        count: Optional[bool] = None,
-        select: Optional[str | list[str]] = None,
+        entry_id: str | dict | None = None,
+        filter: str | None = None,
+        order_by: str | list[str] | None = None,
+        top: int | None = None,
+        count: bool | None = None,
+        select: str | list[str] | None = None,
     ) -> str:
         """
         Construct the URL for a Dataverse table entry.
@@ -236,8 +237,8 @@ class _DataverseRestClient:
         elif isinstance(entry_id, str):
             identifier = f"({entry_id})"
         elif isinstance(entry_id, dict):  # Can query by alternate key
-            key = list(entry_id.keys())[0]
-            value = list(entry_id.values())[0]
+            key = next(iter(entry_id.keys()))
+            value = next(iter(entry_id.values()))
             if isinstance(value, str):
                 # strings in url query must be formatted with single quotes
                 value = f"'{value}'"
@@ -280,7 +281,7 @@ class _DataverseRestClient:
         response.raise_for_status()
         return response.json()
 
-    def add_entry(self, table: str, data: dict) -> Optional[dict]:
+    def add_entry(self, table: str, data: dict) -> dict | None:
         """
         Add a new entry to a Dataverse table.
 
@@ -339,10 +340,10 @@ class _DataverseRestClient:
     def query(
         self,
         table: str,
-        filter: Optional[str] = None,
-        order_by: Optional[str] = None,
-        top: Optional[int] = None,
-        select: Optional[list[str]] = None,
+        filter: str | None = None,
+        order_by: str | None = None,
+        top: int | None = None,
+        select: list[str] | None = None,
     ) -> list[dict]:
         """
         Query a Dataverse table for multiple entries based on filters.
@@ -405,12 +406,12 @@ class DataverseSuggestion(BaseModel):
     Internal representation of a suggestion entry in Dataverse.
     """
 
-    trainer_state: Optional[TrainerState] = None
+    trainer_state: TrainerState | None = None
     subject_id: str
-    task_name: Optional[str]
-    stage_name: Optional[str]
-    modified_on: Optional[datetime] = None
-    created_on: Optional[datetime] = None
+    task_name: str | None
+    stage_name: str | None
+    modified_on: datetime | None = None
+    created_on: datetime | None = None
 
     @field_validator("trainer_state", mode="before")
     @classmethod
@@ -495,12 +496,12 @@ class DataversePicker(DefaultBehaviorPicker):
     def __init__(
         self,
         *,
-        dataverse_client: Optional[_DataverseRestClient] = None,
+        dataverse_client: _DataverseRestClient | None = None,
         settings: DefaultBehaviorPickerSettings,
         launcher: Launcher,
-        frontend: Optional[ui.Frontend] = None,
-        experimenter_validator: Optional[Callable[[str], bool]] = validate_username,
-        rig_validator: Optional[Callable[[Rig], Rig]] = validate_rig_computer_name,
+        frontend: ui.Frontend | None = None,
+        experimenter_validator: Callable[[str], bool] | None = validate_username,
+        rig_validator: Callable[[Rig], Rig] | None = validate_rig_computer_name,
     ):
         """
         Initializes the DataversePicker.
@@ -524,9 +525,9 @@ class DataversePicker(DefaultBehaviorPicker):
             if dataverse_client is not None
             else _DataverseRestClient(_DataverseRestClientSettings.from_keepass())
         )
-        self._dataverse_suggestion: Optional[DataverseSuggestion] = None
+        self._dataverse_suggestion: DataverseSuggestion | None = None
 
-    def pick_trainer_state(self, task_model: Type[TTask]) -> tuple[TrainerState, TTask]:
+    def pick_trainer_state(self, task_model: type[TTask]) -> tuple[TrainerState, TTask]:
         """
         Prompts the user to select or create a trainer state configuration.
 
@@ -573,7 +574,7 @@ class DataversePicker(DefaultBehaviorPicker):
 
         assert self._trainer_state is not None
         if not self._trainer_state.is_on_curriculum:
-            logging.warning("Deserialized TrainerState is NOT on curriculum.")
+            logger.warning("Deserialized TrainerState is NOT on curriculum.")
         return (
             self.trainer_state,
             task_model.model_validate_json(self.trainer_state.stage.task.model_dump_json()),

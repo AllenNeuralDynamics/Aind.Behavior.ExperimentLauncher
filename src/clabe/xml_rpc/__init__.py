@@ -4,11 +4,11 @@ from ._server import XmlRpcServer, XmlRpcServerSettings
 from .models import FileInfo, JobResult
 
 __all__ = [
-    "XmlRpcServerSettings",
-    "XmlRpcServer",
-    "XmlRpcClientSettings",
-    "XmlRpcClient",
-    "JobResult",
     "FileInfo",
+    "JobResult",
+    "XmlRpcClient",
+    "XmlRpcClientSettings",
     "XmlRpcExecutor",
+    "XmlRpcServer",
+    "XmlRpcServerSettings",
 ]

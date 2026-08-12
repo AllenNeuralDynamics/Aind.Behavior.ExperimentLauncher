@@ -17,7 +17,6 @@ import threading
 import time
 import webbrowser
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +42,7 @@ def _reachable_host(host: str) -> str:
     return "127.0.0.1" if host in ("0.0.0.0", "", "::") else host
 
 
-def _patched_templates_dir() -> Optional[Path]:
+def _patched_templates_dir() -> Path | None:
     """Builds a templates directory that adds a "Finish" button to the web UI.
 
     Copies textual-serve's index template and injects a Finish button next to

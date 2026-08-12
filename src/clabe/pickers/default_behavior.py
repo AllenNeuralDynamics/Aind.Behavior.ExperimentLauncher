@@ -1,8 +1,9 @@
 import glob
 import logging
 import os
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, ClassVar, List, Optional, Type, TypeVar, Union
+from typing import ClassVar, TypeVar
 
 import pydantic
 from aind_behavior_curriculum import TrainerState
@@ -30,7 +31,7 @@ class DefaultBehaviorPickerSettings(ServiceSettings):
         config_library_dir: The directory where configuration files are stored.
     """
 
-    __yml_section__: ClassVar[Optional[str]] = "default_behavior_picker"
+    __yml_section__: ClassVar[str | None] = "default_behavior_picker"
 
     config_library_dir: os.PathLike
 
@@ -69,9 +70,9 @@ class DefaultBehaviorPicker:
         self,
         settings: DefaultBehaviorPickerSettings,
         launcher: Launcher,
-        frontend: Optional[ui.Frontend] = None,
-        experimenter_validator: Optional[Callable[[str], bool]] = validate_username,
-        rig_validator: Optional[Callable[[Rig], Rig]] = validate_rig_computer_name,
+        frontend: ui.Frontend | None = None,
+        experimenter_validator: Callable[[str], bool] | None = validate_username,
+        rig_validator: Callable[[Rig], Rig] | None = validate_rig_computer_name,
         use_cache: bool = True,
     ):
         """
@@ -91,8 +92,8 @@ class DefaultBehaviorPicker:
         self._ensure_directories()
         self._experimenter_validator = experimenter_validator
         self._rig_validator = rig_validator
-        self._trainer_state: Optional[TrainerState] = None
-        self._session: Optional[Session] = None
+        self._trainer_state: TrainerState | None = None
+        self._session: Session | None = None
         self._cache_manager = CacheManager.get_instance()
         self._use_cache = use_cache
 
@@ -188,7 +189,7 @@ class DefaultBehaviorPicker:
         self._launcher.create_directory(self.rig_dir)
         self._launcher.create_directory(self.subject_dir)
 
-    def pick_rig(self, model: Type[TRig]) -> TRig:
+    def pick_rig(self, model: type[TRig]) -> TRig:
         """
         Prompts the user to select a rig configuration file.
 
@@ -259,7 +260,7 @@ class DefaultBehaviorPicker:
         return rig
 
     @staticmethod
-    def _load_rig_from_path(path: Path, model: Type[TRig]) -> TRig | None:
+    def _load_rig_from_path(path: Path, model: type[TRig]) -> TRig | None:
         """Load a rig configuration from a given path."""
         try:
             rig = model_from_json_file(path, model)
@@ -271,7 +272,7 @@ class DefaultBehaviorPicker:
             logger.info("Invalid choice. Try again. %s", e)
         return None
 
-    def pick_session(self, model: Type[TSession] = Session) -> TSession:
+    def pick_session(self, model: type[TSession] = Session) -> TSession:
         """
         Prompts the user to select or create a session configuration.
 
@@ -304,7 +305,7 @@ class DefaultBehaviorPicker:
         self._session = session
         return session
 
-    def pick_task(self, model: Type[TTask]) -> TTask:
+    def pick_task(self, model: type[TTask]) -> TTask:
         """
         Prompts the user to select or create a task configuration.
 
@@ -322,7 +323,7 @@ class DefaultBehaviorPicker:
         Raises:
             ValueError: If no valid task file is found
         """
-        task: Optional[TTask] = None
+        task: TTask | None = None
         if self._session is None:
             raise ValueError("Session must be picked (pick_session) before picking task.")
 
@@ -360,14 +361,14 @@ class DefaultBehaviorPicker:
                     )
                 )
                 if not isinstance(path, str):
-                    raise ValueError("Invalid choice.")
+                    raise TypeError("Invalid choice.")
                 if not os.path.isfile(path):
                     raise FileNotFoundError(f"File not found: {path}")
                 task = model_from_json_file(path, model)
                 logger.info("User entered: %s.", path)
             except pydantic.ValidationError as e:
                 logger.error("Failed to validate pydantic model. Try again. %s", e)
-            except (ValueError, FileNotFoundError) as e:
+            except (TypeError, FileNotFoundError) as e:
                 logger.info("Invalid choice. Try again. %s", e)
         if task is None:
             self.frontend.notify("No task file found.", ui.MessageLevel.ERROR)
@@ -375,7 +376,7 @@ class DefaultBehaviorPicker:
 
         return task
 
-    def pick_trainer_state(self, task_model: Type[TTask]) -> tuple[TrainerState, TTask]:
+    def pick_trainer_state(self, task_model: type[TTask]) -> tuple[TrainerState, TTask]:
         """
         Prompts the user to select or create a trainer state configuration.
 
@@ -443,7 +444,7 @@ class DefaultBehaviorPicker:
             subjects = None
         options = sorted(subjects) if subjects else []
 
-        subject: Optional[str] = None
+        subject: str | None = None
         while not subject:
             subject = self.frontend.prompt_autocomplete(
                 ui.AutoCompleteRequest(
@@ -455,7 +456,7 @@ class DefaultBehaviorPicker:
         self._cache_manager.add_to_cache("subjects", subject)
         return subject
 
-    def prompt_experimenter(self, strict: bool = True) -> Optional[List[str]]:
+    def prompt_experimenter(self, strict: bool = True) -> list[str] | None:
         """
         Prompts the user to enter the experimenter's name(s).
 
@@ -480,7 +481,7 @@ class DefaultBehaviorPicker:
         else:
             experimenters_cache = None
         options = sorted(experimenters_cache) if experimenters_cache else []
-        experimenter: Optional[List[str]] = None
+        experimenter: list[str] | None = None
         while experimenter is None:
             _input = self.frontend.prompt_autocomplete(
                 ui.AutoCompleteRequest(
@@ -507,8 +508,8 @@ class DefaultBehaviorPicker:
 
     def dump_model(
         self,
-        model: Union[Rig, Task, TrainerState],
-    ) -> Optional[Path]:
+        model: Rig | Task | TrainerState,
+    ) -> Path | None:
         """
         Saves the provided model to the appropriate configuration file.
 
@@ -531,7 +532,7 @@ class DefaultBehaviorPicker:
                 raise ValueError("Session must be picked (pick_session) before dumping trainer state.")
             path = Path(self.subject_dir) / self._session.subject / (ByAnimalFiles.TRAINER_STATE.value + ".json")
         else:
-            raise ValueError("Model type not supported for dumping.")
+            raise TypeError("Model type not supported for dumping.")
 
         os.makedirs(path.parent, exist_ok=True)
         if path.exists():

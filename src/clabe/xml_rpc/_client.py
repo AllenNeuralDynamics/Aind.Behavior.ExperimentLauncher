@@ -3,7 +3,6 @@ import logging
 import time
 import xmlrpc.client
 from pathlib import Path
-from typing import Optional, Union
 
 from pydantic import BaseModel, Field, HttpUrl, SecretStr
 
@@ -147,7 +146,7 @@ class XmlRpcClient:
         else:
             raise RuntimeError(f"Unknown job status: {result['status']}")
 
-    def wait_for_result(self, job_id: str, timeout: Optional[float] = None) -> JobResult:
+    def wait_for_result(self, job_id: str, timeout: float | None = None) -> JobResult:
         """
         Wait for a command to complete and return the result.
 
@@ -190,7 +189,7 @@ class XmlRpcClient:
 
             time.sleep(self.settings.poll_interval)
 
-    def run_command(self, cmd_args: list[str] | str, timeout: Optional[float] = None) -> JobResult:
+    def run_command(self, cmd_args: list[str] | str, timeout: float | None = None) -> JobResult:
         """
         Submit a command and wait for it to complete.
 
@@ -251,7 +250,7 @@ class XmlRpcClient:
         return JobListResponse(**result)
 
     def upload_file(
-        self, local_path: Union[str, Path], remote_filename: Optional[str] = None, overwrite: bool = True
+        self, local_path: str | Path, remote_filename: str | None = None, overwrite: bool = True
     ) -> FileUploadResponse:
         """
         Upload a file to the server.
@@ -353,7 +352,7 @@ class XmlRpcClient:
         logger.info("Successfully uploaded model as %s", remote_filename)
         return response
 
-    def download_file(self, remote_filename: str, local_path: Optional[Union[str, Path]] = None) -> Path:
+    def download_file(self, remote_filename: str, local_path: str | Path | None = None) -> Path:
         """
         Download a file from the server.
 

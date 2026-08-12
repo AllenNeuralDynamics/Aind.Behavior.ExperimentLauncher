@@ -32,7 +32,7 @@ async def client_experiment(launcher: Launcher) -> None:
     session = picker.pick_session(Session)
     rig = picker.pick_rig(RigModel)
     launcher.register_session(session, rig.data_directory)
-    trainer_state, task = picker.pick_trainer_state(MockTask)
+    _trainer_state, task = picker.pick_trainer_state(MockTask)
 
     resource_monitor.ResourceMonitor(
         constrains=[
@@ -62,7 +62,6 @@ async def client_experiment(launcher: Launcher) -> None:
         ).command
     )
     print(bonsai_app_result)
-    return
 
 
 def main():
@@ -79,7 +78,6 @@ def main():
 
     launcher = Launcher(settings=behavior_cli_args)
     launcher.run_experiment(client_experiment)
-    return None
 
 
 if __name__ == "__main__":

@@ -5,7 +5,8 @@ import functools
 import inspect
 import logging
 import time
-from typing import Any, Callable, Optional, TypeVar, overload
+from collections.abc import Callable
+from typing import Any, TypeVar, overload
 
 from opentelemetry import trace
 
@@ -21,7 +22,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 _active: contextvars.ContextVar[bool] = contextvars.ContextVar("clabe_runnable_active", default=False)
 #: Tracks which asyncio Task set _active so gather()-spawned sibling tasks
 #: (which copy context) are not mistaken for nested runnables.
-_active_task: contextvars.ContextVar[Optional[Any]] = contextvars.ContextVar("clabe_runnable_task", default=None)
+_active_task: contextvars.ContextVar[Any | None] = contextvars.ContextVar("clabe_runnable_task", default=None)
 
 #: Defaults applied when a spec field is still None after merging.
 _DEFAULTS: dict[str, bool] = {
@@ -139,12 +140,12 @@ def _make_wrapper(fn: Callable, spec: RunnableSpec) -> Callable:
 def runnable(
     fn: F,
     *,
-    name: Optional[str] = ...,
-    notify: Optional[str] = ...,
-    show_activity: Optional[bool] = ...,
-    notify_start: Optional[bool] = ...,
-    notify_success: Optional[bool] = ...,
-    notify_fail: Optional[bool] = ...,
+    name: str | None = ...,
+    notify: str | None = ...,
+    show_activity: bool | None = ...,
+    notify_start: bool | None = ...,
+    notify_success: bool | None = ...,
+    notify_fail: bool | None = ...,
 ) -> F: ...
 
 
@@ -152,12 +153,12 @@ def runnable(
 def runnable(
     fn: None = ...,
     *,
-    name: Optional[str] = ...,
-    notify: Optional[str] = ...,
-    show_activity: Optional[bool] = ...,
-    notify_start: Optional[bool] = ...,
-    notify_success: Optional[bool] = ...,
-    notify_fail: Optional[bool] = ...,
+    name: str | None = ...,
+    notify: str | None = ...,
+    show_activity: bool | None = ...,
+    notify_start: bool | None = ...,
+    notify_success: bool | None = ...,
+    notify_fail: bool | None = ...,
 ) -> Callable[[F], F]: ...
 
 

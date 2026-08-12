@@ -2,7 +2,7 @@ import asyncio
 import logging
 from enum import Enum
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 from _mocks import (
     LIB_CONFIG,
@@ -44,7 +44,7 @@ class RecordingMode(Enum):
 class SessionConfig(BaseModel):
     """Demonstration model — exercises every form widget type."""
 
-    notes: Optional[str] = Field(
+    notes: str | None = Field(
         default=None,
         title="Experimenter Notes",
         description="Free-text notes attached to this session. Leave blank to skip.",
@@ -225,7 +225,6 @@ async def demo_experiment(launcher: Launcher) -> None:
 
     logger.info("Demo experiment finished")
     notify("Demo experiment complete!", MessageLevel.SUCCESS)
-    return
 
 
 def _seed_cache() -> None:
@@ -251,7 +250,6 @@ def main():
         ],
     )
     Launcher(settings=settings).run_experiment(demo_experiment)
-    return None
 
 
 if __name__ == "__main__":

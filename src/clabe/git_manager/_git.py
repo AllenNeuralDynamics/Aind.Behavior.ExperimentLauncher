@@ -1,6 +1,6 @@
 import logging
 import shutil
-from typing import List, Self
+from typing import Self
 
 from git import Repo
 
@@ -108,10 +108,10 @@ class GitRepository(Repo):
         _is_dirty_repo = self.is_dirty(untracked_files=True)
         if _is_dirty_repo:
             return True
-        return any([submodule.repo.is_dirty(untracked_files=True) for submodule in self.submodules])
+        return any(submodule.repo.is_dirty(untracked_files=True) for submodule in self.submodules)
 
     @staticmethod
-    def _get_changes(repo: Repo) -> List[str]:
+    def _get_changes(repo: Repo) -> list[str]:
         """
         Gets a list of changed files in the repository.
 
@@ -123,7 +123,7 @@ class GitRepository(Repo):
         """
         return [item.a_path for item in (repo.index.diff(None) + repo.index.diff("HEAD")) if item.a_path]
 
-    def uncommitted_changes(self) -> List[str]:
+    def uncommitted_changes(self) -> list[str]:
         """
         Retrieves a list of unstaged and untracked files in the repository and its submodules.
 

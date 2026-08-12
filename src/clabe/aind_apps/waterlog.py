@@ -1,7 +1,7 @@
 import os
 import shutil
 from pathlib import Path
-from typing import Any, ClassVar, Optional, Self
+from typing import Any, ClassVar, Self
 
 from pydantic import Field
 from pydantic_settings import CliApp, SettingsConfigDict
@@ -19,15 +19,15 @@ class WaterlogSettings(ServiceSettings):
 
     model_config = SettingsConfigDict(cli_kebab_case=True)
     # This should be ok since the subclass initializes first the and toml sources get appended to the settings dict
-    __yml_section__: ClassVar[Optional[str]] = "waterlog"
+    __yml_section__: ClassVar[str | None] = "waterlog"
 
-    username: Optional[str] = Field(default=None, description="Username for the waterlog service")
-    mouse_id: Optional[str] = Field(default=None, description="Mouse ID for the waterlog service")
-    mouse_weight: Optional[float] = Field(default=None, description="Mouse weight for the waterlog service")
-    comment: Optional[str] = Field(default=None, description="Comment for the waterlog service")
-    earned_water: Optional[float] = Field(default=None, description="Water earned during behavior task (mL)")
-    water_supplement_ml: Optional[float] = Field(default=None, description="Water supplement amount (mL)")
-    water_supplement_delivered: Optional[bool] = Field(
+    username: str | None = Field(default=None, description="Username for the waterlog service")
+    mouse_id: str | None = Field(default=None, description="Mouse ID for the waterlog service")
+    mouse_weight: float | None = Field(default=None, description="Mouse weight for the waterlog service")
+    comment: str | None = Field(default=None, description="Comment for the waterlog service")
+    earned_water: float | None = Field(default=None, description="Water earned during behavior task (mL)")
+    water_supplement_ml: float | None = Field(default=None, description="Water supplement amount (mL)")
+    water_supplement_delivered: bool | None = Field(
         default=None, description="Flag indicating if the water supplement has been delivered"
     )
 
@@ -35,9 +35,7 @@ class WaterlogSettings(ServiceSettings):
 class WaterlogApp(ExecutableApp):
     """App for logging water consumption and related information."""
 
-    _EXECUTABLE: Optional[Path] = (
-        Path(os.getenv("PROGRAMFILES", r"C:\Program Files")) / r"AIBS_MPE\waterlog\waterlog.exe"
-    )
+    _EXECUTABLE: Path | None = Path(os.getenv("PROGRAMFILES", r"C:\Program Files")) / r"AIBS_MPE\waterlog\waterlog.exe"
 
     def __init__(self, settings: WaterlogSettings):
         """Initialize the WaterlogApp with the given settings."""
@@ -62,7 +60,7 @@ class WaterlogApp(ExecutableApp):
         return self._command
 
     @runnable
-    def run(self: Self, executor_kwargs: Optional[dict[str, Any]] = None) -> CommandResult:
+    def run(self: Self, executor_kwargs: dict[str, Any] | None = None) -> CommandResult:
         """Execute the command using a local executor and return the result."""
         executor = LocalDetachedExecutor(**(executor_kwargs or {}))
         return self.command.execute(executor)
