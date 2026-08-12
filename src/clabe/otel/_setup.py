@@ -70,13 +70,15 @@ def configure(settings: OtelSettings) -> None:
     are untouched. Both spans and logs are enriched from the run's attribute bag (see
     :data:`_attributes`) so backend telemetry is filterable by subject, rig, session, etc.
 
+    ``settings.protocol`` selects the wire protocol (see
+    :attr:`~clabe.otel._settings.OtelSettings.protocol`); the matching exporter package
+    (``opentelemetry-exporter-otlp-proto-http`` or ``-grpc``) must be installed.
+
     Args:
         settings: The resolved :class:`~clabe.otel._settings.OtelSettings`.
     """
     from opentelemetry import trace
     from opentelemetry._logs import set_logger_provider
-    from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
     from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
     from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
     from opentelemetry.sdk.trace import SpanProcessor, TracerProvider
@@ -90,20 +92,38 @@ def configure(settings: OtelSettings) -> None:
             for key, value in _attributes.items():
                 span.set_attribute(key, value)
 
-    resource = _build_resource(settings)
-    endpoint = settings.endpoint
     headers = settings.headers or None  # None lets the exporter fall back to OTEL_* env headers
+
+    match settings.protocol:
+        case "grpc":
+            from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
+            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
+            traces_endpoint = settings.endpoint
+            logs_endpoint = settings.endpoint
+            # Passed explicitly rather than inferred from endpoint's scheme — see the ``insecure``
+            # field docstring on :class:`~clabe.otel._settings.OtelSettings`.
+            exporter_kwargs = {"insecure": settings.insecure}
+        case "http":
+            from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+            from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+
+            traces_endpoint = f"{settings.endpoint}/v1/traces"
+            logs_endpoint = f"{settings.endpoint}/v1/logs"
+            exporter_kwargs = {}
+
+    resource = _build_resource(settings)
 
     tracer_provider = TracerProvider(resource=resource)
     tracer_provider.add_span_processor(_AttributeSpanEnricher())
     tracer_provider.add_span_processor(
-        BatchSpanProcessor(OTLPSpanExporter(endpoint=f"{endpoint}/v1/traces", headers=headers))
+        BatchSpanProcessor(OTLPSpanExporter(endpoint=traces_endpoint, headers=headers, **exporter_kwargs))
     )
     trace.set_tracer_provider(tracer_provider)
 
     logger_provider = LoggerProvider(resource=resource)
     logger_provider.add_log_record_processor(
-        BatchLogRecordProcessor(OTLPLogExporter(endpoint=f"{endpoint}/v1/logs", headers=headers))
+        BatchLogRecordProcessor(OTLPLogExporter(endpoint=logs_endpoint, headers=headers, **exporter_kwargs))
     )
     set_logger_provider(logger_provider)
     handler = LoggingHandler(logger_provider=logger_provider)

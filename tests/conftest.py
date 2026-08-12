@@ -100,7 +100,7 @@ def mock_base_launcher(mock_rig, mock_session, mock_task, mock_frontend, tmp_pat
         patch("clabe.launcher._base.GitRepository") as mock_git,
         patch("os.chdir"),
         patch("pathlib.Path.mkdir"),
-        patch("clabe.logging_helper.add_file_handler"),
+        patch("clabe.logging.add_file_handler"),
         patch("clabe.launcher.Launcher._ensure_directory_structure"),
         patch("clabe.launcher.Launcher.validate", return_value=True),
         patch("os.environ", {"COMPUTERNAME": "TEST_COMPUTER"}),

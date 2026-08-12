@@ -16,7 +16,7 @@ from textual.containers import Vertical
 from textual.widgets import Footer, Header, Input, Label, OptionList, RichLog, Static
 
 from .. import __version__
-from ..logging_helper import _TRANSCRIPT_LOGGER_NAME
+from ..logging import _TRANSCRIPT_LOGGER_NAME
 from ._frontend import FrontendBase
 from ._messages import MessageLevel
 from ._requests import (
@@ -480,7 +480,7 @@ class TextualFrontend(FrontendBase):
         """Start the TUI app on a background thread (once) and return it."""
         if self._app is not None:
             return self._app
-        from ..logging_helper import rich_handler
+        from ..logging import rich_handler
 
         app = _LauncherApp(show_logs=rich_handler.level <= logging.DEBUG)
         self._app = app
@@ -496,7 +496,7 @@ class TextualFrontend(FrontendBase):
 
     def _capture_logging(self) -> None:
         """Mute the console handler and mirror log records into the Logs pane."""
-        from ..logging_helper import rich_handler, set_console_level
+        from ..logging import rich_handler, set_console_level
 
         self._prev_console_level = rich_handler.level
         set_console_level(logging.CRITICAL + 1)
@@ -509,7 +509,7 @@ class TextualFrontend(FrontendBase):
         """Tear down the TUI and restore console logging."""
         if self._app is None:
             return
-        from ..logging_helper import set_console_level
+        from ..logging import set_console_level
         from ..runnable import get_activity_indicator
 
         get_activity_indicator().set_sink(None)

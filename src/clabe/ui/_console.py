@@ -53,7 +53,7 @@ class ConsoleFrontend(FrontendBase):
         """
         super().__init__()
         if console is None:
-            from ..logging_helper import clabe_console
+            from ..logging import clabe_console
 
             console = clabe_console
         self._console = console

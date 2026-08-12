@@ -4,6 +4,7 @@ from ._stdlib import (
     add_file_handler,
     clabe_console,
     close_file_handlers,
+    configure_console_logging,
     datetime_fmt,
     log_fmt,
     rich_handler,
@@ -14,6 +15,7 @@ from ._stdlib import (
 __all__ = [
     "add_file_handler",
     "close_file_handlers",
+    "configure_console_logging",
     "shutdown_logger",
     "rich_handler",
     "set_console_level",

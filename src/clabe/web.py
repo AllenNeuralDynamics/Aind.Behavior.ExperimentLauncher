@@ -105,7 +105,7 @@ def _open_browser_when_ready(host: str, port: int) -> threading.Thread:
 
 def _announce(host: str, port: int) -> None:
     """Prints the local URL and an SSH port-forwarding hint to the terminal."""
-    from .logging_helper import clabe_console
+    from .logging import clabe_console
 
     url = f"http://{host}:{port}"
     clabe_console.rule("CLABE web UI")

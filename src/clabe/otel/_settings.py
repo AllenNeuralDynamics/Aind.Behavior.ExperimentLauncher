@@ -1,6 +1,6 @@
 import os
 import socket
-from typing import TYPE_CHECKING, ClassVar, Dict, Optional
+from typing import TYPE_CHECKING, ClassVar, Dict, Literal, Optional
 
 from opentelemetry.util.types import AttributeValue
 from pydantic import Field
@@ -28,9 +28,17 @@ class OtelSettings(ServiceSettings):
     __yml_section__: ClassVar[str] = "otel"
 
     enabled: bool = Field(default=False, description="Whether telemetry is installed for the run.")
+    protocol: Literal["grpc", "http"] = Field(
+        default="grpc",
+        description="OTLP wire protocol. 'grpc' (default) uses endpoint as-is; 'http' appends per-signal paths.",
+    )
     endpoint: str = Field(
-        default="http://localhost:4318",
-        description="OTLP/HTTP base endpoint; '/v1/traces' and '/v1/logs' are appended per signal.",
+        default="localhost:4317",
+        description="OTLP base endpoint, e.g. 'localhost:4317' (grpc) or 'http://localhost:4318' (http).",
+    )
+    insecure: bool = Field(
+        default=True,
+        description="protocol='grpc' only: use a plaintext channel instead of TLS. Ignored for protocol='http'.",
     )
     headers: Dict[str, str] = Field(
         default_factory=dict,

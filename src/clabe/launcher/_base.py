@@ -12,7 +12,8 @@ import git.exc
 import pydantic
 from aind_behavior_services import Session
 
-from .. import __version__, logging_helper
+from .. import __version__
+from .. import logging as clabe_logging
 from ..constants import TMP_DIR
 from ..git_manager import GitRepository
 from ..otel import bind_session, record_exception, run_span
@@ -84,10 +85,10 @@ class Launcher:
 
         # Solve logger.
         if attached_logger:
-            _logger = logging_helper.add_file_handler(attached_logger, self.temp_dir / "launcher.log")
+            _logger = clabe_logging.add_file_handler(attached_logger, self.temp_dir / "launcher.log")
         else:
             root_logger = logging.getLogger()
-            _logger = logging_helper.add_file_handler(root_logger, self.temp_dir / "launcher.log")
+            _logger = clabe_logging.add_file_handler(root_logger, self.temp_dir / "launcher.log")
 
         # Map verbosity flags to the console log level.
         if settings.debug_mode:
@@ -101,7 +102,7 @@ class Launcher:
             display_level = logging.WARNING
 
         _logger.setLevel(logging.DEBUG if settings.debug_mode else logging.INFO)
-        logging_helper.set_console_level(display_level)
+        clabe_logging.set_console_level(display_level)
 
         self._logger = _logger
 
@@ -252,7 +253,7 @@ class Launcher:
         if self._has_copied_logs:
             return None
 
-        logging_helper.close_file_handlers(self._logger)
+        clabe_logging.close_file_handlers(self._logger)
         if dst is not None:
             out = self._copy_tmp_directory(dst)
         else:
@@ -322,7 +323,7 @@ class Launcher:
         """
         logger.debug("Exiting with code %s", code)
         if logger is not None:
-            logging_helper.shutdown_logger(logger)
+            clabe_logging.shutdown_logger(logger)
         if not _force:
             try:
                 self.frontend.prompt_text(TextRequest(label="Press Enter to exit...", field="exit"))

@@ -45,6 +45,7 @@ web = [
 otel = [
     "opentelemetry-sdk",
     "opentelemetry-exporter-otlp-proto-http",
+    "opentelemetry-exporter-otlp-proto-grpc",
     "pyyaml",
 ]
 aind-services = [

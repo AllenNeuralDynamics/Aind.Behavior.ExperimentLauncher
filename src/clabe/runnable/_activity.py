@@ -5,7 +5,7 @@ from typing import ContextManager, Generator, Optional, Protocol
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
-from ..logging_helper._stdlib import clabe_console as _default_console
+from ..logging._stdlib import clabe_console as _default_console
 
 
 class ActivitySink(Protocol):

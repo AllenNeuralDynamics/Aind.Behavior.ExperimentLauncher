@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from clabe.logging_helper import add_file_handler
+from clabe.logging import add_file_handler
 
 
 @pytest.fixture
@@ -14,7 +14,7 @@ def logger():
     return test_logger
 
 
-class TestLoggingHelper:
+class TestLogging:
     @patch("logging.FileHandler")
     def test_default_logger_builder_with_output_path(self, mock_file_handler, logger):
         mock_file_handler_instance = MagicMock()

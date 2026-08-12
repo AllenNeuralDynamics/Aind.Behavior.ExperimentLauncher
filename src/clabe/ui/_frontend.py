@@ -4,7 +4,7 @@ import typing
 from enum import Enum
 from typing import Any, ContextManager, List, Literal, Optional, Protocol, get_args, get_origin, runtime_checkable
 
-from ..logging_helper import _TRANSCRIPT_LOGGER_NAME
+from ..logging import _TRANSCRIPT_LOGGER_NAME
 from ._messages import MessageLevel
 from ._requests import (
     AcknowledgeRequest,

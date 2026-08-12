@@ -96,6 +96,13 @@ rich_handler.setLevel(_DEFAULT_CONSOLE_LEVEL)
 rich_handler.addFilter(_ExcludeTranscriptFilter())
 
 
+def configure_console_logging() -> None:
+    """
+    Installs clabe's default root-logger configuration (console handler, format, level).
+    """
+    logging.basicConfig(level=logging.INFO, format=log_fmt, datefmt=datetime_fmt, handlers=[rich_handler])
+
+
 def set_console_level(level: int) -> None:
     """
     Sets the verbosity threshold of the interactive console log handler.
