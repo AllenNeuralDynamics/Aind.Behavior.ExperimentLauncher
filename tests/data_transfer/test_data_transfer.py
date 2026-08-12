@@ -64,6 +64,7 @@ def mock_session():
         experiment="mock",
         subject="007",
         session_name="mock_session",
+        experimenter=["mock_experimenter"],
     )
 
 
@@ -227,6 +228,7 @@ class TestWatchdogDataTransferService:
             add_default_tasks=True,
             extra_tasks=settings.upload_tasks or {},
             job_type=settings.job_type,
+            user_email="mock_experimenter@alleninstitute.org",
         )
 
         transfer_service_args = new_watchdog_manifest.transfer_service_args
@@ -265,7 +267,11 @@ class TestWatchdogDataTransferService:
         }
         assert manifest is not None, "Manifest config is not set"
         new_watchdog_manifest = watchdog_service._make_transfer_args(
-            manifest, add_default_tasks=True, extra_tasks=extra_tasks, job_type="not_default"
+            manifest,
+            add_default_tasks=True,
+            extra_tasks=extra_tasks,
+            job_type="not_default",
+            user_email="mock_experimenter@alleninstitute.org",
         )
         transfer_service_args = new_watchdog_manifest.transfer_service_args
         assert transfer_service_args is not None, "Transfer service args are not set"

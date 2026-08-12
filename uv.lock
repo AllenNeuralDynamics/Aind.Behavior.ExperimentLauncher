@@ -105,7 +105,7 @@ docs = [
 requires-dist = [
     { name = "aind-behavior-services", specifier = ">=0.13.0" },
     { name = "aind-data-schema", marker = "extra == 'aind-services'", specifier = ">=2" },
-    { name = "aind-data-transfer-service", marker = "extra == 'aind-services'", specifier = ">=1.22.0" },
+    { name = "aind-data-transfer-service", marker = "extra == 'aind-services'", specifier = ">=2.2.0" },
     { name = "aind-watchdog-service", marker = "extra == 'aind-services'", specifier = ">=0.1.6" },
     { name = "gitpython" },
     { name = "msal", marker = "sys_platform == 'win32' and extra == 'aind-services'" },
