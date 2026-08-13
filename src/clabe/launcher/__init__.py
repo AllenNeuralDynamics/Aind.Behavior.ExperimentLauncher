@@ -4,6 +4,7 @@ from ._experiments import (
     ExperimentMetadata,
     collect_clabe_experiments,
     experiment,
+    get_experiment_name,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "LauncherCliArgs",
     "collect_clabe_experiments",
     "experiment",
+    "get_experiment_name",
 ]

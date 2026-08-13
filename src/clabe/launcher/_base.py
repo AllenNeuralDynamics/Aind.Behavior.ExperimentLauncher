@@ -22,6 +22,7 @@ from ..runnable import set_include_timing
 from ..ui import Frontend, MessageLevel, TextRequest, make_frontend, set_current_frontend
 from ..utils import abspath, format_datetime, utcnow
 from ._cli import LauncherCliArgs
+from ._experiments import get_experiment_name
 
 logger = logging.getLogger(__name__)
 
@@ -205,12 +206,13 @@ class Launcher:
         _code = 0
         # Handle inside run_span so teardown logs stay under the root span (and its attributes).
         # The exception no longer escapes the span, so status is set explicitly below.
-        with run_span(self):
+        _experiment_name = get_experiment_name(experiment)
+        with run_span(self, experiment_name=_experiment_name):
             try:
                 self.frontend.header(self.make_header())
                 set_experiment = getattr(self.frontend, "set_experiment", None)
                 if callable(set_experiment):
-                    set_experiment(getattr(experiment, "__name__", None) or "experiment")
+                    set_experiment(_experiment_name)
                 logger.info(self._generate_diagnostic_info())
 
                 if not self.settings.debug_mode:

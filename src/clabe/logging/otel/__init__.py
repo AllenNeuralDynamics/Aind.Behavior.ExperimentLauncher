@@ -35,7 +35,7 @@ _active_settings: OtelSettings | None = None
 
 
 @contextlib.contextmanager
-def run_span(launcher: "Launcher") -> Generator[Span, None, None]:
+def run_span(launcher: "Launcher", experiment_name: str | None = None) -> Generator[Span, None, None]:
     """Instrument a launcher run: install telemetry if enabled, then open the root span.
 
     Reads :class:`AindOtelSettings` from clabe.yml. When enabled, the SDK is configured
@@ -48,6 +48,9 @@ def run_span(launcher: "Launcher") -> Generator[Span, None, None]:
 
     Args:
         launcher: The launcher being instrumented.
+        experiment_name: Name derived from the experiment callable, used when
+            :attr:`~clabe.logging.otel.OtelSettings.run_name` is not set in config.
+            Pass the result of :func:`~clabe.launcher.get_experiment_name`.
 
     Yields:
         The root span for the run.
@@ -68,7 +71,8 @@ def run_span(launcher: "Launcher") -> Generator[Span, None, None]:
         except Exception:  # observability must never break a run
             logger.warning("Failed to set up telemetry; continuing without it", exc_info=True)
 
-    root = _tracer.start_span(settings.run_name if settings is not None else "experiment")
+    span_name = (settings.run_name if settings is not None else None) or experiment_name or "experiment"
+    root = _tracer.start_span(span_name)
     _active_span, _active_settings = root, settings
     try:
         with trace.use_span(root, end_on_exit=False):

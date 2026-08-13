@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 
-from clabe.launcher import collect_clabe_experiments
+from clabe.launcher import collect_clabe_experiments, experiment, get_experiment_name
 from clabe.launcher._experiments import _select_experiment
 from tests import TESTS_ASSETS
 
@@ -31,3 +31,31 @@ def test_select_experiment_multiple_experiments_discovered_and_logs_constant(cap
 
     launcher = Mock()
     selected.func(launcher)
+
+
+# --- get_experiment_name ---
+
+
+def test_get_experiment_name_uses_decorator_name() -> None:
+    """@experiment(name=...) takes priority over __name__."""
+
+    @experiment(name="my_custom_name")
+    def my_func(launcher): ...
+
+    assert get_experiment_name(my_func) == "my_custom_name"
+
+
+def test_get_experiment_name_falls_back_to_dunder_name() -> None:
+    """Plain callable without @experiment falls back to __name__."""
+
+    def plain_func(launcher): ...
+
+    assert get_experiment_name(plain_func) == "plain_func"
+
+
+def test_get_experiment_name_returns_none_when_no_name() -> None:
+    """A callable with no __name__ and no decorator returns None."""
+
+    nameless = Mock(spec=[])  # no __name__ attribute
+
+    assert get_experiment_name(nameless) is None

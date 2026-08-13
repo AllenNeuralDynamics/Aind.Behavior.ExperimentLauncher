@@ -5,13 +5,15 @@ from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from ..ui import Frontend, PickRequest, default_frontend
-from ._base import Launcher
+
+if TYPE_CHECKING:
+    from ._base import Launcher
 
 logger = logging.getLogger(__name__)
-ExperimentCallable = Callable[[Launcher], None | Awaitable[None]]
+ExperimentCallable = Callable[["Launcher"], None | Awaitable[None]]
 
 
 @dataclass
@@ -30,7 +32,7 @@ class ExperimentMetadata:
 class _IExperiment(Protocol):
     """Protocol for callables that accept a `Launcher` as first argument."""
 
-    def __call__(self, launcher: Launcher, *args: Any, **kwargs: Any) -> Any: ...
+    def __call__(self, launcher: "Launcher", /, *args: Any, **kwargs: Any) -> Any: ...
 
     __name__: str
 
@@ -68,6 +70,25 @@ def experiment(
         return func
 
     return decorator
+
+
+def get_experiment_name(experiment: _IExperiment) -> str | None:
+    """Return the human-readable name for an experiment callable, or ``None``.
+
+    Checks for a :class:`ExperimentMetadata` instance attached by the
+    :func:`experiment` decorator first, then falls back to ``__name__``.
+    Returns ``None`` when neither is available.
+
+    Args:
+        experiment: The experiment callable.
+
+    Returns:
+        The experiment name, or ``None`` if it cannot be determined.
+    """
+    metadata: ExperimentMetadata | None = getattr(experiment, "__clabe_experiment_metadata__", None)
+    if metadata is not None:
+        return metadata.name
+    return getattr(experiment, "__name__", None) or None
 
 
 def collect_clabe_experiments(module: ModuleType) -> Iterable[ExperimentMetadata]:
