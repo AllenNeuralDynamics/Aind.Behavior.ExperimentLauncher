@@ -5,7 +5,6 @@ import random
 import shutil
 from os import PathLike
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import pydantic
 from aind_behavior_services import Rig, Session, Task
@@ -35,7 +34,7 @@ class BonsaiApp(ExecutableApp, _DefaultExecutorMixin):
         self,
         workflow: os.PathLike,
         *,
-        executable: Optional[os.PathLike] = None,
+        executable: os.PathLike | None = None,
         is_editor_mode: bool = True,
         is_start_flag: bool = True,
         additional_externalized_properties: dict[str, str] | None = None,
@@ -129,8 +128,8 @@ class BonsaiApp(ExecutableApp, _DefaultExecutorMixin):
         bonsai_exe: PathLike | str = "./.bonsai/bonsai.exe",
         is_editor_mode: bool = True,
         is_start_flag: bool = True,
-        additional_properties: Optional[Dict[str, str]] = None,
-    ) -> List[str]:
+        additional_properties: dict[str, str] | None = None,
+    ) -> list[str]:
         """
         Builds a command list for running a Bonsai workflow via subprocess.
 
@@ -163,7 +162,7 @@ class BonsaiApp(ExecutableApp, _DefaultExecutorMixin):
             # Returns: ["./.bonsai/bonsai.exe", "workflow.bonsai", "--no-editor", "-p:SubjectName=Mouse123"]
             ```
         """
-        output_cmd: List[str] = [str(bonsai_exe), str(workflow_file)]
+        output_cmd: list[str] = [str(bonsai_exe), str(workflow_file)]
 
         if is_editor_mode:
             if is_start_flag:
@@ -198,10 +197,10 @@ class AindBehaviorServicesBonsaiApp(BonsaiApp):
         self,
         workflow: os.PathLike,
         *,
-        temp_directory: Optional[os.PathLike] = None,
-        rig: Optional[Rig] = None,
-        session: Optional[Session] = None,
-        task: Optional[Task] = None,
+        temp_directory: os.PathLike | None = None,
+        rig: Rig | None = None,
+        session: Session | None = None,
+        task: Task | None = None,
         **kwargs,
     ) -> None:
         """

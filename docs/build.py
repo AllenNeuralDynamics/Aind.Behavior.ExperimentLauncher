@@ -2,7 +2,7 @@ import ast
 import logging
 import shutil
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import yaml
 
@@ -19,7 +19,7 @@ TO_COPY = ["examples", "LICENSE"]
 log = logging.getLogger("mkdocs")
 
 
-def discover_python_modules(package_root: Path, include_private: bool = False) -> List[str]:
+def discover_python_modules(package_root: Path, include_private: bool = False) -> list[str]:
     modules = []
 
     def _find_modules(current_path: Path, prefix: str = "") -> None:
@@ -45,7 +45,7 @@ def discover_python_modules(package_root: Path, include_private: bool = False) -
     return sorted(modules)
 
 
-def discover_module_files(module_path: Path, include_private: bool = False) -> List[str]:
+def discover_module_files(module_path: Path, include_private: bool = False) -> list[str]:
     files = []
 
     def _find_files(current_path: Path, prefix: str = "") -> None:
@@ -68,8 +68,8 @@ def discover_module_files(module_path: Path, include_private: bool = False) -> L
     return sorted(files)
 
 
-def generate_api_structure() -> Dict[str, List[Dict[str, str]]]:
-    api_structure: Dict[str, List[Dict[str, str]]] = {}
+def generate_api_structure() -> dict[str, list[dict[str, str]]]:
+    api_structure: dict[str, list[dict[str, str]]] = {}
     modules = discover_python_modules(SRC_DIR, INCLUDE_PRIVATE_MODULES)
 
     API_DIR.mkdir(parents=True, exist_ok=True)
@@ -87,7 +87,7 @@ def generate_api_structure() -> Dict[str, List[Dict[str, str]]]:
                 f.write(f"::: {PACKAGE_NAME}.{file_name}\n")
 
     for module_name in modules:
-        module_structure: List[Dict[str, str]] = []
+        module_structure: list[dict[str, str]] = []
         module_path = SRC_DIR / module_name.replace(".", "/")
 
         # Add the module's __init__.py as the main module entry
@@ -115,15 +115,15 @@ def generate_api_structure() -> Dict[str, List[Dict[str, str]]]:
     return api_structure
 
 
-def update_mkdocs_yml(api_structure: Dict[str, List[Dict[str, str]]]) -> None:
+def update_mkdocs_yml(api_structure: dict[str, list[dict[str, str]]]) -> None:
     with open(MKDOCS_YML, "r") as f:
-        config: Dict[str, Any] = yaml.safe_load(f)
+        config: dict[str, Any] = yaml.safe_load(f)
 
-    nav: List[Union[str, Dict[str, Any]]] = config.get("nav", [])
+    nav: list[str | dict[str, Any]] = config.get("nav", [])
 
     for entry in nav:
         if isinstance(entry, dict) and API_LABEL in entry:
-            api_ref: List[Union[str, Dict[str, List[Dict[str, str]]]]] = []
+            api_ref: list[str | dict[str, list[dict[str, str]]]] = []
             for module_name, module_content in api_structure.items():
                 display_name = module_name.replace("_", " ").title()
                 api_ref.append({display_name: module_content})
@@ -154,13 +154,13 @@ def copy_assets() -> None:
             log.warning("Source: %s not found, skipping.", file_or_dir)
 
 
-def find_service_settings_classes(src_dir: Path) -> List[Tuple[str, Optional[str]]]:  # noqa: C901
+def find_service_settings_classes(src_dir: Path) -> list[tuple[str, str | None]]:  # noqa: C901
     """
     Scan all Python files in the source directory to find classes that inherit from ServiceSettings.
 
     Returns a list of tuples: (class_name, yml_section_value)
     """
-    service_settings: List[Tuple[str, Optional[str]]] = []
+    service_settings: list[tuple[str, str | None]] = []
 
     for py_file in src_dir.rglob("*.py"):
         try:
@@ -180,7 +180,7 @@ def find_service_settings_classes(src_dir: Path) -> List[Tuple[str, Optional[str
                         continue
 
                     # Look for __yml_section__ attribute
-                    yml_section: Optional[str] = None
+                    yml_section: str | None = None
                     for item in node.body:
                         # Handle annotated assignments: __yml_section__: ClassVar[str] = "value"
                         if isinstance(item, ast.AnnAssign):
@@ -200,7 +200,7 @@ def find_service_settings_classes(src_dir: Path) -> List[Tuple[str, Optional[str
 
                     service_settings.append((node.name, yml_section))
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- one file's syntax/encoding error must not abort the whole doc scan
             log.warning("Failed to parse %s: %s", py_file, e)
 
     return sorted(service_settings, key=lambda x: x[0])
@@ -247,7 +247,7 @@ def main() -> None:
     copy_assets()
     log.info("Regenerating API documentation...")
     # Generate API structure
-    api_structure: Dict[str, List[Dict[str, str]]] = generate_api_structure()
+    api_structure: dict[str, list[dict[str, str]]] = generate_api_structure()
 
     # Update mkdocs.yml
     update_mkdocs_yml(api_structure)

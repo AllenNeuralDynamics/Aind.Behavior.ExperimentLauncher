@@ -5,20 +5,24 @@ import functools
 import inspect
 import logging
 import time
-from typing import Any, Callable, Optional, TypeVar, overload
+from collections.abc import Callable
+from typing import Any, TypeVar, overload
+
+from opentelemetry import trace
 
 from ..ui._messages import MessageLevel
 from ._activity import get_activity_indicator
 from ._settings import RunnableSpec, _include_timing
 
 logger = logging.getLogger(__name__)
+_tracer = trace.get_tracer("clabe.runnable")
 
 F = TypeVar("F", bound=Callable[..., Any])
 
 _active: contextvars.ContextVar[bool] = contextvars.ContextVar("clabe_runnable_active", default=False)
 #: Tracks which asyncio Task set _active so gather()-spawned sibling tasks
 #: (which copy context) are not mistaken for nested runnables.
-_active_task: contextvars.ContextVar[Optional[Any]] = contextvars.ContextVar("clabe_runnable_task", default=None)
+_active_task: contextvars.ContextVar[Any | None] = contextvars.ContextVar("clabe_runnable_task", default=None)
 
 #: Defaults applied when a spec field is still None after merging.
 _DEFAULTS: dict[str, bool] = {
@@ -79,7 +83,9 @@ def _lifecycle(spec: RunnableSpec, name: str):
         get_activity_indicator().activity(name) if eff.show_activity and not reentrant else contextlib.nullcontext()
     )
     try:
-        with display:
+        # The span records the exception and sets ERROR status on its own when one
+        # propagates, so failures surface in the trace without extra bookkeeping.
+        with _tracer.start_as_current_span(name), display:
             yield
     except Exception as exc:
         if not reentrant and eff.notify_fail:
@@ -134,12 +140,12 @@ def _make_wrapper(fn: Callable, spec: RunnableSpec) -> Callable:
 def runnable(
     fn: F,
     *,
-    name: Optional[str] = ...,
-    notify: Optional[str] = ...,
-    show_activity: Optional[bool] = ...,
-    notify_start: Optional[bool] = ...,
-    notify_success: Optional[bool] = ...,
-    notify_fail: Optional[bool] = ...,
+    name: str | None = ...,
+    notify: str | None = ...,
+    show_activity: bool | None = ...,
+    notify_start: bool | None = ...,
+    notify_success: bool | None = ...,
+    notify_fail: bool | None = ...,
 ) -> F: ...
 
 
@@ -147,12 +153,12 @@ def runnable(
 def runnable(
     fn: None = ...,
     *,
-    name: Optional[str] = ...,
-    notify: Optional[str] = ...,
-    show_activity: Optional[bool] = ...,
-    notify_start: Optional[bool] = ...,
-    notify_success: Optional[bool] = ...,
-    notify_fail: Optional[bool] = ...,
+    name: str | None = ...,
+    notify: str | None = ...,
+    show_activity: bool | None = ...,
+    notify_start: bool | None = ...,
+    notify_success: bool | None = ...,
+    notify_fail: bool | None = ...,
 ) -> Callable[[F], F]: ...
 
 
@@ -167,7 +173,7 @@ def runnable(
     notify_fail=None,
 ):
     """Wrap a callable with the shared runnable lifecycle (logging, activity
-    spinner, notifications, and a future OTEL span).
+    spinner, notifications, and an OpenTelemetry span).
 
     Use it as a decorator at definition time (``@runnable`` or
     ``@runnable(name=..., notify=...)``) or to rewrap an existing callable at

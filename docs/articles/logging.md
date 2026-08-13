@@ -85,7 +85,7 @@ clabe run my_experiment.py --debug-mode
 If you need to adjust the console level yourself, use the helper directly:
 
 ```python
-from clabe.logging_helper import set_console_level
+from clabe.logging import set_console_level
 import logging
 
 set_console_level(logging.DEBUG)
@@ -109,8 +109,8 @@ from clabe.ui import MessageLevel, notify
 
 logger = logging.getLogger(__name__)
 
-logger.info("Starting robocopy transfer service.")   # the record (file / Logs pane)
-notify("Transferring data…", MessageLevel.INFO)       # the user-facing summary (Session pane)
+logger.info("Starting robocopy transfer service.")  # the record (file / Logs pane)
+notify("Transferring data…", MessageLevel.INFO)  # the user-facing summary (Session pane)
 ```
 
 `notify()` is a **no-op when no launcher/frontend is active**, so it is safe to

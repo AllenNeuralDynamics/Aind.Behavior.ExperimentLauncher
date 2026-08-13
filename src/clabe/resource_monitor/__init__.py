@@ -7,9 +7,9 @@ from ._constraints import (
 )
 
 __all__ = [
-    "ResourceMonitor",
     "Constraint",
+    "ResourceMonitor",
     "available_storage_constraint_factory",
-    "remote_dir_exists_constraint_factory",
     "available_storage_constraint_factory_from_rig",
+    "remote_dir_exists_constraint_factory",
 ]

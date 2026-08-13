@@ -1,7 +1,7 @@
 import datetime
 import logging
 import os
-from typing import Any, Dict, Literal, Optional, Union
+from typing import Any, Literal
 
 import git
 from aind_behavior_curriculum import Stage, TrainerState
@@ -39,9 +39,9 @@ mock_trainer_state = TrainerState[Any](
 class MockAindDataSchemaSession:
     def __init__(
         self,
-        computer_name: Optional[str] = None,
-        repository: Optional[Union[os.PathLike, git.Repo]] = None,
-        task_name: Optional[str] = None,
+        computer_name: str | None = None,
+        repository: os.PathLike | git.Repo | None = None,
+        task_name: str | None = None,
     ):
         self.computer_name = computer_name
         self.repository = repository
@@ -57,10 +57,10 @@ class DemoAindDataSchemaSessionDataMapper(DataMapper[MockAindDataSchemaSession])
         rig_model: RigModel,
         session_model: Session,
         task_model: MockTask,
-        repository: Union[os.PathLike, git.Repo],
+        repository: os.PathLike | git.Repo,
         script_path: os.PathLike,
-        session_end_time: Optional[datetime.datetime] = None,
-        output_parameters: Optional[Dict] = None,
+        session_end_time: datetime.datetime | None = None,
+        output_parameters: dict | None = None,
     ):
         super().__init__()
         self.session_model = session_model
@@ -70,7 +70,7 @@ class DemoAindDataSchemaSessionDataMapper(DataMapper[MockAindDataSchemaSession])
         self.script_path = script_path
         self.session_end_time = session_end_time
         self.output_parameters = output_parameters
-        self._mapped: Optional[MockAindDataSchemaSession] = None
+        self._mapped: MockAindDataSchemaSession | None = None
 
     def map(self) -> MockAindDataSchemaSession:
         self._mapped = MockAindDataSchemaSession(

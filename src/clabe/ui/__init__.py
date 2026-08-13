@@ -32,7 +32,7 @@ def default_frontend() -> Frontend:
     Returns:
         Frontend: A ready-to-use frontend instance.
     """
-    from ..logging_helper import clabe_console
+    from ..logging import clabe_console
 
     if clabe_console.is_terminal:
         return TextualFrontend()
@@ -64,26 +64,26 @@ def make_frontend(backend: str = "auto") -> Frontend:
 
 
 __all__ = [
-    "Frontend",
-    "FrontendBase",
+    "AcknowledgeRequest",
+    "AutoCompleteRequest",
+    "Choice",
+    "ConfirmRequest",
+    "ConsoleFrontend",
+    "DefaultFrontend",
     "FieldRequest",
     "FormRequest",
+    "Frontend",
+    "FrontendBase",
     "MessageLevel",
-    "Choice",
+    "NumberRequest",
     "PickRequest",
     "ReadOnlyTable",
-    "ConfirmRequest",
     "TextRequest",
-    "AutoCompleteRequest",
-    "NumberRequest",
-    "AcknowledgeRequest",
-    "Validator",
-    "ConsoleFrontend",
     "TextualFrontend",
-    "DefaultFrontend",
+    "Validator",
+    "current_frontend",
     "default_frontend",
     "make_frontend",
     "notify",
     "set_current_frontend",
-    "current_frontend",
 ]

@@ -9,7 +9,7 @@ import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
 from functools import wraps
 from pathlib import Path
-from typing import ClassVar, Optional
+from typing import ClassVar
 from xmlrpc.server import SimpleXMLRPCServer
 
 from pydantic import Field, IPvAnyAddress, SecretStr
@@ -142,7 +142,7 @@ class XmlRpcServer:
             returncode = self._normalize_returncode(e.returncode)
             logger.error("Command failed with return code: %s, stderr: %s", returncode, e.stderr)
             return {"stdout": e.stdout, "stderr": e.stderr, "returncode": returncode}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- RPC boundary must convert any failure into a structured error response
             logger.error("Command execution error: %s", e)
             return {"error": str(e)}
 
@@ -257,7 +257,7 @@ class XmlRpcServer:
                 path=str(file_path.resolve()),
             ).model_dump()
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- RPC boundary must convert any failure into a structured error response
             logger.error("Error uploading file: %s", e)
             return FileUploadResponse(success=False, error=str(e)).model_dump()
 
@@ -339,7 +339,7 @@ class XmlRpcServer:
             )
             return response.model_dump(mode="json")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- RPC boundary must convert any failure into a structured error response
             logger.error("Error downloading file: %s", e)
             response = FileDownloadResponse(success=False, error=str(e), filename=None, size=None, data=None)
             return response.model_dump(mode="json")
@@ -378,7 +378,7 @@ class XmlRpcServer:
             response = FileListResponse(success=True, error=None, files=file_infos, count=len(file_infos))
             return response.model_dump()
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- RPC boundary must convert any failure into a structured error response
             logger.error("Error listing files: %s", e)
             response = FileListResponse(success=False, error=str(e), files=[], count=0)
             return response.model_dump()
@@ -424,7 +424,7 @@ class XmlRpcServer:
             response = FileDeleteResponse(success=True, error=None, filename=safe_filename)
             return response.model_dump()
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- RPC boundary must convert any failure into a structured error response
             logger.error("Error deleting file: %s", e)
             response = FileDeleteResponse(success=False, error=str(e), filename=None)
             return response.model_dump()
@@ -454,7 +454,7 @@ class XmlRpcServer:
                         file_path.unlink()
                         deleted_files.append(file_path.name)
                         deleted_count += 1
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001 -- one file failing to delete must not abort the whole bulk operation
                         logger.error("Failed to delete %s: %s", file_path.name, e)
 
             logger.info("Deleted all files: %s file(s) removed", deleted_count)
@@ -466,7 +466,7 @@ class XmlRpcServer:
             )
             return response.model_dump()
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- RPC boundary must convert any failure into a structured error response
             logger.error("Error deleting all files: %s", e)
             response = FileBulkDeleteResponse(success=False, error=str(e), deleted_count=0, deleted_files=[])
             return response.model_dump()
@@ -476,7 +476,7 @@ class _XmlRpcServerStartCli(XmlRpcServerSettings):
     """CLI application wrapper for the RPC server."""
 
     debug: CliImplicitFlag[bool] = Field(default=False, description="Enable debug logging")
-    dump: Optional[Path] = Field(default=None, description="Path to dump logs to file")
+    dump: Path | None = Field(default=None, description="Path to dump logs to file")
 
     def cli_cmd(self):
         """Start the RPC server and run it until interrupted."""
@@ -490,7 +490,7 @@ class _XmlRpcServerStartCli(XmlRpcServerSettings):
             file_handler = logging.FileHandler(self.dump, mode="w")
             file_handler.setFormatter(logging.Formatter(log_format))
             handlers.append(file_handler)
-            logging.info("Logging dumped to file: %s", self.dump)
+            logger.info("Logging dumped to file: %s", self.dump)
 
         module_logger = logging.getLogger("clabe.xml_rpc")
         module_logger.setLevel(log_level)

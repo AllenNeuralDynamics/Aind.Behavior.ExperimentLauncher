@@ -3,7 +3,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from datetime import datetime, time
+from datetime import UTC, datetime, time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -64,6 +64,7 @@ def mock_session():
         experiment="mock",
         subject="007",
         session_name="mock_session",
+        experimenter=["mock_experimenter"],
     )
 
 
@@ -83,7 +84,7 @@ def watchdog_service(source, settings, mock_session):
         name="test_manifest",
         modalities={"behavior": ["path/to/behavior"], "behavior-videos": ["path/to/behavior-videos"]},
         subject_id=1,
-        acquisition_datetime=datetime(2023, 1, 1, 0, 0, 0),
+        acquisition_datetime=datetime(2023, 1, 1, 0, 0, 0, tzinfo=UTC),
         schemas=["path/to/schema"],
         destination="path/to/destination",
         project_name="test_project",
@@ -159,9 +160,8 @@ class TestWatchdogDataTransferService:
         return_value=False,
     )
     def test_validate_fail(self, mock_is_running, watchdog_service):
-        with patch.object(Path, "exists", return_value=False):
-            with pytest.raises(FileNotFoundError):
-                watchdog_service.validate()
+        with patch.object(Path, "exists", return_value=False), pytest.raises(FileNotFoundError):
+            watchdog_service.validate()
 
     def test_missing_env_variables(self, source, settings, mock_session):
         if "WATCHDOG_EXE" in os.environ:
@@ -228,6 +228,7 @@ class TestWatchdogDataTransferService:
             add_default_tasks=True,
             extra_tasks=settings.upload_tasks or {},
             job_type=settings.job_type,
+            user_email="mock_experimenter@alleninstitute.org",
         )
 
         transfer_service_args = new_watchdog_manifest.transfer_service_args
@@ -266,7 +267,11 @@ class TestWatchdogDataTransferService:
         }
         assert manifest is not None, "Manifest config is not set"
         new_watchdog_manifest = watchdog_service._make_transfer_args(
-            manifest, add_default_tasks=True, extra_tasks=extra_tasks, job_type="not_default"
+            manifest,
+            add_default_tasks=True,
+            extra_tasks=extra_tasks,
+            job_type="not_default",
+            user_email="mock_experimenter@alleninstitute.org",
         )
         transfer_service_args = new_watchdog_manifest.transfer_service_args
         assert transfer_service_args is not None, "Transfer service args are not set"

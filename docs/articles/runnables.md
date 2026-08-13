@@ -21,8 +21,7 @@ from clabe.runnable import ReportTier, runnable
 
 class ResourceMonitor(Service):
     @runnable(name="Resource monitor")
-    def run(self) -> bool:
-        ...
+    def run(self) -> bool: ...
 ```
 
 The decorator forwards the return value unchanged and re-raises any exception
@@ -34,7 +33,7 @@ subclasses report themselves):
 
 ```python
 class _DefaultExecutorMixin:
-    @runnable                      # BonsaiApp().run() reports "BonsaiApp"
+    @runnable  # BonsaiApp().run() reports "BonsaiApp"
     def run(self, executor_kwargs=None) -> CommandResult:
         return self.command.execute(LocalExecutor(**(executor_kwargs or {})))
 ```
@@ -55,8 +54,7 @@ Pin a tier (and an optional start message) on operations that always matter:
 
 ```python
 @runnable(name="Transfer (watchdog)", tier=ReportTier.LIFECYCLE, notify="Transferring data…")
-def transfer(self) -> None:
-    ...
+def transfer(self) -> None: ...
 ```
 
 The spinner is always suppressed automatically when the console is not an
@@ -91,9 +89,9 @@ call — useful for an orchestrator bumping a step's verbosity without editing t
 adapter:
 
 ```python
-runnable(monitor.run, tier=ReportTier.VERBOSE)()     # one verbose run
-runnable(monitor.run, tier=ReportTier.SILENT)()      # squelch one run
-runnable(monitor.run, name="Disk check")()           # rename for one run
+runnable(monitor.run, tier=ReportTier.VERBOSE)()  # one verbose run
+runnable(monitor.run, tier=ReportTier.SILENT)()  # squelch one run
+runnable(monitor.run, name="Disk check")()  # rename for one run
 ```
 
 Rewrapping an already-decorated method **merges** over its baked-in spec rather
@@ -110,7 +108,7 @@ propagates all the way out is announced exactly once.
 ```python
 @runnable(name="Transfer (robocopy)", tier=ReportTier.LIFECYCLE, notify="Transferring data…")
 def transfer(self) -> None:
-    self.run()        # the mixin's run() is also a runnable, but folds in here
+    self.run()  # the mixin's run() is also a runnable, but folds in here
 ```
 
 Tasks spawned concurrently with `asyncio.gather()` or `asyncio.create_task()`

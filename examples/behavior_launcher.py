@@ -2,7 +2,7 @@ import asyncio
 import logging
 from enum import Enum
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 from _mocks import (
     LIB_CONFIG,
@@ -20,6 +20,7 @@ from clabe import resource_monitor
 from clabe.apps import CurriculumApp, CurriculumSettings, PythonScriptApp
 from clabe.cache_manager import CacheManager
 from clabe.launcher import Launcher, LauncherCliArgs, experiment
+from clabe.logging import otel
 from clabe.pickers import DefaultBehaviorPicker, DefaultBehaviorPickerSettings
 from clabe.runnable import runnable
 from clabe.ui import (
@@ -44,7 +45,7 @@ class RecordingMode(Enum):
 class SessionConfig(BaseModel):
     """Demonstration model — exercises every form widget type."""
 
-    notes: Optional[str] = Field(
+    notes: str | None = Field(
         default=None,
         title="Experimenter Notes",
         description="Free-text notes attached to this session. Leave blank to skip.",
@@ -88,6 +89,12 @@ async def demo_experiment(launcher: Launcher) -> None:
 
     logger.info("Starting the demo experiment")
     notify("Welcome to the CLABE demo experiment!", MessageLevel.INFO)
+
+    # A custom span, in addition to the automatic root span and the per-@runnable spans.
+    # Look for "demo-preflight" under the run's trace in OpenObserve.
+    with otel.span("demo-preflight", attributes={"example": "behavior_launcher"}) as preflight:
+        preflight.set_attribute("rig.subjects", len(["demo"]))
+        otel.event("preflight-checks-started")
 
     # --- AcknowledgeRequest demo: modal acknowledgement gate --------------
     launcher.frontend.prompt_acknowledge(
@@ -219,7 +226,6 @@ async def demo_experiment(launcher: Launcher) -> None:
 
     logger.info("Demo experiment finished")
     notify("Demo experiment complete!", MessageLevel.SUCCESS)
-    return
 
 
 def _seed_cache() -> None:
@@ -245,7 +251,6 @@ def main():
         ],
     )
     Launcher(settings=settings).run_experiment(demo_experiment)
-    return None
 
 
 if __name__ == "__main__":

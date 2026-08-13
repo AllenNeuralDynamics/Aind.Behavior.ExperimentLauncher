@@ -29,6 +29,7 @@ dependencies = [
     "rich",
     "aind_behavior_services>=0.13.0",
     "textual>=8.2.7",
+    "opentelemetry-api>=1.24",
 ]
 
 [project.urls]
@@ -41,13 +42,19 @@ Changelog = "https://github.com/AllenNeuralDynamics/clabe/releases"
 web = [
     "textual-serve",
 ]
+otel = [
+    "opentelemetry-sdk",
+    "opentelemetry-exporter-otlp-proto-http",
+    "opentelemetry-exporter-otlp-proto-grpc",
+    "pyyaml",
+]
 aind-services = [
     "requests",
     "pyyaml",
     "pykeepass",
     "msal; sys_platform == 'win32'",
     "aind-data-schema>=2",
-    "aind-data-transfer-service >= 1.22.0",
+    "aind-data-transfer-service >= 2.2.0",
     "aind-watchdog-service >= 0.1.6",
 ]
 
@@ -63,6 +70,7 @@ dev = [
     'interrogate',
     "aind-clabe[aind-services]",
     "aind-clabe[web]",
+    "aind-clabe[otel]",
 ]
 
 docs = [

@@ -115,7 +115,6 @@ nav:
     - launcher: api/launcher/launcher.md
   - Logging Helper:
     - logging_helper: api/logging_helper/logging_helper.md
-    - aibs: api/logging_helper/aibs.md
   - Pickers:
     - pickers: api/pickers/pickers.md
     - dataverse: api/pickers/dataverse.md

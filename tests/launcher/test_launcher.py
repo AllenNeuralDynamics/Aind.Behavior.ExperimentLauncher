@@ -8,7 +8,7 @@ from clabe.launcher._cli import LauncherCliArgs
 
 def test_base_launcher_with_attached_logger(mock_base_launcher, mock_frontend):
     """Test launcher initialization with attached logger."""
-    with patch("clabe.logging_helper.add_file_handler") as mock_add_file_handler:
+    with patch("clabe.logging.add_file_handler") as mock_add_file_handler:
         mock_attached_logger = MagicMock()
         launcher = Launcher(
             frontend=mock_frontend,
@@ -26,7 +26,7 @@ def test_base_launcher_debug_mode(mock_frontend, tmp_path: Path):
     )
     with patch("clabe.launcher._base.GitRepository") as mock_git, patch("os.chdir"), patch("pathlib.Path.mkdir"):
         mock_git.return_value.working_dir = tmp_path / "repo"
-        with patch("clabe.logging_helper.add_file_handler") as mock_add_file_handler:
+        with patch("clabe.logging.add_file_handler") as mock_add_file_handler:
             mock_logger = MagicMock()
             mock_add_file_handler.return_value = mock_logger
             Launcher(
@@ -43,7 +43,7 @@ def test_base_launcher_create_directories(mock_session, mock_frontend, tmp_path:
         patch("clabe.launcher._base.GitRepository") as mock_git,
         patch("os.chdir"),
         patch("pathlib.Path.mkdir"),
-        patch("clabe.logging_helper.add_file_handler") as log_mod,
+        patch("clabe.logging.add_file_handler") as log_mod,
     ):
         log_mod.return_value = MagicMock()
         mock_git.return_value.working_dir = launcher_args_create_dirs.repository_directory
@@ -71,7 +71,7 @@ def test_ensure_directory_structure(mock_session, mock_frontend, tmp_path: Path)
         patch("clabe.launcher._base.GitRepository") as mock_git,
         patch("os.chdir"),
         patch("pathlib.Path.mkdir"),
-        patch("clabe.logging_helper.add_file_handler") as log_mod,
+        patch("clabe.logging.add_file_handler") as log_mod,
         patch("os.path.exists", return_value=False),
     ):
         mock_git.return_value.working_dir = tmp_path / "repo"

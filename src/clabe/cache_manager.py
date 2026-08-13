@@ -162,7 +162,7 @@ class CacheManager:
                         with cache_path.open("r", encoding="utf-8") as f:
                             cache_data = CacheData.model_validate_json(f.read())
                             instance.caches = cache_data.caches
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001 -- any corruption (bad json, schema mismatch, ...) must fall back to a fresh cache, not crash
                         logger.warning("Cache file %s is corrupted: %s. Creating new instance.", cache_path, e)
 
                 cls._instance = instance

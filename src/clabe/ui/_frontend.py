@@ -1,10 +1,11 @@
 import abc
+import contextlib
 import logging
 import typing
 from enum import Enum
-from typing import Any, ContextManager, List, Literal, Optional, Protocol, get_args, get_origin, runtime_checkable
+from typing import Any, Literal, Protocol, get_args, get_origin, runtime_checkable
 
-from ..logging_helper import _TRANSCRIPT_LOGGER_NAME
+from ..logging import _TRANSCRIPT_LOGGER_NAME
 from ._messages import MessageLevel
 from ._requests import (
     AcknowledgeRequest,
@@ -74,11 +75,11 @@ class Frontend(Protocol):
         """Surface a prominent header/banner to the user."""
         ...
 
-    def activity(self, description: str) -> ContextManager[None]:
+    def activity(self, description: str) -> contextlib.AbstractContextManager[None]:
         """Display live activity (e.g. a spinner) for the duration of a block."""
         ...
 
-    def prompt_pick(self, request: PickRequest) -> Optional[str]:
+    def prompt_pick(self, request: PickRequest) -> str | None:
         """Prompt the user to pick one option; returns the value or ``None``."""
         ...
 
@@ -98,7 +99,7 @@ class Frontend(Protocol):
         """Prompt the user for a floating-point number."""
         ...
 
-    def prompt_form(self, request: FormRequest) -> Optional[object]:
+    def prompt_form(self, request: FormRequest) -> object | None:
         """Prompt the user to fill in a Pydantic model form; returns the validated instance or None."""
         ...
 
@@ -156,7 +157,7 @@ class FrontendBase(abc.ABC):
         self._transcript.info("UI» %s", text)
         self._render_header(text)
 
-    def activity(self, description: str) -> ContextManager[None]:
+    def activity(self, description: str) -> contextlib.AbstractContextManager[None]:
         """
         Returns a context manager that displays live activity while active.
 
@@ -212,7 +213,7 @@ class FrontendBase(abc.ABC):
                 return answer
             self.notify(error, MessageLevel.ERROR)
 
-    def prompt_pick(self, request: PickRequest) -> Optional[str]:
+    def prompt_pick(self, request: PickRequest) -> str | None:
         """
         Prompts the user to pick an option and records the answer.
 
@@ -264,7 +265,7 @@ class FrontendBase(abc.ABC):
             self._record(request.field or request.label, value)
             return value
 
-    def prompt_form(self, request: FormRequest) -> Optional[object]:
+    def prompt_form(self, request: FormRequest) -> object | None:
         """
         Presents a Pydantic model form for the user to fill in.
 
@@ -364,7 +365,7 @@ class FrontendBase(abc.ABC):
         if isinstance(inner, type) and issubclass(inner, Enum):
             options = [m.name for m in inner]
             if isinstance(default, Enum):
-                default_str: Optional[str] = default.name
+                default_str: str | None = default.name
             else:
                 default_str = str(default) if default is not None else None
             answer = self.prompt_autocomplete(
@@ -381,7 +382,7 @@ class FrontendBase(abc.ABC):
         # Everything else → text prompt, re-prompting via pydantic validation
         adapter = TypeAdapter(annotation)
 
-        def _pydantic_validator(raw: str) -> Optional[str]:
+        def _pydantic_validator(raw: str) -> str | None:
             try:
                 val: Any = None if (is_optional and raw == "") else raw
                 adapter.validate_python(val)
@@ -389,7 +390,7 @@ class FrontendBase(abc.ABC):
             except _PydanticError as exc:
                 errs = exc.errors()
                 return errs[0]["msg"] if errs else "Invalid value."
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 -- any validator failure must surface as a re-promptable message, not crash
                 return str(exc)
 
         default_str = str(default) if default is not None else None
@@ -418,7 +419,7 @@ class FrontendBase(abc.ABC):
         """
 
     @staticmethod
-    def _first_error(validators: List[Validator], value: str) -> Optional[str]:
+    def _first_error(validators: list[Validator], value: str) -> str | None:
         """Returns the first validation error for ``value``, or ``None``."""
         for validator in validators:
             error = validator(value)
@@ -440,7 +441,7 @@ class FrontendBase(abc.ABC):
         """Collects raw text from the user (no validation/transcript)."""
 
     @abc.abstractmethod
-    def _ask_pick(self, request: PickRequest) -> Optional[str]:
+    def _ask_pick(self, request: PickRequest) -> str | None:
         """Collects a single choice from the user (no transcript)."""
 
     @abc.abstractmethod

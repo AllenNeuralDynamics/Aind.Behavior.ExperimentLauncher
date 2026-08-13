@@ -57,7 +57,7 @@ async def demo_experiment(launcher: Launcher) -> None:
     app_1 = PythonScriptApp(script=fmt("Behavior"))
     app_2 = PythonScriptApp(script=fmt("Physiology"))
 
-    app_1_result, app_2_result = await asyncio.gather(
+    _app_1_result, _app_2_result = await asyncio.gather(
         runnable(app_1.run_async, name="Running Behavior App")(),
         runnable(app_2.run_async, name="Running Physiology App")(),
     )
@@ -79,7 +79,6 @@ async def demo_experiment(launcher: Launcher) -> None:
         script_path=Path("./mock/script.py"),
         output_parameters={"suggestion": suggestion.model_dump()},
     ).map()
-    return
 
 
 def _seed_cache() -> None:
@@ -102,7 +101,6 @@ def main():
         f"{sys.executable} -m clabe.cli run {this_file} --allow-dirty --skip-hardware-validation --frontend tui",
         open_browser=True,
     )
-    return None
 
 
 if __name__ == "__main__":

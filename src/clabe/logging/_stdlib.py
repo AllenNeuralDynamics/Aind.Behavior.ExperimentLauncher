@@ -41,8 +41,7 @@ class _SeverityHighlightingHandler(rich.logging.RichHandler):
             **kwargs: Keyword arguments passed to the parent RichHandler (highlighter is removed if present)
         """
         # I don't think this is necessary, but just in case, better to fail early
-        if "highlighter" in kwargs:
-            del kwargs["highlighter"]
+        kwargs.pop("highlighter", None)
         super().__init__(*args, **kwargs)
 
         self.error_style = rich.style.Style(color="white", bgcolor="red")
@@ -94,6 +93,13 @@ class _ExcludeTranscriptFilter(logging.Filter):
 rich_handler = _SeverityHighlightingHandler(console=clabe_console, rich_tracebacks=True, show_time=False)
 rich_handler.setLevel(_DEFAULT_CONSOLE_LEVEL)
 rich_handler.addFilter(_ExcludeTranscriptFilter())
+
+
+def configure_console_logging() -> None:
+    """
+    Installs clabe's default root-logger configuration (console handler, format, level).
+    """
+    logging.basicConfig(level=logging.INFO, format=log_fmt, datefmt=datetime_fmt, handlers=[rich_handler])
 
 
 def set_console_level(level: int) -> None:
@@ -152,7 +158,7 @@ class _TzFormatter(logging.Formatter):
         return format_datetime(record_time)
 
 
-utc_formatter = _TzFormatter(log_fmt, tz=datetime.timezone.utc)
+utc_formatter = _TzFormatter(log_fmt, tz=datetime.UTC)
 
 
 def add_file_handler(logger: TLogger, output_path: os.PathLike) -> TLogger:

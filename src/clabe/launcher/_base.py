@@ -5,16 +5,19 @@ import os
 import random
 import shutil
 import threading
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Awaitable, Callable, Optional, Self, TypeVar, Union
+from typing import Self, TypeVar
 
 import git.exc
 import pydantic
 from aind_behavior_services import Session
 
-from .. import __version__, logging_helper
+from .. import __version__
+from .. import logging as clabe_logging
 from ..constants import TMP_DIR
 from ..git_manager import GitRepository
+from ..logging.otel import bind_session, record_exception, run_span
 from ..runnable import set_include_timing
 from ..ui import Frontend, MessageLevel, TextRequest, make_frontend, set_current_frontend
 from ..utils import abspath, format_datetime, utcnow
@@ -54,7 +57,7 @@ class Launcher:
         self,
         *,
         settings: LauncherCliArgs,
-        attached_logger: Optional[logging.Logger] = None,
+        attached_logger: logging.Logger | None = None,
         frontend: None | Frontend = None,
     ) -> None:
         """
@@ -83,10 +86,10 @@ class Launcher:
 
         # Solve logger.
         if attached_logger:
-            _logger = logging_helper.add_file_handler(attached_logger, self.temp_dir / "launcher.log")
+            _logger = clabe_logging.add_file_handler(attached_logger, self.temp_dir / "launcher.log")
         else:
             root_logger = logging.getLogger()
-            _logger = logging_helper.add_file_handler(root_logger, self.temp_dir / "launcher.log")
+            _logger = clabe_logging.add_file_handler(root_logger, self.temp_dir / "launcher.log")
 
         # Map verbosity flags to the console log level.
         if settings.debug_mode:
@@ -100,11 +103,11 @@ class Launcher:
             display_level = logging.WARNING
 
         _logger.setLevel(logging.DEBUG if settings.debug_mode else logging.INFO)
-        logging_helper.set_console_level(display_level)
+        clabe_logging.set_console_level(display_level)
 
         self._logger = _logger
 
-        self._session: Optional[Session] = None
+        self._session: Session | None = None
         self._has_copied_logs = False
 
     @property
@@ -153,6 +156,7 @@ class Launcher:
             self._data_directory = Path(data_directory)
             self._ensure_directory_structure()
             logger.debug("Creating session directory at: %s", self.session_directory)
+            bind_session(session)
         else:
             raise ValueError("Session already registered.")
         return self
@@ -173,7 +177,7 @@ class Launcher:
         else:
             return self._session
 
-    def run_experiment(self, experiment: Callable[["Launcher"], Union[None, Awaitable[None]]]) -> None:
+    def run_experiment(self, experiment: Callable[["Launcher"], None | Awaitable[None]]) -> None:
         """
         Main entry point for the launcher execution.
 
@@ -199,38 +203,45 @@ class Launcher:
             ```
         """
         _code = 0
-        try:
-            self.frontend.header(self.make_header())
-            set_experiment = getattr(self.frontend, "set_experiment", None)
-            if callable(set_experiment):
-                set_experiment(getattr(experiment, "__name__", None) or "experiment")
-            logger.info(self._generate_diagnostic_info())
-
-            if not self.settings.debug_mode:
-                self.validate()
-
-            result = experiment(self)
-            if asyncio.iscoroutine(result):
-                asyncio.run(result)
-
-        except KeyboardInterrupt:
-            logger.error("User interrupted the process.")
-            self.frontend.notify("Interrupted by user.", MessageLevel.WARNING)
-            _code = -1
-        except Exception as e:  # pylint: disable=broad-except
-            logger.error("Launcher failed: %s", e, exc_info=True)
-            self.frontend.notify(f"Launcher failed: {e}", MessageLevel.ERROR)
-            _code = -1
-        finally:
+        # Handle inside run_span so teardown logs stay under the root span (and its attributes).
+        # The exception no longer escapes the span, so status is set explicitly below.
+        with run_span(self):
             try:
-                self.copy_logs()
-            except ValueError as ve:  # In the case session_directory fails
-                self.frontend.notify(f"Failed to copy logs from {self.temp_dir}: {ve}", MessageLevel.ERROR)
-                self._exit(-1)
-            else:
-                self._exit(_code)
+                self.frontend.header(self.make_header())
+                set_experiment = getattr(self.frontend, "set_experiment", None)
+                if callable(set_experiment):
+                    set_experiment(getattr(experiment, "__name__", None) or "experiment")
+                logger.info(self._generate_diagnostic_info())
 
-    def copy_logs(self, dst: Optional[os.PathLike] = None, suffix: str = "Behavior/Logs") -> None:
+                if not self.settings.debug_mode:
+                    self.validate()
+
+                result = experiment(self)
+                if asyncio.iscoroutine(result):
+                    asyncio.run(result)
+
+            except KeyboardInterrupt as e:
+                # An interrupt aborts the run: record it so the trace is red (OTel skips
+                # BaseException, so this must be explicit) while keeping it filterable by type.
+                logger.error("User interrupted the process.")
+                self.frontend.notify("Interrupted by user.", MessageLevel.WARNING)
+                record_exception(e)
+                _code = -1
+            except Exception as e:  # pylint: disable=broad-except
+                logger.exception("Launcher failed")
+                self.frontend.notify(f"Launcher failed: {e}", MessageLevel.ERROR)
+                record_exception(e)
+                _code = -1
+            finally:
+                try:
+                    self.copy_logs()
+                except ValueError as ve:  # In the case session_directory fails
+                    self.frontend.notify(f"Failed to copy logs from {self.temp_dir}: {ve}", MessageLevel.ERROR)
+                    self._exit(-1)
+                else:
+                    self._exit(_code)
+
+    def copy_logs(self, dst: os.PathLike | None = None, suffix: str = "Behavior/Logs") -> None:
         """
         Closes the file handlers of the launcher and copies the temporary data to the session directory.
 
@@ -241,9 +252,9 @@ class Launcher:
             suffix: Suffix to append to session directory path. Defaults to "Behavior/Logs"
         """
         if self._has_copied_logs:
-            return None
+            return
 
-        logging_helper.close_file_handlers(self._logger)
+        clabe_logging.close_file_handlers(self._logger)
         if dst is not None:
             out = self._copy_tmp_directory(dst)
         else:
@@ -313,7 +324,7 @@ class Launcher:
         """
         logger.debug("Exiting with code %s", code)
         if logger is not None:
-            logging_helper.shutdown_logger(logger)
+            clabe_logging.shutdown_logger(logger)
         if not _force:
             try:
                 self.frontend.prompt_text(TextRequest(label="Press Enter to exit...", field="exit"))
@@ -396,10 +407,9 @@ class Launcher:
         # Note: This function should be idempotent!!!
 
         try:
-            if self._data_directory is not None:
-                if not os.path.exists(self._data_directory):
-                    # if _data_directory exists, session_directory is guaranteed to exist as well
-                    self.create_directory(self.session_directory)
+            if self._data_directory is not None and not os.path.exists(self._data_directory):
+                # if _data_directory exists, session_directory is guaranteed to exist as well
+                self.create_directory(self.session_directory)
 
             if not os.path.exists(self.temp_dir):
                 self.create_directory(self.temp_dir)
@@ -465,7 +475,7 @@ class Launcher:
         shutil.copytree(self.temp_dir, dst, dirs_exist_ok=True, copy_function=_copy_with_log_append)
         return dst
 
-    def save_temp_model(self, model: pydantic.BaseModel, directory: Optional[os.PathLike] = None) -> Path:
+    def save_temp_model(self, model: pydantic.BaseModel, directory: os.PathLike | None = None) -> Path:
         """
         Saves a temporary JSON representation of a schema model.
 

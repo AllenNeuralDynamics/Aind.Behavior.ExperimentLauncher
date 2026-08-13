@@ -1,6 +1,6 @@
 import abc
 import logging
-from typing import Any, Generic, Optional, TypeVar, final
+from typing import Any, Generic, TypeVar, final
 
 from clabe.runnable._core import runnable
 
@@ -22,7 +22,7 @@ class DataMapper(Service, abc.ABC, Generic[TMapTo]):
     target formats or schemas.
     """
 
-    _mapped: Optional[TMapTo]
+    _mapped: TMapTo | None
 
     @runnable
     @final
@@ -44,7 +44,6 @@ class DataMapper(Service, abc.ABC, Generic[TMapTo]):
         Returns:
             The mapped data object
         """
-        pass
 
     def is_mapped(self) -> bool:
         """

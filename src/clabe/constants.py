@@ -1,7 +1,6 @@
 import enum
 import logging
 import os
-import typing as t
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -13,7 +12,7 @@ PROGRAMDATA_DIR = os.environ.get("PROGRAMDATA", "C:/ProgramData")
 
 # The config files will be used in order, with the first one having the highest priority
 
-KNOWN_CONFIG_FILES: t.List[str] = [
+KNOWN_CONFIG_FILES: list[str] = [
     "./local/clabe.yml",
     "./clabe.yml",
     str(Path(PROGRAMDATA_DIR) / "clabe.yml"),

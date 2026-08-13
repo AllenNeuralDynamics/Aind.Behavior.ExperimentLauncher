@@ -7,9 +7,9 @@ from ._experiments import (
 )
 
 __all__ = [
+    "ExperimentMetadata",
     "Launcher",
     "LauncherCliArgs",
-    "ExperimentMetadata",
-    "experiment",
     "collect_clabe_experiments",
+    "experiment",
 ]

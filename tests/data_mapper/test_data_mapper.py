@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 from unittest.mock import patch
 
 from pydantic import BaseModel
@@ -15,9 +15,9 @@ from .. import TESTS_ASSETS
 class MockModel(BaseModel):
     field1: int
     field2: str
-    field3: List[int]
-    field4: Dict[str, int]
-    field5: Optional[int] = None
+    field3: list[int]
+    field4: dict[str, int]
+    field5: int | None = None
     sub_model: Optional["MockModel"] = None
 
 

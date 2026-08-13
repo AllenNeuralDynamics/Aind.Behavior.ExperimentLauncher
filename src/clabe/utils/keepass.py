@@ -8,7 +8,7 @@ if importlib.util.find_spec("pykeepass") is None:
     )
 import os
 from pathlib import Path
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 from pykeepass import Entry, PyKeePass
 
@@ -25,11 +25,11 @@ class KeePassSettings(ServiceSettings):
     authentication using both keyfiles and passwords.
     """
 
-    __yml_section__: ClassVar[Optional[str]] = "keepass"
+    __yml_section__: ClassVar[str | None] = "keepass"
 
     database: Path = Path(r"\\allen\aibs\mpe\keepass\sipe_sw_passwords.kdbx")
-    keyfile: Optional[Path] = Path(_PROGRAMDATA) / r"AIBS_MPE\.secrets\sipe_sw_passwords.keyx"
-    password: Optional[str] = None
+    keyfile: Path | None = Path(_PROGRAMDATA) / r"AIBS_MPE\.secrets\sipe_sw_passwords.keyx"
+    password: str | None = None
 
 
 class KeePass(Service):

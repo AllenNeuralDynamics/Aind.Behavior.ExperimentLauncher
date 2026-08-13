@@ -1,7 +1,7 @@
 import asyncio
 import os
 import subprocess
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from ..runnable import runnable
 from ._base import AsyncExecutor, Command, CommandResult, Executor
@@ -171,7 +171,7 @@ class AsyncLocalExecutor(AsyncExecutor):
 
         try:
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=self.timeout)
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             proc.kill()
             await proc.wait()
             assert self.timeout is not None
@@ -286,7 +286,7 @@ class _DefaultExecutorMixin:
             ...
 
     @runnable
-    def run(self, executor_kwargs: Optional[dict[str, Any]] = None) -> CommandResult:
+    def run(self, executor_kwargs: dict[str, Any] | None = None) -> CommandResult:
         """Execute the command using a local executor and return the result.
 
         Args:
@@ -295,7 +295,7 @@ class _DefaultExecutorMixin:
         return self.command.execute(LocalExecutor(**(executor_kwargs or {})))
 
     @runnable
-    async def run_async(self, executor_kwargs: Optional[dict[str, Any]] = None) -> CommandResult:
+    async def run_async(self, executor_kwargs: dict[str, Any] | None = None) -> CommandResult:
         """Execute the command asynchronously using a local executor and return the result.
 
         Args:

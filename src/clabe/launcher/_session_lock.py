@@ -13,8 +13,9 @@ import contextlib
 import logging
 import sys
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import IO, Iterator
+from typing import IO
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ def _release(handle: IO[str]) -> None:
 
 
 @contextlib.contextmanager
-def single_session_lock(path: Path = SESSION_LOCK_PATH) -> Iterator[None]:
+def single_session_lock(path: Path = SESSION_LOCK_PATH) -> Generator[None, None, None]:
     """
     Holds a process-wide lock so only one launcher session runs at a time.
 
@@ -68,8 +69,7 @@ def single_session_lock(path: Path = SESSION_LOCK_PATH) -> Iterator[None]:
     Raises:
         SessionAlreadyRunningError: If another session already holds the lock.
     """
-    handle = open(path, "a+")
-    try:
+    with open(path, "a+") as handle:
         try:
             _try_acquire(handle)
         except OSError as exc:
@@ -82,5 +82,3 @@ def single_session_lock(path: Path = SESSION_LOCK_PATH) -> Iterator[None]:
             yield
         finally:
             _release(handle)
-    finally:
-        handle.close()

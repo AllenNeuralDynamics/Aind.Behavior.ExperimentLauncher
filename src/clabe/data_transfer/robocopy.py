@@ -2,7 +2,7 @@ import logging
 import shutil
 from os import PathLike, makedirs
 from pathlib import Path
-from typing import ClassVar, List, Optional
+from typing import ClassVar
 
 from pydantic import Field
 
@@ -31,16 +31,16 @@ class RobocopySettings(ServiceSettings):
     copy options.
     """
 
-    __yml_section__: ClassVar[Optional[str]] = "robocopy"
+    __yml_section__: ClassVar[str | None] = "robocopy"
 
     destination: PathLike
-    log: Optional[PathLike] = None
+    log: PathLike | None = None
     extra_args: str = DEFAULT_EXTRA_ARGS
     delete_src: bool = False
     overwrite: bool = False
     force_dir: bool = True
-    exclude_files: List[str] = Field(default_factory=list)
-    exclude_dirs: List[str] = Field(default_factory=list)
+    exclude_files: list[str] = Field(default_factory=list)
+    exclude_dirs: list[str] = Field(default_factory=list)
 
 
 class RobocopyService(DataTransfer[RobocopySettings], _DefaultExecutorMixin, ExecutableApp):
@@ -102,7 +102,7 @@ class RobocopyService(DataTransfer[RobocopySettings], _DefaultExecutorMixin, Exe
         if self._settings.force_dir:
             makedirs(dst, exist_ok=True)
 
-        cmd: List[str] = ["robocopy", str(src), str(dst)]
+        cmd: list[str] = ["robocopy", str(src), str(dst)]
 
         if self._settings.extra_args:
             cmd.extend(self._settings.extra_args.split())

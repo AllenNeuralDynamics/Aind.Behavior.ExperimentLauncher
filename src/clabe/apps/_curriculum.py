@@ -67,13 +67,13 @@ class CurriculumSettings(ServiceSettings):
         ```
     """
 
-    __yml_section__: t.ClassVar[t.Optional[str]] = "curriculum"
+    __yml_section__: t.ClassVar[str | None] = "curriculum"
 
-    script: list[str] = ["curriculum", "run"]
+    script: list[str] = pydantic.Field(default_factory=lambda: ["curriculum", "run"])
     project_directory: os.PathLike = Path(".")
-    input_trainer_state: t.Optional[os.PathLike] = None
-    data_directory: t.Optional[os.PathLike] = None
-    curriculum: t.Optional[str] = None
+    input_trainer_state: os.PathLike | None = None
+    data_directory: os.PathLike | None = None
+    curriculum: str | None = None
 
 
 class CurriculumApp(ExecutableApp, _DefaultExecutorMixin):

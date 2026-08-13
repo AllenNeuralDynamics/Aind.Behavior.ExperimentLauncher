@@ -17,17 +17,17 @@ class TestQuote:
 
 def _serve_cli(**overrides):
     """Builds a _ServeCli with all fields _child_command reads, plus overrides."""
-    fields = dict(
-        experiment_path=Path("exp.py"),
-        host="127.0.0.1",
-        port=8089,
-        repository_directory=None,
-        debug_mode=False,
-        verbose=False,
-        quiet=False,
-        allow_dirty=False,
-        skip_hardware_validation=False,
-    )
+    fields = {
+        "experiment_path": Path("exp.py"),
+        "host": "127.0.0.1",
+        "port": 8089,
+        "repository_directory": None,
+        "debug_mode": False,
+        "verbose": False,
+        "quiet": False,
+        "allow_dirty": False,
+        "skip_hardware_validation": False,
+    }
     fields.update(overrides)
     return cli._ServeCli.model_construct(**fields)
 

@@ -43,7 +43,7 @@ class _RunCli(LauncherCliArgs):
         """Run the specified experiment, optionally under a single-session lock."""
         if not self.single_session:
             self._run()
-            return None
+            return
 
         from .launcher._session_lock import SessionAlreadyRunningError, single_session_lock
 
@@ -54,7 +54,7 @@ class _RunCli(LauncherCliArgs):
             logger.error(str(exc))
             print(str(exc), file=sys.stderr)
             raise SystemExit(1) from exc
-        return None
+        return
 
 
 class _ServeCli(LauncherCliArgs):
@@ -101,7 +101,6 @@ class _ServeCli(LauncherCliArgs):
         from .web import serve
 
         serve(self._child_command(), host=self.host, port=self.port, open_browser=self.open_browser)
-        return None
 
 
 class CliAppSettings(BaseSettings, cli_prog_name="clabe", cli_kebab_case=True):

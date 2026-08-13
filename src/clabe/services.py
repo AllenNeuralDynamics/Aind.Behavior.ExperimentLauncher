@@ -16,8 +16,6 @@ class Service(abc.ABC):
     This may be needed in the future to ensure a common interface.
     """
 
-    ...
-
 
 class ServiceSettings(ps.BaseSettings, abc.ABC):
     """
@@ -44,7 +42,7 @@ class ServiceSettings(ps.BaseSettings, abc.ABC):
         ```
     """
 
-    __yml_section__: t.ClassVar[t.Optional[str]] = None
+    __yml_section__: t.ClassVar[str | None] = None
 
     @classmethod
     def __init_subclass__(cls, *args, **kwargs):
@@ -61,12 +59,12 @@ class ServiceSettings(ps.BaseSettings, abc.ABC):
     @classmethod
     def settings_customise_sources(
         cls,
-        settings_cls: t.Type[ps.BaseSettings],
+        settings_cls: type[ps.BaseSettings],
         init_settings: ps.PydanticBaseSettingsSource,
         env_settings: ps.PydanticBaseSettingsSource,
         dotenv_settings: ps.PydanticBaseSettingsSource,
         file_secret_settings: ps.PydanticBaseSettingsSource,
-    ) -> t.Tuple[ps.PydanticBaseSettingsSource, ...]:
+    ) -> tuple[ps.PydanticBaseSettingsSource, ...]:
         """
         Customizes the settings sources to include the safe YAML settings source.
 
@@ -125,7 +123,7 @@ class _SafeYamlSettingsSource(ps.YamlConfigSettingsSource):
             settings_cls.model_config.update({"yaml_config_section": None})
             super().__init__(settings_cls, yaml_file, yaml_file_encoding, None)
 
-    def __call__(self) -> t.Dict[str, t.Any]:
+    def __call__(self) -> dict[str, t.Any]:
         """
         Calls the settings source and returns the settings dictionary.
 

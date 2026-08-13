@@ -3,7 +3,6 @@ import os
 import xml.etree.ElementTree as ET
 from importlib import metadata
 from pathlib import Path
-from typing import Dict, List, Union
 
 import pydantic
 from aind_behavior_services import Rig
@@ -13,7 +12,7 @@ from aind_behavior_services.utils import get_fields_of_type
 logger = logging.getLogger(__name__)
 
 
-def get_cameras(rig_instance: Rig, exclude_without_video_writer: bool = True) -> Dict[str, CameraTypes]:
+def get_cameras(rig_instance: Rig, exclude_without_video_writer: bool = True) -> dict[str, CameraTypes]:
     """
     Retrieves cameras from a rig instance.
 
@@ -39,10 +38,10 @@ def get_cameras(rig_instance: Rig, exclude_without_video_writer: bool = True) ->
     return cameras
 
 
-ISearchable = Union[pydantic.BaseModel, Dict, List]
+ISearchable = pydantic.BaseModel | dict | list
 
 
-def snapshot_python_environment() -> Dict[str, str]:
+def snapshot_python_environment() -> dict[str, str]:
     """
     Captures a snapshot of the current Python environment.
 
@@ -57,7 +56,7 @@ def snapshot_python_environment() -> Dict[str, str]:
 
 def snapshot_bonsai_environment(
     config_file: os.PathLike = Path("./bonsai/bonsai.config"),
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Captures a snapshot of the Bonsai environment from a configuration file.
 

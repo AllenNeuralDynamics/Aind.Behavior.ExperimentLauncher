@@ -3,9 +3,10 @@ import json
 import logging
 import os
 import subprocess
+from collections.abc import Callable
 from os import PathLike
 from pathlib import Path, PurePosixPath
-from typing import Callable, ClassVar, Dict, List, Optional, Union
+from typing import ClassVar
 
 import aind_data_transfer_service.models.core
 import pydantic
@@ -27,8 +28,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_TRANSFER_ENDPOINT: str = "http://aind-data-transfer-service-dev/api/v2/submit_jobs"
 
-TransferServiceTask = Dict[
-    str, Union[aind_data_transfer_service.models.core.Task, Dict[str, aind_data_transfer_service.models.core.Task]]
+TransferServiceTask = dict[
+    str, aind_data_transfer_service.models.core.Task | dict[str, aind_data_transfer_service.models.core.Task]
 ]
 
 
@@ -40,17 +41,17 @@ class WatchdogSettings(ServiceSettings):
     and integration with the AIND watchdog service.
     """
 
-    __yml_section__: ClassVar[Optional[str]] = "watchdog"
+    __yml_section__: ClassVar[str | None] = "watchdog"
 
     destination: Path
-    schedule_time: Optional[datetime.time] = datetime.time(hour=20)
+    schedule_time: datetime.time | None = datetime.time(hour=20)
     project_name: str
     transfer_endpoint: str = DEFAULT_TRANSFER_ENDPOINT
     delete_modalities_source_after_success: bool = False
-    extra_identifying_info: Optional[dict] = None
-    upload_tasks: Optional[SerializeAsAny[TransferServiceTask]] = None
+    extra_identifying_info: dict | None = None
+    upload_tasks: SerializeAsAny[TransferServiceTask] | None = None
     job_type: str = "default"
-    extra_modality_data: Optional[Dict[str, List[Path]]] = pydantic.Field(
+    extra_modality_data: dict[str, list[Path]] | None = pydantic.Field(
         default=None, description="Additional modality data to include in the transfer"
     )
 
@@ -80,7 +81,7 @@ class WatchdogDataTransferService(DataTransfer[WatchdogSettings]):
         session: Session,
         *,
         validate: bool = False,
-        email_from_experimenter_builder: Optional[Callable[[str], str]] = lambda user_name: (
+        email_from_experimenter_builder: Callable[[str], str] | None = lambda user_name: (
             f"{user_name}@alleninstitute.org"
         ),
     ) -> None:
@@ -109,8 +110,8 @@ class WatchdogDataTransferService(DataTransfer[WatchdogSettings]):
         self.executable_path = Path(_default_exe)
         self.config_path = Path(_default_config)
 
-        self._watch_config: Optional[WatchConfig] = None
-        self._manifest_config: Optional[ManifestConfig] = None
+        self._watch_config: WatchConfig | None = None
+        self._manifest_config: ManifestConfig | None = None
 
         self._validate_project_name = validate
 
@@ -156,7 +157,7 @@ class WatchdogDataTransferService(DataTransfer[WatchdogSettings]):
             )
             logger.info("Watchdog manifest config created successfully at %s.", _manifest_path)
 
-        except (pydantic.ValidationError, ValueError, IOError) as e:
+        except (OSError, pydantic.ValidationError, ValueError) as e:
             logger.error("Failed to create watchdog manifest config. %s", e)
             raise
 
@@ -237,7 +238,7 @@ class WatchdogDataTransferService(DataTransfer[WatchdogSettings]):
 
         destination = Path(self._settings.destination).resolve()
 
-        sources = set([Path(s).resolve() for s in self._sources])
+        sources = {Path(s).resolve() for s in self._sources}
 
         if self._validate_project_name:
             project_names = self._get_project_names()
@@ -265,7 +266,7 @@ class WatchdogDataTransferService(DataTransfer[WatchdogSettings]):
         schema_candidates: list[Path] = []
         for p in sources:
             schema_candidates.extend(self._find_schema_candidates(p))
-        schema_candidates = list(set([s.resolve() for s in schema_candidates]))
+        schema_candidates = list({s.resolve() for s in schema_candidates})
 
         _manifest_config = ManifestConfig(
             name=self._session.session_name,
@@ -315,7 +316,7 @@ class WatchdogDataTransferService(DataTransfer[WatchdogSettings]):
         job_type: str = "default",
         add_default_tasks: bool = True,
         extra_tasks: TransferServiceTask,
-        user_email: Optional[str] = None,
+        user_email: str | None = None,
     ) -> ManifestConfig:
         """
         Appends tasks to a manifest configuration.
@@ -340,7 +341,7 @@ class WatchdogDataTransferService(DataTransfer[WatchdogSettings]):
                 modality: aind_data_transfer_service.models.core.Task(
                     job_settings={"input_source": str(PurePosixPath(cls._remote_destination_root(manifest) / modality))}
                 )
-                for modality in manifest.modalities.keys()
+                for modality in manifest.modalities
             }
 
             tasks["gather_preliminary_metadata"] = aind_data_transfer_service.models.core.Task(
@@ -359,7 +360,7 @@ class WatchdogDataTransferService(DataTransfer[WatchdogSettings]):
             job_type=job_type,
             project_name=manifest.project_name,
             modalities=[
-                aind_data_transfer_service.models.core.Modality.from_abbreviation(m) for m in manifest.modalities.keys()
+                aind_data_transfer_service.models.core.Modality.from_abbreviation(m) for m in manifest.modalities
             ],
             subject_id=str(manifest.subject_id),
             acq_datetime=manifest.acquisition_datetime.strftime("%Y-%m-%d %H:%M:%S"),
@@ -394,7 +395,7 @@ class WatchdogDataTransferService(DataTransfer[WatchdogSettings]):
         return _adapter.validate_json(updated_literal)
 
     @staticmethod
-    def _find_schema_candidates(source: PathLike) -> List[Path]:
+    def _find_schema_candidates(source: PathLike) -> list[Path]:
         """
         Finds json files in the source directory
 
@@ -404,13 +405,10 @@ class WatchdogDataTransferService(DataTransfer[WatchdogSettings]):
         Returns:
             A list of schema file paths
         """
-        json_files = []
-        for file in Path(source).glob("*.json"):
-            json_files.append(file)
-        return json_files
+        return list(Path(source).glob("*.json"))
 
     @staticmethod
-    def _find_modality_candidates(source: PathLike) -> Dict[str, List[Path]]:
+    def _find_modality_candidates(source: PathLike) -> dict[str, list[Path]]:
         """
         Finds modality files in the source directory.
 
@@ -480,11 +478,11 @@ class WatchdogDataTransferService(DataTransfer[WatchdogSettings]):
             while self.is_running():
                 subprocess.run(["taskkill", "/IM", self.executable_path.name, "/F"], shell=True, check=True)
 
-        cmd_factory = "{exe} -c {config}".format(exe=self.executable_path, config=self.config_path)
+        cmd_factory = f"{self.executable_path} -c {self.config_path}"
 
         return subprocess.Popen(cmd_factory, start_new_session=True, shell=True)
 
-    def dump_manifest_config(self, path: Optional[os.PathLike] = None, make_dir: bool = True) -> Path:
+    def dump_manifest_config(self, path: os.PathLike | None = None, make_dir: bool = True) -> Path:
         """
         Dumps the manifest configuration to a YAML file.
 

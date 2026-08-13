@@ -1,5 +1,3 @@
-from typing import List, Optional, Tuple
-
 from rich.console import Console, Group
 from rich.live import Live
 from rich.prompt import Confirm, Prompt
@@ -43,7 +41,7 @@ class ConsoleFrontend(FrontendBase):
     rich handling validation and re-prompting for the primitive types.
     """
 
-    def __init__(self, console: Optional[Console] = None) -> None:
+    def __init__(self, console: Console | None = None) -> None:
         """
         Initializes the console frontend.
 
@@ -53,7 +51,7 @@ class ConsoleFrontend(FrontendBase):
         """
         super().__init__()
         if console is None:
-            from ..logging_helper import clabe_console
+            from ..logging import clabe_console
 
             console = clabe_console
         self._console = console
@@ -75,7 +73,7 @@ class ConsoleFrontend(FrontendBase):
             show_default=request.default is not None,
         )
 
-    def _ask_pick(self, request: PickRequest) -> Optional[str]:
+    def _ask_pick(self, request: PickRequest) -> str | None:
         """Collects a single choice, using an arrow-key picker on a terminal."""
         if self._console.is_terminal:
             return self._pick_interactive(request)
@@ -88,9 +86,9 @@ class ConsoleFrontend(FrontendBase):
         return self._autocomplete_listed(request)
 
     # --- interactive (terminal) variants ---------------------------------
-    def _pick_interactive(self, request: PickRequest) -> Optional[str]:
+    def _pick_interactive(self, request: PickRequest) -> str | None:
         """Renders an arrow-key navigable list and returns the chosen value."""
-        rows: List[Tuple[Optional[str], str]] = []
+        rows: list[tuple[str | None, str]] = []
         if request.allow_none:
             rows.append((None, request.none_label))
         rows.extend((choice.value, choice.display) for choice in request.choices())
@@ -157,16 +155,16 @@ class ConsoleFrontend(FrontendBase):
         return result
 
     @staticmethod
-    def _filter(suggestions: List[str], query: str) -> List[str]:
+    def _filter(suggestions: list[str], query: str) -> list[str]:
         """Returns the suggestions containing ``query`` (case-insensitive)."""
         if not query:
             return suggestions
         lowered = query.lower()
         return [suggestion for suggestion in suggestions if lowered in suggestion.lower()]
 
-    def _render_menu(self, label: str, rows: List[Tuple[Optional[str], str]], index: int) -> Group:
+    def _render_menu(self, label: str, rows: list[tuple[str | None, str]], index: int) -> Group:
         """Builds the renderable for the interactive picker at the given cursor."""
-        lines: List[Text] = [Text(label, style="bold")]
+        lines: list[Text] = [Text(label, style="bold")]
         for position, (_, display) in enumerate(rows):
             if position == index:
                 lines.append(Text(f"❯ {display}", style="bold cyan"))
@@ -174,9 +172,9 @@ class ConsoleFrontend(FrontendBase):
                 lines.append(Text(f"  {display}", style="none"))
         return Group(*lines)
 
-    def _render_autocomplete(self, label: str, query: str, filtered: List[str], index: int) -> Group:
+    def _render_autocomplete(self, label: str, query: str, filtered: list[str], index: int) -> Group:
         """Builds the renderable for the autocomplete prompt and its matches."""
-        lines: List[Text] = [Text(f"{label}: ", style="bold").append(query, style="cyan").append("▏", style="dim")]
+        lines: list[Text] = [Text(f"{label}: ", style="bold").append(query, style="cyan").append("▏", style="dim")]
         for position, suggestion in enumerate(filtered[:_MAX_VISIBLE_SUGGESTIONS]):
             if position == index:
                 lines.append(Text(f"❯ {suggestion}", style="bold cyan"))
@@ -185,13 +183,13 @@ class ConsoleFrontend(FrontendBase):
         return Group(*lines)
 
     # --- non-interactive (piped/CI) fallbacks ----------------------------
-    def _pick_numbered(self, request: PickRequest) -> Optional[str]:
+    def _pick_numbered(self, request: PickRequest) -> str | None:
         """Displays a styled numbered list and collects a selection."""
         choices = request.choices()
         self._console.print(Text(request.label, style="bold"))
 
-        indices: List[str] = []
-        values: dict[str, Optional[str]] = {}
+        indices: list[str] = []
+        values: dict[str, str | None] = {}
         if request.allow_none:
             self._console.print(Text("  0", style="bold cyan").append(f"  {request.none_label}", style="dim"))
             indices.append("0")

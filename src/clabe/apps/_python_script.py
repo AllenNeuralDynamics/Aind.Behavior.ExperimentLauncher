@@ -3,7 +3,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from ._base import Command, CommandResult, ExecutableApp, identity_parser
 from ._executors import _DefaultExecutorMixin
@@ -57,7 +57,7 @@ class PythonScriptApp(ExecutableApp, _DefaultExecutorMixin):
         additional_arguments: list[str] | None = None,
         project_directory: os.PathLike = Path("."),
         extra_uv_arguments: str = "",
-        optional_toml_dependencies: Optional[list[str]] = None,
+        optional_toml_dependencies: list[str] | None = None,
         append_python_exe: bool = False,
         skip_validation: bool = False,
     ) -> None:
@@ -152,7 +152,7 @@ class PythonScriptApp(ExecutableApp, _DefaultExecutorMixin):
 
     @classmethod
     def create_environment(
-        cls, project_directory: os.PathLike, run_kwargs: Optional[dict[str, Any]] = None
+        cls, project_directory: os.PathLike, run_kwargs: dict[str, Any] | None = None
     ) -> subprocess.CompletedProcess:
         """
         Creates a Python virtual environment using the uv tool.
