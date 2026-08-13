@@ -19,3 +19,13 @@ def test_protocol_accepts_http():
 def test_protocol_rejects_unknown_value():
     with pytest.raises(pydantic.ValidationError):
         OtelSettings(protocol="quic")
+
+
+def test_run_name_defaults_to_none():
+    settings = OtelSettings()
+    assert settings.run_name is None
+
+
+def test_run_name_accepts_explicit_value():
+    settings = OtelSettings(run_name="my_rig_experiment")
+    assert settings.run_name == "my_rig_experiment"

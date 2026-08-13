@@ -51,7 +51,14 @@ class OtelSettings(ServiceSettings):
         default="clabe",
         description='"service.name" resource attribute — the "Service" every span and log is tagged with.',
     )
-    run_name: str = Field(default="experiment", description="Operation name of the run's root span.")
+    run_name: str | None = Field(
+        default=None,
+        description=(
+            "Operation name of the run's root span. "
+            "When set, takes precedence over the experiment callable's name. "
+            "Defaults to the experiment name when absent."
+        ),
+    )
 
     def resolved_service_name(self) -> str:
         """The ``service.name`` resource attribute — the "Service" every span and log is tagged with."""
