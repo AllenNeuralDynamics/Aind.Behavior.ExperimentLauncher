@@ -66,6 +66,7 @@ class _RobocopyCommand(Command[CommandResult]):
     """
 
     def execute(self, executor: Executor) -> CommandResult:
+        """Execute the Robocopy command, normalising exit codes."""
         try:
             return super().execute(executor)
         except CommandError as e:
@@ -75,6 +76,7 @@ class _RobocopyCommand(Command[CommandResult]):
             return CommandResult(stdout=e.stdout, stderr=e.stderr, exit_code=0)
 
     async def execute_async(self, executor: AsyncExecutor) -> CommandResult:
+        """Execute the Robocopy command asynchronously, normalising exit codes."""
         try:
             return await super().execute_async(executor)
         except CommandError as e:
