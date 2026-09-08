@@ -1,8 +1,10 @@
 import abc
 import contextlib
+import dataclasses
 import logging
 import typing
 from enum import Enum
+from pathlib import Path
 from typing import Any, Literal, Protocol, get_args, get_origin, runtime_checkable
 
 from ..logging import _TRANSCRIPT_LOGGER_NAME
@@ -14,6 +16,7 @@ from ._requests import (
     FieldRequest,
     FormRequest,
     NumberRequest,
+    PathRequest,
     PickRequest,
     ReadOnlyTable,
     TextRequest,
@@ -81,6 +84,10 @@ class Frontend(Protocol):
 
     def prompt_pick(self, request: PickRequest) -> str | None:
         """Prompt the user to pick one option; returns the value or ``None``."""
+        ...
+
+    def prompt_path(self, request: PathRequest) -> Path | None:
+        """Prompt the user to browse for a filesystem path; returns the path or ``None``."""
         ...
 
     def prompt_confirm(self, request: ConfirmRequest) -> bool:
@@ -226,6 +233,48 @@ class FrontendBase(abc.ABC):
         answer = self._ask_pick(request)
         self._record(request.field or request.label, answer)
         return answer
+
+    def prompt_path(self, request: PathRequest) -> Path | None:
+        """
+        Prompts the user to browse for a filesystem path, validating and recording it.
+
+        The frontend's ``_ask_path`` only collects a *candidate* path (no
+        constraint checking); this method enforces ``must_exist``/``kind``/
+        ``extensions`` and re-prompts (preserving where the user left off) until
+        the candidate satisfies them or the user cancels.
+
+        Args:
+            request: The declarative path request.
+
+        Returns:
+            Optional[Path]: The validated path, or ``None`` if cancelled.
+        """
+        current = request
+        while True:
+            candidate = self._ask_path(current)
+            if candidate is None:
+                self._record(request.field or request.label, None)
+                return None
+            error = self._validate_path(current, candidate)
+            if error is None:
+                self._record(request.field or request.label, str(candidate))
+                return candidate
+            self.notify(error, MessageLevel.ERROR)
+            current = dataclasses.replace(current, start=str(candidate))
+
+    @staticmethod
+    def _validate_path(request: PathRequest, path: Path) -> str | None:
+        """Returns an error message when ``path`` violates the request's constraints, else ``None``."""
+        if request.must_exist and not path.exists():
+            return f"Path does not exist: {path}"
+        if request.kind == "file" and path.exists() and not path.is_file():
+            return f"Expected a file, got a directory: {path}"
+        if request.kind == "dir" and path.exists() and not path.is_dir():
+            return f"Expected a directory, got a file: {path}"
+        exts = request.normalized_extensions()
+        if request.kind != "dir" and exts is not None and path.suffix.lower() not in exts:
+            return f"Expected a file with extension {', '.join(sorted(exts))}"
+        return None
 
     def prompt_confirm(self, request: ConfirmRequest) -> bool:
         """
@@ -379,6 +428,22 @@ class FrontendBase(abc.ABC):
             )
             return inner[answer]
 
+        # Path → browse for a filesystem path (existence is not required: a plain
+        # ``Path`` field, unlike pydantic's ``FilePath``/``DirectoryPath``, doesn't
+        # imply the target exists yet).
+        if isinstance(inner, type) and issubclass(inner, Path):
+            default_str = str(default) if default is not None else None
+            return self.prompt_path(
+                PathRequest(
+                    label=label,
+                    start=default_str,
+                    default=default_str,
+                    must_exist=False,
+                    kind="any",
+                    field=request.field_name,
+                )
+            )
+
         # Everything else → text prompt, re-prompting via pydantic validation
         adapter = TypeAdapter(annotation)
 
@@ -443,6 +508,10 @@ class FrontendBase(abc.ABC):
     @abc.abstractmethod
     def _ask_pick(self, request: PickRequest) -> str | None:
         """Collects a single choice from the user (no transcript)."""
+
+    @abc.abstractmethod
+    def _ask_path(self, request: PathRequest) -> Path | None:
+        """Collects a candidate filesystem path from the user (no validation/transcript)."""
 
     @abc.abstractmethod
     def _ask_confirm(self, request: ConfirmRequest) -> bool:

@@ -29,6 +29,7 @@ from clabe.ui import (
     FieldRequest,
     FormRequest,
     MessageLevel,
+    PathRequest,
     ReadOnlyTable,
     notify,
 )
@@ -141,6 +142,31 @@ async def demo_experiment(launcher: Launcher) -> None:
         )
     )
     notify(f"Final session type: {updated_type!r}", MessageLevel.INFO)
+
+    # --- FieldRequest (Path) demo: a single Path-typed field routes through
+    # prompt_path — same browser as below, just for one form field at a time.
+    updated_output_dir = launcher.frontend.prompt_field(
+        FieldRequest(model=SessionConfig, field_name="output_dir", initial=config.output_dir)
+    )
+    notify(f"Final output directory: {updated_output_dir}", MessageLevel.INFO)
+    # ----------------------------------------------------------------------
+
+    # --- PathRequest demo: browse the filesystem for a rig config file ------
+    # create_fake_rig() (called above) populated `{LIB_CONFIG}/Rig/<computer_name>/rig1.json`,
+    # so descending one level and picking the .json file demonstrates real browsing.
+    rig_path = launcher.frontend.prompt_path(
+        PathRequest(
+            label="Browse for a rig configuration file",
+            start=str(Path(LIB_CONFIG) / "Rig"),
+            kind="file",
+            extensions=[".json"],
+        )
+    )
+    if rig_path is not None:
+        notify(f"Picked rig config: {rig_path}", MessageLevel.SUCCESS)
+    else:
+        notify("No rig config picked.", MessageLevel.WARNING)
+    # ----------------------------------------------------------------------
 
     picker = DefaultBehaviorPicker(
         launcher=launcher,

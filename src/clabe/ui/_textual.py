@@ -25,11 +25,12 @@ from ._requests import (
     AutoCompleteRequest,
     ConfirmRequest,
     FormRequest,
+    PathRequest,
     PickRequest,
     ReadOnlyTable,
     TextRequest,
 )
-from ._textual_form import _AcknowledgeScreen, _FormScreen, _ReadOnlyTableScreen
+from ._textual_form import _AcknowledgeScreen, _FormScreen, _ReadOnlyTableScreen, push_path_picker
 
 logger = logging.getLogger(__name__)
 
@@ -295,6 +296,34 @@ class _LauncherApp(App):
         if request.default is not None and request.default in self._pick_values:
             option_list.highlighted = self._pick_values.index(request.default)
         option_list.focus()
+
+    async def ask_path(self, request: PathRequest, reply: "queue.Queue") -> None:
+        """Push the file-browser modal(s); deliver the chosen Path (or None) via reply.
+
+        ``kind="any"`` takes an extra screen (a File/Folder disambiguation) since
+        no single ``textual-fspicker`` dialog can return either — see
+        :func:`push_path_picker`.
+        """
+        self._pending = reply
+        self._kind = "path"
+
+        def _on_result(result: Path | None) -> None:
+            """Put the final result onto the reply queue."""
+            if self._pending is reply:
+                self._pending = None
+                self._kind = None
+                reply.put(result)
+
+        start = request.start if request.start else request.default
+        await push_path_picker(
+            self,
+            label=request.label,
+            start=start,
+            kind=request.kind,
+            extensions=request.extensions,
+            must_exist=request.must_exist,
+            on_result=_on_result,
+        )
 
     async def ask_confirm(self, request: ConfirmRequest, reply: "queue.Queue") -> None:
         """Mount a Yes/No list; deliver the answer via reply."""
@@ -596,6 +625,13 @@ class TextualFrontend(FrontendBase):
         reply: queue.Queue = queue.Queue()
         app.call_from_thread(app.ask_confirm, request, reply)
         return bool(_unwrap(reply.get()))
+
+    def _ask_path(self, request: PathRequest) -> Path | None:
+        """Request the file-browser modal and block until the user picks or cancels."""
+        app = self._ensure()
+        reply: queue.Queue = queue.Queue()
+        app.call_from_thread(app.ask_path, request, reply)
+        return _unwrap(reply.get())
 
     def _ask_form(self, request: FormRequest) -> object | None:
         """Push the form modal and block until the user submits or cancels."""

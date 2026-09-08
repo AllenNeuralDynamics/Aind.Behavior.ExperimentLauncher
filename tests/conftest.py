@@ -20,6 +20,7 @@ class MockFrontend(ui.FrontendBase):
         self._ask_pick_mock = Mock(return_value="")
         self._ask_confirm_mock = Mock(return_value=True)
         self._ask_autocomplete_mock = Mock(return_value="")
+        self._ask_path_mock = Mock(return_value=None)
 
     def _render(self, message, level):
         return self._render_mock(message, level)
@@ -29,6 +30,9 @@ class MockFrontend(ui.FrontendBase):
 
     def _ask_pick(self, request):
         return self._ask_pick_mock(request)
+
+    def _ask_path(self, request):
+        return self._ask_path_mock(request)
 
     def _ask_confirm(self, request):
         return self._ask_confirm_mock(request)
