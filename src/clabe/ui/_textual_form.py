@@ -621,7 +621,12 @@ class _FormScreen(ModalScreen):
             # kind="any": a plain Pydantic `Path` field doesn't say whether it
             # names a file or a directory, so this asks (see push_path_picker).
             await push_path_picker(
-                self.app, label="Browse", start=str(start), kind="any", extensions=None, must_exist=False,
+                self.app,
+                label="Browse",
+                start=str(start),
+                kind="any",
+                extensions=None,
+                must_exist=False,
                 on_result=_on_pick,
             )
         elif btn_id == "form-close":
