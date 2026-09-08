@@ -231,6 +231,8 @@ class CompositeStore(StoreBase):
 
     Example:
         ```python
+        from clabe.stores.dataverse import DataverseStore
+
         store = CompositeStore(
             default=LocalFileStore(root=VR_LIB),
             routes={"trainer_state": DataverseStore()},
