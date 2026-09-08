@@ -10,10 +10,10 @@ class MemoryStore(StoreBase):
     """
     A store holding records in memory, for tests and for assembling records in-process.
 
-    Writes replace any record previously written with the same kind and scope,
-    matching :class:`~clabe.stores.LocalFileStore`. A record is visible to a
-    read whose scope agrees with every narrowing the record was written under,
-    so a record written unscoped is library-wide.
+    Writes append, as Dataverse does, so several records of one kind can be
+    offered as candidates. A record is visible to a read whose scope agrees with
+    every narrowing the record was written under, so a record written unscoped
+    is library-wide.
     """
 
     def __init__(self, *, scope: Scope | None = None) -> None:
@@ -31,7 +31,4 @@ class MemoryStore(StoreBase):
         ]
 
     def write(self, kind: KindLike[T], value: T, *, scope: Scope | None = None) -> None:
-        name = as_kind(kind).name
-        merged = self._merge_scope(scope)
-        self._records = [r for r in self._records if (r[0], r[1]) != (name, merged)]
-        self._records.append((name, merged, value))
+        self._records.append((as_kind(kind).name, self._merge_scope(scope), value))
