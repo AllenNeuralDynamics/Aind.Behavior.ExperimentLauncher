@@ -1,12 +1,28 @@
 import dataclasses
+import os
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
 #: A validator takes a candidate answer and returns ``None`` when the value is
 #: acceptable, or an error message (to surface to the user) when it is not.
 Validator = Callable[[str], str | None]
+
+
+def normalize_extensions(extensions: Sequence[str] | None) -> set[str] | None:
+    """Returns ``extensions`` as lowercase, dot-prefixed suffixes, or ``None`` if unset/empty.
+
+    The single source of truth for extension matching everywhere a
+    :class:`PathRequest` is consumed — every frontend and
+    :meth:`FrontendBase._validate_path <clabe.ui._frontend.FrontendBase._validate_path>`
+    must compare a candidate's ``Path.suffix.lower()`` against this rather than
+    re-deriving its own normalized set, so a file offered by a picker is never
+    subsequently rejected by validation over a case or leading-dot mismatch.
+    """
+    if not extensions:
+        return None
+    return {ext.lower() if ext.startswith(".") else f".{ext.lower()}" for ext in extensions}
 
 
 @dataclasses.dataclass
@@ -167,6 +183,59 @@ class NumberRequest:
     label: str
     default: float | None = None
     field: str | None = None
+
+
+@dataclasses.dataclass
+class PathRequest:
+    """
+    A declarative request to choose a filesystem path.
+
+    Frontends render this as whatever browsing UI is appropriate (a live,
+    filesystem-aware browser on a console; a modal file-browser dialog on a
+    TUI/GUI). Application code only describes *what* it needs — a file or a
+    directory, which extensions are acceptable, whether the target must
+    already exist — never *how* to browse for it.
+
+    Attributes:
+        label: The prompt shown to the user.
+        start: Directory (or partial path) to open the browser in. Defaults to
+            the current working directory.
+        default: Value returned when the user submits an empty answer.
+        must_exist: Whether the chosen path must already exist on disk. For
+            ``kind="dir"``, only honored on frontends whose picker supports
+            navigating to a not-yet-created directory; the Textual frontend's
+            directory dialog only ever lists existing directories, so a new
+            one can't be named there regardless of this flag.
+        kind: Restricts the selectable target: ``"file"``, ``"dir"``, or
+            ``"any"``. ``"any"`` is more expensive to render (frontends that
+            need a dedicated file-vs-folder dialog, e.g. the Textual one, ask
+            an extra up-front question to disambiguate) — prefer ``"file"``/
+            ``"dir"`` whenever the field's intent is known.
+        extensions: When set, only files with one of these suffixes (e.g.
+            ``[".json"]``) are selectable. Ignored when ``kind="dir"``.
+            Matching is case-insensitive and tolerates a missing leading dot.
+        field: Logical field name used in the persisted transcript.
+        help: Optional supplementary help text.
+    """
+
+    label: str
+    start: str | os.PathLike | None = None
+    default: str | None = None
+    must_exist: bool = True
+    kind: Literal["file", "dir", "any"] = "file"
+    extensions: Sequence[str] | None = None
+    field: str | None = None
+    help: str | None = None
+
+    def normalized_extensions(self) -> set[str] | None:
+        """Returns ``extensions`` as lowercase, dot-prefixed suffixes, or ``None`` if unset.
+
+        See :func:`normalize_extensions` — every frontend must compare against
+        this (or the free function directly) rather than re-deriving its own
+        normalized set, so a file offered by a picker is never subsequently
+        rejected by validation over a case or leading-dot mismatch.
+        """
+        return normalize_extensions(self.extensions)
 
 
 @dataclasses.dataclass

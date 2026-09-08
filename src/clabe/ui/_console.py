@@ -1,3 +1,6 @@
+import os
+from pathlib import Path
+
 from rich.console import Console, Group
 from rich.live import Live
 from rich.prompt import Confirm, Prompt
@@ -6,7 +9,7 @@ from rich.text import Text
 from . import _keys
 from ._frontend import FrontendBase
 from ._messages import MessageLevel
-from ._requests import AcknowledgeRequest, AutoCompleteRequest, ConfirmRequest, PickRequest, TextRequest
+from ._requests import AcknowledgeRequest, AutoCompleteRequest, ConfirmRequest, PathRequest, PickRequest, TextRequest
 
 #: Maximum suggestions shown at once while filtering an autocomplete prompt.
 _MAX_VISIBLE_SUGGESTIONS = 8
@@ -85,6 +88,12 @@ class ConsoleFrontend(FrontendBase):
             return self._autocomplete_interactive(request)
         return self._autocomplete_listed(request)
 
+    def _ask_path(self, request: PathRequest) -> Path | None:
+        """Collects a candidate path, browsing the filesystem live on a terminal."""
+        if self._console.is_terminal:
+            return self._path_interactive(request)
+        return self._path_typed(request)
+
     # --- interactive (terminal) variants ---------------------------------
     def _pick_interactive(self, request: PickRequest) -> str | None:
         """Renders an arrow-key navigable list and returns the chosen value."""
@@ -153,6 +162,124 @@ class ConsoleFrontend(FrontendBase):
 
         self._console.print(Text(f"{request.label} ", style="bold").append(result, style="cyan"))
         return result
+
+    def _path_interactive(self, request: PathRequest) -> Path | None:
+        """Renders a live, filesystem-aware browser and returns the typed/completed path.
+
+        The query line behaves like a shell path prompt: typing narrows nothing
+        (the filesystem itself is the source of truth), arrow keys cycle which
+        entry Tab would complete to, and Tab/→ completes the query into that
+        entry (appending a separator on a directory, to invite drilling further
+        in). Enter submits the query text as-is; :meth:`FrontendBase.prompt_path`
+        validates it and re-opens this same browser, with progress preserved, if
+        it doesn't satisfy the request.
+        """
+        query = str(request.start or request.default or "") or (str(Path.cwd()) + os.sep)
+        index = 0
+        suggestions = self._path_completions(query, request)
+
+        with Live(console=self._console, transient=True) as live:
+            while True:
+                index = max(0, min(index, len(suggestions) - 1))
+                live.update(self._render_path_picker(request.label, query, suggestions, index))
+                key = _keys.read_key()
+                if key == _keys.INTERRUPT:
+                    raise KeyboardInterrupt
+                if key == _keys.ESCAPE:
+                    return None
+                if key == _keys.ENTER:
+                    break
+                previous_query = query
+                if key in (_keys.TAB, _keys.RIGHT):
+                    if suggestions:
+                        query = suggestions[index]
+                elif key == _keys.UP:
+                    index -= 1
+                elif key == _keys.DOWN:
+                    index += 1
+                elif key == _keys.BACKSPACE:
+                    query = query[:-1]
+                elif len(key) == 1 and key.isprintable():
+                    query += key
+                if query != previous_query:
+                    suggestions = self._path_completions(query, request)
+
+        # An empty query on Enter falls back to the default, matching every other prompt type.
+        if not query and request.default is not None:
+            query = request.default
+        self._console.print(Text(f"{request.label} ", style="bold").append(query, style="cyan"))
+        return Path(query) if query else None
+
+    @staticmethod
+    def _path_completions(query: str, request: PathRequest, max_results: int = 8) -> list[str]:
+        """Returns filesystem entries completing ``query``, filtered by kind/extensions.
+
+        Directories are always offered (they're always valid waypoints while
+        browsing) and are suffixed with the path separator; files are offered
+        only when ``kind`` allows a file and, if ``extensions`` is set, their
+        suffix matches.
+        """
+        expanded = Path(query).expanduser()
+        if query and query[-1] in ("/", os.sep):
+            parent, prefix = expanded, ""
+        else:
+            parent, prefix = expanded.parent, expanded.name.lower()
+        if not parent.is_dir():
+            return []
+        exts = request.normalized_extensions()
+        try:
+            children = sorted(parent.iterdir(), key=lambda c: (not c.is_dir(), c.name.lower()))
+        except OSError:
+            return []
+        results: list[str] = []
+        for child in children:
+            if not child.name.lower().startswith(prefix):
+                continue
+            if child.is_dir():
+                results.append(str(child) + os.sep)
+            elif request.kind != "dir" and (not exts or child.suffix.lower() in exts):
+                results.append(str(child))
+            if len(results) >= max_results:
+                break
+        return results
+
+    def _render_path_picker(self, label: str, query: str, suggestions: list[str], index: int) -> Group:
+        """Builds the renderable for the path browser at the given cursor."""
+        lines: list[Text] = [Text(f"{label}: ", style="bold").append(query, style="cyan").append("▏", style="dim")]
+        for position, suggestion in enumerate(suggestions):
+            glyph = "📁" if suggestion.endswith(os.sep) else "📄"
+            style = "bold cyan" if position == index else "none"
+            lines.append(Text(f"{'❯ ' if position == index else '  '}{glyph} {suggestion}", style=style))
+        return Group(*lines)
+
+    def _path_typed(self, request: PathRequest) -> Path | None:
+        """Lists the start directory's contents, then collects a line of typed text.
+
+        A non-interactive console cannot offer a live browser, so the directory
+        is shown up front (mirroring :meth:`_autocomplete_listed`) and any typed
+        value is accepted; :meth:`FrontendBase.prompt_path` enforces the
+        request's constraints.
+        """
+        start = Path(request.start or request.default or Path.cwd()).expanduser()
+        if start.is_dir():
+            try:
+                entries = sorted(p.name + (os.sep if p.is_dir() else "") for p in start.iterdir())
+            except OSError:
+                entries = []
+            if entries:
+                self._console.print(
+                    Text(f"Contents of {start}: ", style="dim").append(", ".join(entries), style="cyan")
+                )
+        # `start` doubles as "where the user left off" on a re-prompt (FrontendBase.prompt_path
+        # replaces it with the rejected candidate), so prefer it over the original default.
+        default_text = str(request.start) if request.start else (request.default or "")
+        raw = Prompt.ask(
+            Text(request.label, style="bold"),
+            console=self._console,
+            default=default_text,
+            show_default=bool(default_text),
+        )
+        return Path(raw) if raw else None
 
     @staticmethod
     def _filter(suggestions: list[str], query: str) -> list[str]:

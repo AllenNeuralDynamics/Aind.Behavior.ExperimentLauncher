@@ -2,9 +2,10 @@ import logging
 import os
 import re
 import typing
+from collections.abc import Callable, Sequence
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Any, ClassVar, Literal, get_args, get_origin
+from typing import Annotated, Any, ClassVar, Literal, cast, get_args, get_origin
 
 from pydantic import TypeAdapter, ValidationError
 from pydantic_core import PydanticUndefined
@@ -13,9 +14,10 @@ from textual.binding import Binding
 from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.css.query import QueryError
 from textual.screen import ModalScreen
-from textual.widgets import Button, DataTable, DirectoryTree, Footer, Input, Label, OptionList, Select, Switch
+from textual.widgets import Button, DataTable, Footer, Input, Label, OptionList, Select, Switch
+from textual_fspicker import FileOpen, Filters, SelectDirectory
 
-from ._requests import AcknowledgeRequest, FormRequest, ReadOnlyTable
+from ._requests import AcknowledgeRequest, FormRequest, ReadOnlyTable, normalize_extensions
 
 logger = logging.getLogger(__name__)
 
@@ -116,25 +118,18 @@ def _path_completions(partial: str, max_results: int = 12) -> list[str]:
         return []
 
 
-def _resolve_start_dir(raw: str) -> Path:
-    """Walk up from raw until we reach an existing directory (for DirectoryTree)."""
-    candidate = Path(raw).expanduser().resolve() if raw else Path.home()
+def _resolve_existing_ancestor(candidate: Path) -> Path:
+    """Walk up from an already-resolved ``candidate`` until it names an existing directory."""
     while not candidate.is_dir() and candidate != candidate.parent:
         candidate = candidate.parent
     return candidate if candidate.is_dir() else Path.home()
 
 
-_FILE_PICKER_CSS = """
-_FilePickerScreen { align: center middle; }
-#picker-container {
-    width: 80%; height: 80%;
-    background: $surface; border: thick $primary; padding: 1 2;
-}
-#picker-path { margin-bottom: 1; }
-#picker-tree { height: 1fr; border: round $primary; }
-#picker-buttons { height: 3; margin-top: 1; align-horizontal: right; }
-#picker-buttons Button { margin-left: 1; }
-"""
+def _resolve_start_dir(raw: str) -> Path:
+    """Walk up from raw until we reach an existing directory (for DirectoryTree)."""
+    candidate = Path(raw).expanduser().resolve() if raw else Path.home()
+    return _resolve_existing_ancestor(candidate)
+
 
 _FORM_CSS = """
 _FormScreen { align: center middle; }
@@ -306,46 +301,173 @@ class _ReadOnlyTableScreen(ModalScreen):
         self.dismiss(False)
 
 
-class _FilePickerScreen(ModalScreen):
-    """Modal for browsing and selecting a filesystem path."""
+def build_picker_screen(
+    *,
+    label: str,
+    start: str | os.PathLike | None,
+    kind: Literal["file", "dir"] = "file",
+    extensions: Sequence[str] | None = None,
+    must_exist: bool = True,
+) -> FileOpen | SelectDirectory:
+    """Builds the ``textual-fspicker`` dialog matching a path request.
 
-    DEFAULT_CSS = _FILE_PICKER_CSS
-    BINDINGS: ClassVar[list[Binding]] = [Binding("escape", "cancel_picker", "Cancel")]
+    ``textual-fspicker`` (unlike a plain ``DirectoryTree``-based browser) lets
+    the user navigate anywhere on disk regardless of ``start`` — Backspace
+    walks up past it, and on Windows a drive selector sits alongside the
+    listing — which is what makes this feel like a native file-open dialog
+    rather than a browser confined to one subtree.
 
-    def __init__(self, start: str = "") -> None:
-        """Initialize with the directory to open first."""
+    ``kind`` must already be resolved to ``"file"`` or ``"dir"`` — a
+    ``PathRequest(kind="any")`` is disambiguated one level up, by
+    :func:`push_path_picker`, before this is called. There's no single
+    ``textual-fspicker`` dialog that can return either: ``FileOpen`` treats
+    picking a directory as "cd into it" and never dismisses with one.
+
+    Args:
+        label: Shown as the dialog's title.
+        start: Directory (or a not-yet-existing path under one) to open the
+            browser in. ``textual-fspicker`` lists ``location`` unconditionally
+            and crashes if it doesn't exist, so a ``start`` that doesn't exist
+            (a suggested default like ``Path("./local/output")`` before it's
+            been created) is walked up to its nearest existing ancestor; the
+            missing leaf is preserved as a pre-filled filename instead of
+            silently dropped.
+        kind: ``"dir"`` opens a directory-only picker; ``"file"`` opens a file
+            picker (typing a directory path just navigates into it).
+        extensions: When set (and ``kind`` isn't ``"dir"``), only files with
+            one of these suffixes are selectable. Matching is case-insensitive
+            and tolerates a missing leading dot.
+        must_exist: Whether the chosen file must already exist. Directory
+            selection is always constrained to existing directories, since
+            there's no "new folder" affordance in the dialog.
+
+    Returns:
+        FileOpen | SelectDirectory: The modal screen to push.
+    """
+    raw = str(start) if start else ""
+    resolved_raw = Path(raw).expanduser().resolve() if raw else None
+    location = _resolve_existing_ancestor(resolved_raw) if resolved_raw else Path.home()
+    if kind == "dir":
+        return SelectDirectory(location=location, title=label)
+
+    # If `raw` names something under `location` that doesn't exist yet, keep
+    # its name as a suggested filename rather than discarding it.
+    default_file = resolved_raw.name if resolved_raw is not None and resolved_raw != location else None
+
+    filters = None
+    allowed = normalize_extensions(extensions)
+    if allowed:
+        filters = Filters(("Allowed files", lambda p: p.suffix.lower() in allowed))
+    return FileOpen(
+        location=location,
+        title=label,
+        filters=filters,
+        must_exist=must_exist,
+        default_file=default_file,
+    )
+
+
+class _PathKindScreen(ModalScreen):
+    """Tiny modal disambiguating a ``PathRequest(kind="any")`` into "file" or "dir".
+
+    No ``textual-fspicker`` dialog can return either a file or a directory
+    (``FileOpen`` always treats a directory as "cd into it", never as an
+    answer), so this asks the one extra question needed to pick the right
+    dialog rather than silently guessing.
+    """
+
+    DEFAULT_CSS = """
+    _PathKindScreen { align: center middle; }
+    #kind-box { width: 50; height: auto; background: $surface; border: round $primary; padding: 1 2; }
+    #kind-buttons { height: 3; margin-top: 1; align-horizontal: center; }
+    #kind-buttons Button { margin: 0 1; }
+    """
+    BINDINGS: ClassVar[list[Binding]] = [Binding("escape", "cancel", "Cancel")]
+
+    def __init__(self, label: str) -> None:
+        """Initialize with the label shown above the File/Folder/Cancel buttons."""
         super().__init__()
-        self._start = start or str(Path.home())
+        self._label = label
 
     def compose(self) -> ComposeResult:
-        """Build the file browser layout."""
-        with Vertical(id="picker-container"):
-            yield Label("Browse", id="picker-title")
-            yield Input(value=self._start, id="picker-path", placeholder="Type a path or browse below…")
-            yield DirectoryTree(self._start, id="picker-tree")
-            with Horizontal(id="picker-buttons"):
-                yield Button("Cancel", id="picker-cancel", variant="default")
-                yield Button("Select", id="picker-select", variant="primary")
-
-    def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected) -> None:
-        """Update the path input when a file is selected in the tree."""
-        self.query_one("#picker-path", Input).value = str(event.path)
-
-    def on_directory_tree_directory_selected(self, event: DirectoryTree.DirectorySelected) -> None:
-        """Update the path input when a directory is selected in the tree."""
-        self.query_one("#picker-path", Input).value = str(event.path)
+        """Build the tiny choice dialog."""
+        with Vertical(id="kind-box"):
+            yield Label(self._label)
+            with Horizontal(id="kind-buttons"):
+                yield Button("File", id="kind-file", variant="primary")
+                yield Button("Folder", id="kind-dir", variant="primary")
+                yield Button("Cancel", id="kind-cancel", variant="default")
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Dismiss with the typed path on Select, or None on Cancel."""
-        if event.button.id == "picker-select":
-            raw = self.query_one("#picker-path", Input).value.strip()
-            self.dismiss(Path(raw) if raw else None)
-        elif event.button.id == "picker-cancel":
+        """Dismiss with the chosen kind (``"file"``/``"dir"``), or ``None`` on Cancel."""
+        if event.button.id == "kind-file":
+            self.dismiss("file")
+        elif event.button.id == "kind-dir":
+            self.dismiss("dir")
+        else:
             self.dismiss(None)
 
-    def action_cancel_picker(self) -> None:
-        """Dismiss without selecting a path."""
+    def action_cancel(self) -> None:
+        """Dismiss without choosing a kind."""
         self.dismiss(None)
+
+
+async def push_path_picker(
+    pusher: Any,
+    *,
+    label: str,
+    start: str | os.PathLike | None,
+    kind: Literal["file", "dir", "any"],
+    extensions: Sequence[str] | None,
+    must_exist: bool,
+    on_result: Callable[[Path | None], None],
+) -> None:
+    """Pushes the picker screen(s) matching ``kind``, delivering the answer to ``on_result``.
+
+    For ``kind="file"``/``"dir"`` this is just :func:`build_picker_screen`
+    pushed directly. For ``kind="any"`` -- used for a generic ``Path``-typed
+    field, where neither "file" nor "dir" is known -- a tiny disambiguation
+    modal (:class:`_PathKindScreen`) is pushed first, since no single
+    ``textual-fspicker`` dialog can return either. ``on_result`` fires exactly
+    once with the final path or ``None``, however many screens it took.
+
+    Args:
+        pusher: The ``App`` or ``Screen`` to push onto (anything exposing
+            ``push_screen``).
+        label: Shown as the dialog's title (and the disambiguation prompt's
+            label, for ``kind="any"``).
+        start: Forwarded to :func:`build_picker_screen`.
+        kind: ``"file"``, ``"dir"``, or ``"any"``.
+        extensions: Forwarded to :func:`build_picker_screen`.
+        must_exist: Forwarded to :func:`build_picker_screen`.
+        on_result: Called exactly once with the chosen ``Path``, or ``None``
+            if the user cancelled at any point.
+    """
+
+    async def _push(resolved_kind: Literal["file", "dir"]) -> None:
+        """Build and push the concrete file/dir dialog for ``resolved_kind``."""
+
+        async def _on_dismiss(result: Path | None) -> None:
+            """Forward the dialog's result to the caller."""
+            on_result(result)
+
+        screen = build_picker_screen(
+            label=label, start=start, kind=resolved_kind, extensions=extensions, must_exist=must_exist
+        )
+        await pusher.push_screen(screen, _on_dismiss)
+
+    if kind == "file" or kind == "dir":
+        await _push(kind)
+        return
+
+    async def _on_kind_chosen(chosen: str | None) -> None:
+        """Push the picker for the chosen kind, or report cancellation."""
+        if chosen != "file" and chosen != "dir":
+            on_result(None)
+            return
+        await _push(cast(Literal["file", "dir"], chosen))
+
+    await pusher.push_screen(_PathKindScreen(label), _on_kind_chosen)
 
 
 class _FormScreen(ModalScreen):
@@ -496,7 +618,12 @@ class _FormScreen(ModalScreen):
                 if result is not None:
                     path_input.value = str(result)
 
-            self.app.push_screen(_FilePickerScreen(str(start)), _on_pick)
+            # kind="any": a plain Pydantic `Path` field doesn't say whether it
+            # names a file or a directory, so this asks (see push_path_picker).
+            await push_path_picker(
+                self.app, label="Browse", start=str(start), kind="any", extensions=None, must_exist=False,
+                on_result=_on_pick,
+            )
         elif btn_id == "form-close":
             self.dismiss(None)
 

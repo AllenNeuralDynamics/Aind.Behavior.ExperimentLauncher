@@ -29,6 +29,7 @@ dependencies = [
     "rich",
     "aind_behavior_services>=0.13.0",
     "textual>=8.2.7",
+    "textual-fspicker>=1.0.1",
     "opentelemetry-api>=1.24",
 ]
 
