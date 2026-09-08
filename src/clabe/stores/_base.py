@@ -26,6 +26,7 @@ _CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
 
 def _snake_case(name: str) -> str:
+    """Converts a CamelCase class name to snake_case."""
     return _CAMEL_BOUNDARY.sub("_", name).lower()
 
 
@@ -162,12 +163,14 @@ class StoreBase(abc.ABC):
         return dict(self._scope)
 
     def scoped(self, **scope: str) -> "StoreBase":
+        """Returns a view sharing this store's data, narrowed by the given scope."""
         clone = object.__new__(type(self))
         clone.__dict__.update(self.__dict__)
         clone._scope = {**self._scope, **scope}
         return clone
 
     def _merge_scope(self, scope: Scope | None) -> dict[str, str]:
+        """Layers a call's scope over the store's own."""
         return {**self._scope, **(scope or {})}
 
     @abc.abstractmethod
@@ -175,9 +178,11 @@ class StoreBase(abc.ABC):
         """Returns every record of this kind in scope, each labelled for display."""
 
     @abc.abstractmethod
-    def write(self, kind: KindLike[T], value: T, *, scope: Scope | None = None) -> None: ...
+    def write(self, kind: KindLike[T], value: T, *, scope: Scope | None = None) -> None:
+        """Persists a record. See :meth:`Store.write`."""
 
     def list(self, kind: KindLike[T], *, scope: Scope | None = None) -> Sequence[T]:
+        """Returns every record of this kind in scope, validated but unprompted."""
         _kind = as_kind(kind)
         return [self._validated(_kind, c.value) for c in self._candidates(_kind, self._merge_scope(scope))]
 
@@ -212,6 +217,7 @@ class StoreBase(abc.ABC):
 
     @staticmethod
     def _validated(kind: Kind[T], value: T) -> T:
+        """Applies the kind's validator, if it has one."""
         return kind.validate(value) if kind.validate is not None else value
 
 
@@ -244,27 +250,38 @@ class CompositeStore(StoreBase):
         self._routes = dict(routes or {})
 
     def _route(self, kind: Kind[Any]) -> Store:
+        """
+        Returns the backend serving this kind.
+
+        Raises:
+            LookupError: If the kind is unrouted and there is no default.
+        """
         store = self._routes.get(kind.name, self._default)
         if store is None:
             raise LookupError(f"No store is registered for kind {kind.name!r}.")
         return store
 
     def _candidates(self, kind: Kind[T], scope: Scope) -> Sequence[Candidate[T]]:
+        """Never called: every read is delegated to a routed backend."""
         raise NotImplementedError("CompositeStore delegates to its routed backends.")
 
     def resolve(self, kind: KindLike[T], *, scope: Scope | None = None) -> T:
+        """Delegates to the routed backend, so its own presentation is used."""
         _kind = as_kind(kind)
         return self._route(_kind).resolve(_kind, scope=scope)
 
     def list(self, kind: KindLike[T], *, scope: Scope | None = None) -> Sequence[T]:
+        """Delegates to the routed backend."""
         _kind = as_kind(kind)
         return self._route(_kind).list(_kind, scope=scope)
 
     def write(self, kind: KindLike[T], value: T, *, scope: Scope | None = None) -> None:
+        """Delegates to the routed backend."""
         _kind = as_kind(kind)
         self._route(_kind).write(_kind, value, scope=scope)
 
     def scoped(self, **scope: str) -> "CompositeStore":
+        """Returns a composite whose every backend is narrowed by the given scope."""
         return CompositeStore(
             default=self._default.scoped(**scope) if self._default is not None else None,
             routes={name: store.scoped(**scope) for name, store in self._routes.items()},

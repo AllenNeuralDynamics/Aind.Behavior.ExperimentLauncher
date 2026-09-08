@@ -46,6 +46,7 @@ class DefaultLayout:
     """
 
     def read(self, kind_name: str, scope: Scope) -> Sequence[str]:
+        """Returns the glob patterns for this kind, subject folder before shared library."""
         subject = scope.get("subject")
         if kind_name == "rig":
             return [f"{RIG_DIR}/{scope['computer_name']}/*.json"]
@@ -55,12 +56,14 @@ class DefaultLayout:
         return [self._subject_scoped(kind_name, subject)]
 
     def write(self, kind_name: str, scope: Scope) -> str:
+        """Returns the single path this kind is written to."""
         if kind_name == "rig":
             return f"{RIG_DIR}/{scope['computer_name']}/rig.json"
         return self._subject_scoped(kind_name, scope.get("subject"))
 
     @staticmethod
     def _subject_scoped(kind_name: str, subject: str | None) -> str:
+        """Places a record in the subject folder, or at the library root when unscoped."""
         return f"{SUBJECT_DIR}/{subject}/{kind_name}.json" if subject else f"{kind_name}.json"
 
 
@@ -98,6 +101,7 @@ class LocalFileStore(StoreBase):
         return f"{type(self).__name__}({self._root})"
 
     def _candidates(self, kind: Kind[T], scope: Scope) -> Sequence[Candidate[T]]:
+        """Reads every matching file, labelled by path, in layout priority order."""
         candidates: list[Candidate[T]] = []
         seen: set[Path] = set()
         for pattern in self._layout.read(kind.name, scope):
@@ -111,6 +115,7 @@ class LocalFileStore(StoreBase):
         return candidates
 
     def write(self, kind: KindLike[T], value: T, *, scope: Scope | None = None) -> None:
+        """Overwrites the file this kind maps to, creating parent directories."""
         _kind = as_kind(kind)
         path = self._root / self._layout.write(_kind.name, self._merge_scope(scope))
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -119,6 +124,7 @@ class LocalFileStore(StoreBase):
 
     @staticmethod
     def _load(path: Path, kind: Kind[T]) -> T | None:
+        """Parses one file, returning ``None`` and warning if it does not validate."""
         try:
             return kind.adapter.validate_json(path.read_text(encoding="utf-8"))
         except (pydantic.ValidationError, ValueError) as e:

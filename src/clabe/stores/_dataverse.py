@@ -526,6 +526,7 @@ class DataverseStore(StoreBase):
         return f"{type(self).__name__}({self._client.config.env_url})"
 
     def _candidates(self, kind: Kind[T], scope: Scope) -> Sequence[Candidate[T]]:
+        """Returns recent suggestions for the subject and task in scope, newest first."""
         self._require_supported(kind)
         subject, task_name = self._required_scope(scope)
         suggestions = _get_last_suggestions(self._client, subject, task_name, self._history)
@@ -546,11 +547,13 @@ class DataverseStore(StoreBase):
 
     @staticmethod
     def _require_supported(kind: Kind[T]) -> None:
+        """Raises unless the kind is trainer state, the only kind this backend serves."""
         if kind.name != "trainer_state":
             raise LookupError(f"DataverseStore only serves 'trainer_state', not {kind.name!r}.")
 
     @staticmethod
     def _required_scope(scope: Scope) -> tuple[str, str]:
+        """Returns the subject and task name, raising if either is missing from scope."""
         missing = [k for k in ("subject", "task_name") if not scope.get(k)]
         if missing:
             raise LookupError(f"DataverseStore requires {', '.join(missing)} in scope.")
@@ -558,5 +561,6 @@ class DataverseStore(StoreBase):
 
     @staticmethod
     def _label(suggestion: DataverseSuggestion) -> str:
+        """Labels a suggestion by creation date and stage, so a pick list sorts chronologically."""
         created = suggestion.created_on.isoformat(timespec="minutes") if suggestion.created_on else "unknown date"
         return f"{created} | {suggestion.stage_name}"

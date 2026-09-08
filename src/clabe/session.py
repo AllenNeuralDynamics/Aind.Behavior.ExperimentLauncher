@@ -118,11 +118,13 @@ class SessionBuilder:
             return experimenter
 
     def _invalid_names(self, names: list[str]) -> str | None:
+        """Returns the first name the validator rejects, or ``None`` if all pass."""
         if self._experimenter_validator is None:
             return None
         return next((name for name in names if not self._experimenter_validator(name)), None)
 
     def _cached_options(self, cache_name: str) -> list[str]:
+        """Returns the previously entered values to offer for autocompletion."""
         if not self._use_cache:
             return []
         cached = self._cache_manager.try_get_cache(cache_name)

@@ -24,6 +24,7 @@ class MemoryStore(StoreBase):
         return f"{type(self).__name__}({len(self._records)} records)"
 
     def _candidates(self, kind: Kind[T], scope: Scope) -> Sequence[Candidate[T]]:
+        """Returns the records whose write-time narrowings the read scope satisfies."""
         return [
             Candidate(f"{kind.name}[{i}]", value)
             for i, (name, written, value) in enumerate(self._records)
@@ -31,4 +32,5 @@ class MemoryStore(StoreBase):
         ]
 
     def write(self, kind: KindLike[T], value: T, *, scope: Scope | None = None) -> None:
+        """Appends a record, so repeated writes accumulate as candidates."""
         self._records.append((as_kind(kind).name, self._merge_scope(scope), value))
