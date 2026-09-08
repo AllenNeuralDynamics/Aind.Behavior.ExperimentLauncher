@@ -1,4 +1,7 @@
+from types import ModuleType
 from unittest.mock import Mock
+
+import pytest
 
 from clabe.launcher import collect_clabe_experiments, experiment, get_experiment_name
 from clabe.launcher._experiments import _select_experiment
@@ -31,6 +34,43 @@ def test_select_experiment_multiple_experiments_discovered_and_logs_constant(cap
 
     launcher = Mock()
     selected.func(launcher)
+
+
+def test_select_experiment_by_name_skips_prompt() -> None:
+    mock_frontend = Mock()
+
+    module_path = TESTS_ASSETS / "experiment_import_mocks.py"
+    selected = _select_experiment(module_path, frontend=mock_frontend, experiment_name="second_experiment")
+
+    assert selected.name == "second_experiment"
+    mock_frontend.prompt_pick.assert_not_called()
+
+
+def test_select_experiment_by_name_raises_when_not_found() -> None:
+    module_path = TESTS_ASSETS / "experiment_import_mocks.py"
+
+    with pytest.raises(SystemExit):
+        _select_experiment(module_path, frontend=Mock(), experiment_name="does_not_exist")
+
+
+def test_collect_clabe_experiments_orders_by_order_field_then_declaration() -> None:
+    @experiment(name="a")
+    def a(launcher): ...
+
+    @experiment(name="b")
+    def b(launcher): ...
+
+    @experiment(name="c", order=-1)
+    def c(launcher): ...
+
+    # Assignment order (a, then b, then c) mirrors declaration order in a real
+    # module's namespace; "c" should still sort first via order=-1, while the
+    # order=0 ties ("a", "b") keep their declaration order.
+    module = ModuleType("fake_module")
+    module.a, module.b, module.c = a, b, c
+
+    experiments = list(collect_clabe_experiments(module))
+    assert [e.name for e in experiments] == ["c", "a", "b"]
 
 
 # --- get_experiment_name ---
