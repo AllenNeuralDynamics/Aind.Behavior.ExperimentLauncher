@@ -32,11 +32,18 @@ class _RunCli(LauncherCliArgs):
         default=False,
         description="Refuse to start if another CLABE session is already running (used when serving the web UI)",
     )
+    experiment_name: str | None = Field(
+        default=None,
+        description="Name of the @experiment to run when the file defines more than one. "
+        "If omitted, prompts interactively (or runs the only one found).",
+    )
 
     def _run(self):
         """Builds the launcher, selects the experiment and runs it."""
         launcher = Launcher(settings=self)
-        experiment_metadata = _select_experiment(self.experiment_path, frontend=launcher.frontend)
+        experiment_metadata = _select_experiment(
+            self.experiment_path, frontend=launcher.frontend, experiment_name=self.experiment_name
+        )
         launcher.run_experiment(experiment_metadata.func)
 
     def cli_cmd(self):

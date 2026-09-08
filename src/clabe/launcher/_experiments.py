@@ -23,10 +23,13 @@ class ExperimentMetadata:
     Attributes:
         name: Human-readable name for the experiment.
         func: The underlying callable.
+        order: Sort key controlling position when multiple experiments are
+            listed (lower sorts first). Ties keep declaration order.
     """
 
     name: str
     func: ExperimentCallable
+    order: int = 0
 
 
 class _IExperiment(Protocol):
@@ -40,11 +43,19 @@ class _IExperiment(Protocol):
 def experiment(
     *,
     name: str | None = None,
+    order: int = 0,
 ) -> Callable[[_IExperiment], _IExperiment]:
     """Decorator to mark a function as a CLABE experiment.
 
     The decorated function must accept a single `Launcher` argument and may be
     either synchronous or asynchronous.
+
+    Args:
+        name: Human-readable name for the experiment. Defaults to the
+            function's ``__name__``.
+        order: Sort key controlling where this experiment appears when a
+            module defines more than one (lower sorts first). Experiments with
+            the same ``order`` keep their declaration order.
 
     Example:
         ```python
@@ -54,7 +65,7 @@ def experiment(
         from clabe.launcher import experiment
 
 
-        @experiment(name="super_duper_experiment")
+        @experiment(name="super_duper_experiment", order=-1)
         async def vr_foraging_with_photometry(launcher: Launcher) -> None:
             ...
         ```
@@ -65,6 +76,7 @@ def experiment(
         metadata = ExperimentMetadata(
             name=exp_name,
             func=func,  # type: ignore[arg-type]
+            order=order,
         )
         func.__clabe_experiment_metadata__ = metadata
         return func
@@ -92,13 +104,19 @@ def get_experiment_name(experiment: _IExperiment) -> str | None:
 
 
 def collect_clabe_experiments(module: ModuleType) -> Iterable[ExperimentMetadata]:
-    """Yield all `@experiment` experiments defined in the target module."""
+    """Yield all `@experiment` experiments defined in the target module.
 
+    Experiments are yielded sorted by their ``order`` (lower first); ties keep
+    the module's declaration order.
+    """
+
+    discovered: list[ExperimentMetadata] = []
     for value in vars(module).values():
         metadata = getattr(value, "__clabe_experiment_metadata__", None)
         if isinstance(metadata, ExperimentMetadata):
             logger.debug("Discovered CLABE experiment: %s in module %s", metadata.name, module.__name__)
-            yield metadata
+            discovered.append(metadata)
+    yield from sorted(discovered, key=lambda e: e.order)
 
 
 def _load_module_from_path(path: Path):
@@ -125,13 +143,17 @@ def _load_module_from_path(path: Path):
     return module
 
 
-def _select_experiment(file_path: Path, frontend: Frontend | None = None) -> ExperimentMetadata:
+def _select_experiment(
+    file_path: Path, frontend: Frontend | None = None, experiment_name: str | None = None
+) -> ExperimentMetadata:
     """Select an experiment callable from a Python module.
 
     Loads the module at ``file_path``, discovers all callables decorated with
     :func:`experiment`, and returns the associated :class:`ExperimentMetadata`.
 
-    If a single experiment is found it is returned directly. When multiple
+    If ``experiment_name`` is given, the matching experiment is returned
+    directly (no prompt), which allows non-interactive/scripted runs. Otherwise,
+    if a single experiment is found it is returned directly; when multiple
     experiments are available, the provided ``frontend`` is used to prompt the
     user to choose one. If no frontend is supplied the default frontend is used.
 
@@ -139,14 +161,16 @@ def _select_experiment(file_path: Path, frontend: Frontend | None = None) -> Exp
         file_path: Filesystem path to the Python module to inspect.
         frontend: Optional frontend used to interactively choose an experiment
             when more than one is discovered.
+        experiment_name: Optional name of the experiment to select directly,
+            bypassing the interactive prompt.
 
     Returns:
         ExperimentMetadata: The metadata for the selected experiment.
 
     Raises:
         ValueError: If experiment names are not unique within the module.
-        SystemExit: If no experiments are found or the user cancels
-            selection.
+        SystemExit: If no experiments are found, ``experiment_name`` does not
+            match any discovered experiment, or the user cancels selection.
     """
 
     if frontend is None:
@@ -161,7 +185,14 @@ def _select_experiment(file_path: Path, frontend: Frontend | None = None) -> Exp
         msg = f"No @experiment experiments found in {file_path}"
         raise SystemExit(msg)
 
-    if len(experiments) == 1:
+    if experiment_name is not None:
+        callable_str_converter = {e.name: e for e in experiments}
+        if experiment_name not in callable_str_converter:
+            available = ", ".join(callable_str_converter)
+            msg = f"No experiment named '{experiment_name}' in {file_path}. Available: {available}"
+            raise SystemExit(msg)
+        selected = callable_str_converter[experiment_name]
+    elif len(experiments) == 1:
         selected = experiments[0]
     else:
         callable_str_converter = {e.name: e for e in experiments}
