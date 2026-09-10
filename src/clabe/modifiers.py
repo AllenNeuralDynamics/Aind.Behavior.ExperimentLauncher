@@ -77,7 +77,7 @@ class ByAnimalModifier(abc.ABC, Generic[TRig]):
             logger.warning("No %s found in %s. Using default.", self._kind.name, self._store)
             return rig
         logger.info("Loading %s. Deserialized: %s", self._kind.name, records[0])
-        rsetattr(rig, self._model_path, self._process_before_inject(records[0]))
+        recursive_setattr(rig, self._model_path, self._process_before_inject(records[0]))
         return rig
 
     def dump(self) -> None:
@@ -96,7 +96,7 @@ class ByAnimalModifier(abc.ABC, Generic[TRig]):
             raise
 
 
-def rsetattr(obj, attr, val):
+def recursive_setattr(obj, attr, val):
     """
     Sets an attribute value using a dot-separated path.
 
@@ -117,7 +117,7 @@ def rsetattr(obj, attr, val):
             inner = Inner()
 
         obj = Outer()
-        rsetattr(obj, "inner.value", 42)
+        recursive_setattr(obj, "inner.value", 42)
         assert obj.inner.value == 42
         ```
     """

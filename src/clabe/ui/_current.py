@@ -1,6 +1,6 @@
 import contextlib
 import logging
-from collections.abc import Iterator
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
@@ -49,7 +49,7 @@ def current_frontend() -> Frontend | None:
 
 
 @contextlib.contextmanager
-def use_frontend(frontend: Frontend | None) -> Iterator[Frontend | None]:
+def use_frontend(frontend: Frontend | None) -> Generator[Frontend | None]:
     """
     Registers a frontend for the duration of a block, restoring the previous one on exit.
 

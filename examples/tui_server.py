@@ -9,7 +9,6 @@ from _mocks import (
     SUGGESTION,
     DemoAindDataSchemaSessionDataMapper,
     MockTask,
-    Session,
     create_fake_rig,
     create_fake_subjects,
 )
@@ -35,7 +34,7 @@ async def demo_experiment(launcher: Launcher) -> None:
     create_fake_rig()
     _seed_cache()
 
-    session = SessionBuilder(launcher, experimenter_validator=lambda _: True).build(Session)
+    session = SessionBuilder(launcher, experimenter_validator=lambda _: True).build()
     store = LocalFileStore(LIB_CONFIG).scoped(subject=session.subject)
 
     rig = store.resolve(RIG)

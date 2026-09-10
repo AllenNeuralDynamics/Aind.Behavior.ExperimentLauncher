@@ -6,7 +6,6 @@ from _mocks import (
     RIG,
     SUGGESTION,
     MockTask,
-    Session,
     create_fake_rig,
     create_fake_subjects,
 )
@@ -26,7 +25,7 @@ logger = logging.getLogger(__name__)
 async def client_experiment(launcher: Launcher) -> None:
     """Demo experiment showcasing CLABE functionality."""
 
-    session = SessionBuilder(launcher, experimenter_validator=lambda _: True).build(Session)
+    session = SessionBuilder(launcher, experimenter_validator=lambda _: True).build()
     store = LocalFileStore(LIB_CONFIG).scoped(subject=session.subject)
 
     rig = store.resolve(RIG)

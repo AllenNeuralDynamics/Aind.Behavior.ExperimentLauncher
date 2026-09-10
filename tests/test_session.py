@@ -39,13 +39,6 @@ class TestSessionBuilder:
         assert session.notes == "all good"
         assert session.commit_hash == COMMIT
 
-    def test_build_accepts_a_session_subclass(self, builder, mock_frontend):
-        class MySession(Session):
-            pass
-
-        answer(mock_frontend, autocomplete=["j.doe", "789012"])
-        assert isinstance(builder.build(MySession), MySession)
-
     def test_experimenters_may_be_comma_or_space_separated(self, builder, mock_frontend):
         answer(mock_frontend, autocomplete=["j.doe, a.smith b.jones"])
         assert builder.prompt_experimenter() == ["j.doe", "a.smith", "b.jones"]

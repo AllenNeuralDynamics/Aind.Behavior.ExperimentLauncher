@@ -4,7 +4,6 @@ from collections.abc import Callable
 from aind_behavior_services import Session
 
 from . import ui
-from ._typing import TSession
 from .cache_manager import CacheManager
 from .launcher import Launcher
 from .utils.aind_validators import validate_username
@@ -46,12 +45,9 @@ class SessionBuilder:
         self._use_cache = use_cache
         self._cache_manager = CacheManager.get_instance()
 
-    def build(self, model: type[TSession] = Session) -> TSession:
+    def build(self) -> Session:
         """
         Prompts for experimenter, subject and notes, and stamps the launcher's repository state.
-
-        Args:
-            model: The session model to instantiate.
 
         Returns:
             The assembled session.
@@ -60,7 +56,7 @@ class SessionBuilder:
         subject = self.choose_subject()
         notes = ui.prompt_text(ui.TextRequest(label="Enter notes", field="notes"))
         settings = self._launcher.settings
-        return model(
+        return Session(
             subject=subject,
             notes=notes,
             experimenter=experimenter,
