@@ -136,7 +136,7 @@ def prompt_number(request: NumberRequest) -> float:
     return require_frontend().prompt_number(request)
 
 
-def prompt_form(request: FormRequest) -> object | None:
+def prompt_form(request: FormRequest) -> Any | None:
     """Prompts the user to fill in a Pydantic model form."""
     return require_frontend().prompt_form(request)
 
