@@ -94,8 +94,8 @@ Like `DataverseStore`, writes **append** rather than overwrite, so several recor
 ```python
 store.write(MANIPULATOR, ManipulatorPosition(x=0, y=0, z=0), scope={"subject": "123"})
 
-store.list(MANIPULATOR)                          # [] — no subject in scope
-store.scoped(subject="123").list(MANIPULATOR)    # [ManipulatorPosition(x=0, y=0, z=0)]
+store.list(MANIPULATOR)  # [] — no subject in scope
+store.scoped(subject="123").list(MANIPULATOR)  # [ManipulatorPosition(x=0, y=0, z=0)]
 ```
 
 ## DataverseStore
@@ -151,7 +151,7 @@ store = CompositeStore(
     routes={"trainer_state": DataverseStore()},
 )
 
-rig = store.resolve(RIG)                  # → LocalFileStore (the default)
+rig = store.resolve(RIG)  # → LocalFileStore (the default)
 trainer_state = store.resolve(SUGGESTION)  # → DataverseStore (routed by name)
 ```
 

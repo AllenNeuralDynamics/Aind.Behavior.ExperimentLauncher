@@ -97,7 +97,7 @@ No confirmation prompt, ever — whether a write clobbers, versions or appends i
 
 ```python
 store = store.scoped(subject=session.subject)
-rig = store.resolve(RIG)          # only this animal's records are visible
+rig = store.resolve(RIG)  # only this animal's records are visible
 # equivalent to: store.resolve(RIG, scope={"subject": session.subject})
 store.write(SUGGESTION, next_state)
 ```
