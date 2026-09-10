@@ -1,7 +1,7 @@
 import pydantic
 import pytest
 from aind_behavior_curriculum import TrainerState
-from aind_behavior_services import Rig, Session, Task
+from aind_behavior_services import Rig, Task
 
 from clabe import ui
 from clabe.cache_manager import CacheManager
@@ -27,7 +27,7 @@ class TestKind:
     def test_canonical_kinds_fix_the_framework_names(self):
         assert Kind.from_rig(Rig).name == "rig"
         assert Kind.from_task(Task).name == "task"
-        assert Kind.from_session(Session).name == "session"
+        assert Kind.from_session().name == "session"
         assert Kind.from_trainer_state().name == "trainer_state"
 
     def test_rig_models_of_different_shapes_share_the_rig_name(self):
@@ -93,7 +93,7 @@ class TestResolve:
     def test_the_kind_validator_is_applied(self, store, mock_frontend):
         ui.set_current_frontend(mock_frontend)
         store.write(Widget, Widget(value=1))
-        doubled = Kind(Widget, validate=lambda w: Widget(value=w.value * 2))
+        doubled = Kind(Widget, validators=lambda w: Widget(value=w.value * 2))
         assert store.resolve(doubled) == Widget(value=2)
 
     def test_recently_chosen_options_are_offered_first(self, store, mock_frontend):
