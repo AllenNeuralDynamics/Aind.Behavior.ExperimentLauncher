@@ -150,6 +150,8 @@ nav:
   - Logging: articles/logging.md
   - Runnables: articles/runnables.md
   - ServiceSettings and yaml tags: articles/service_settings.md
+  - Stores: articles/stores.md
+  - Store Backends: articles/store_backends.md
 - Issues: https://github.com/AllenNeuralDynamics/clabe/issues
 - Examples:
   - AIND Experiment: docs_examples/behavior_launcher.md
